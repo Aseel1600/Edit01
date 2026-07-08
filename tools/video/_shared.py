@@ -38,6 +38,7 @@ WAN_VARIANTS = {
         "hf_id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
         "hf_i2v_id": "Wan-AI/Wan2.1-I2V-14B-480P-Diffusers",
         "pipeline_class": "WanPipeline",
+        "i2v_pipeline_class": "WanImageToVideoPipeline",
         "vram_mb": 8000,
         "quality": "high",
         "speed": "medium",
@@ -54,6 +55,7 @@ WAN_VARIANTS = {
         "hf_id": "Wan-AI/Wan2.1-T2V-14B-Diffusers",
         "hf_i2v_id": "Wan-AI/Wan2.1-I2V-14B-480P-Diffusers",
         "pipeline_class": "WanPipeline",
+        "i2v_pipeline_class": "WanImageToVideoPipeline",
         "vram_mb": 24000,
         "quality": "highest",
         "speed": "slow",
@@ -111,20 +113,26 @@ HUNYUAN_VARIANTS = {
 }
 
 LTX_LOCAL_VARIANTS = {
+    # NOTE: LTX-2 (Lightricks/LTX-2) is ~135GB and cannot load on machines with
+    # <~150GB RAM (this box: 34GB) — it segfaults at weight-load. Use LTX-1
+    # (Lightricks/LTX-Video, ~13GB) which fits a 12GB GPU. The LTX2Pipeline /
+    # LTX2ImageToVideoPipeline classes below are correct for LTX-2 if you ever
+    # move to a bigger box — just swap hf_id + the two *_pipeline_class fields.
     "ltx2-local": {
-        "name": "LTX-2 (Local)",
-        "hf_id": "Lightricks/LTX-2",
+        "name": "LTX-Video (Local)",
+        "hf_id": "Lightricks/LTX-Video",
         "pipeline_class": "LTXPipeline",
+        "i2v_pipeline_class": "LTXImageToVideoPipeline",
         "vram_mb": 12000,
         "quality": "high",
         "speed": "medium",
         "t2v": True,
         "i2v": True,
-        "license": "LTX-2-Community",
+        "license": "LTX-Video-Community",
         "default_width": 768,
         "default_height": 512,
         "default_num_frames": 121,
-        "fps": 30,
+        "fps": 24,
     },
 }
 
@@ -263,6 +271,9 @@ def load_diffusers_pipeline(pipeline_class: str, model_id: str, enable_offload: 
         "HunyuanVideo15Pipeline": "HunyuanVideo15Pipeline",
         "HunyuanVideo15ImageToVideoPipeline": "HunyuanVideo15ImageToVideoPipeline",
         "LTXPipeline": "LTXPipeline",
+        "LTXImageToVideoPipeline": "LTXImageToVideoPipeline",
+        "LTX2Pipeline": "LTX2Pipeline",
+        "LTX2ImageToVideoPipeline": "LTX2ImageToVideoPipeline",
         "CogVideoXPipeline": "CogVideoXPipeline",
     }
     pipeline_name = pipeline_map.get(pipeline_class, pipeline_class)
@@ -389,6 +400,12 @@ def generate_local_video(
     if meta["pipeline_class"] == "CogVideoXPipeline":
         generation_args["negative_prompt"] = "worst quality, low quality, blurry, distorted, watermark"
 
+    # Filter to kwargs the pipeline actually accepts — i2v pipelines vary (e.g. HunyuanVideo15ImageToVideoPipeline
+    # infers dims from the reference image and rejects width/height, while WanImageToVideoPipeline accepts them).
+    import inspect
+    _params = inspect.signature(pipeline.__call__).parameters
+    if not any(p.kind == inspect.Parameter.VAR_KEYWORD for p in _params.values()):
+        generation_args = {k: v for k, v in generation_args.items() if k in _params}
     output = pipeline(**generation_args)
     frames = output.frames[0] if hasattr(output, "frames") else output.images
 

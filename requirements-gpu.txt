@@ -1,5 +1,29 @@
 # OpenMontage - GPU Dependencies
 # Install these in addition to requirements.txt when GPU is available
-torch>=2.0
-torchaudio>=2.0
-torchvision>=0.15
+#
+# torch>=2.10 is a hard floor, not a suggestion: diffusers' Wan pipeline
+# registers a flash-attention backend via torch.library.custom_op whose
+# function signature uses PEP-604 union annotations (`torch.Tensor | None`).
+# torch<=2.4's infer_schema can't parse that and fails at import time with
+# "Parameter q has unsupported type torch.Tensor" -- confirmed on a RunPod
+# RTX 4090 pod using the stock "runpod-torch-v240" template (torch 2.4.0).
+# Fix was `pip install --upgrade torch torchvision torchaudio --index-url
+# https://download.pytorch.org/whl/cu128` (matches the working local combo:
+# torch 2.11.0+cu128). Pinning diffusers down to 0.38.0 alone did NOT fix
+# it -- this is a torch problem, not a diffusers version problem.
+torch>=2.10
+torchaudio>=2.10
+torchvision>=0.20
+
+# Local video generation (Wan / HunyuanVideo / LTX / CogVideoX via tools/video/_shared.py)
+# 0.38.0 was pinned exact while debugging the torch issue above; confirmed
+# 2026-07-07 that diffusers 0.39.0 imports both WanPipeline and Flux2Pipeline
+# cleanly once torch is actually >=2.10 -- the pin was never a diffusers
+# problem, so a floor is enough now.
+diffusers>=0.39.0
+transformers>=4.46
+accelerate>=1.0
+sentencepiece>=0.2      # T5 text encoder tokenization (Wan, HunyuanVideo, LTX)
+imageio>=2.34
+imageio-ffmpeg>=0.5     # backend for diffusers.utils.export_to_video
+ftfy>=6.0               # Wan pipelines use it for prompt cleaning (i2v fails without it)
