@@ -45,7 +45,12 @@ pip install -q -r requirements.txt
 # "Parameter q has unsupported type torch.Tensor". Confirmed fix: upgrade
 # torch itself (pinning diffusers down does NOT help, this is a torch bug).
 pip install -q --upgrade torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
-pip install -q "diffusers>=0.39.0" transformers accelerate sentencepiece imageio imageio-ffmpeg ftfy
+# Wan 2.2 TI2V-5B i2v needs diffusers FROM SOURCE (git main), NOT a release: the 0.39/0.40
+# release WanImageToVideoPipeline drops the 2.2 dual-expert (transformer_2 + boundary_ratio),
+# which silently halves the denoiser and yields garbled/jumpy motion. Confirmed 2026-07-08 that
+# diffusers 0.40.0.dev0 (git main) both wires transformer_2 AND accepts image= on that pipeline.
+# (Wan 2.1 / CogVideoX / LTX still work on main, so this is a safe default for the pod.)
+pip install -q "git+https://github.com/huggingface/diffusers.git" transformers accelerate sentencepiece imageio imageio-ffmpeg ftfy
 # ftfy: Wan pipelines use it for prompt text-cleaning; without it i2v fails at
 # generation with "name 'ftfy' is not defined" (only on the i2v code path, easy to miss).
 

@@ -67,6 +67,30 @@ WAN_VARIANTS = {
         "default_num_frames": 81,
         "fps": 16,
     },
+    "wan2.2-ti2v-5b": {
+        "name": "Wan 2.2 TI2V (5B)",
+        "hf_id": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",
+        "hf_i2v_id": "Wan-AI/Wan2.2-TI2V-5B-Diffusers",  # unified TI2V model handles both t2v and i2v
+        "pipeline_class": "WanPipeline",
+        # i2v needs a pipeline that BOTH accepts image= AND wires the 2.2 dual-expert
+        # (transformer + transformer_2 + boundary_ratio). Only WanImageToVideoPipeline on
+        # diffusers>=0.40 (git main) does both -- the 0.39 release drops transformer_2, which
+        # silently halves the denoiser and produces jumpy/garbled motion. Install diffusers @
+        # git main on the GPU pod (release WanPipeline has transformer_2 but no image=).
+        "i2v_pipeline_class": "WanImageToVideoPipeline",
+        "vae_dtype": "float32",   # 2.2's high-compression VAE garbles motion in bf16; decode in fp32
+        "guidance_scale": 5.0,
+        "vram_mb": 16000,   # 5B dense -> fits 24GB easily (likely 12GB w/ sequential offload)
+        "quality": "high",
+        "speed": "medium",
+        "t2v": True,
+        "i2v": True,
+        "license": "Apache-2.0",
+        "default_width": 1280,
+        "default_height": 704,
+        "default_num_frames": 121,  # native 5s @ 24fps; 81 frames pushes it out-of-distribution -> jumpy motion
+        "fps": 24,
+    },
 }
 
 HUNYUAN_VARIANTS = {
@@ -261,7 +285,7 @@ def estimate_local_runtime(speed: str) -> float:
     return {"fast": 120.0, "medium": 240.0, "slow": 600.0}.get(speed, 240.0)
 
 
-def load_diffusers_pipeline(pipeline_class: str, model_id: str, enable_offload: bool, offload_mode: str = "model"):
+def load_diffusers_pipeline(pipeline_class: str, model_id: str, enable_offload: bool, offload_mode: str = "model", vae_dtype: str | None = None):
     import diffusers
     import torch
 
@@ -289,7 +313,13 @@ def load_diffusers_pipeline(pipeline_class: str, model_id: str, enable_offload: 
     else:
         dtype = torch.float16
 
-    pipeline = pipeline_class_obj.from_pretrained(model_id, torch_dtype=dtype)
+    from_kwargs = {"torch_dtype": dtype}
+    # Some models (e.g. Wan 2.2 TI2V-5B) need the VAE kept in float32: its high-compression
+    # VAE produces garbled/jumpy motion when decoded in bf16 like the rest of the pipeline.
+    if vae_dtype == "float32":
+        vae = diffusers.AutoencoderKLWan.from_pretrained(model_id, subfolder="vae", torch_dtype=torch.float32)
+        from_kwargs["vae"] = vae
+    pipeline = pipeline_class_obj.from_pretrained(model_id, **from_kwargs)
 
     if enable_offload:
         if device == "cuda":
@@ -381,7 +411,7 @@ def generate_local_video(
     else:
         model_id = meta["hf_id"]
         pipeline_class = meta["pipeline_class"]
-    pipeline = load_diffusers_pipeline(pipeline_class, model_id, enable_offload, inputs.get("offload_mode", "model"))
+    pipeline = load_diffusers_pipeline(pipeline_class, model_id, enable_offload, inputs.get("offload_mode", "model"), meta.get("vae_dtype"))
 
     generation_args: dict[str, Any] = {
         "prompt": prompt,
@@ -399,6 +429,8 @@ def generate_local_video(
         generation_args["image"] = image
     if meta["pipeline_class"] == "CogVideoXPipeline":
         generation_args["negative_prompt"] = "worst quality, low quality, blurry, distorted, watermark"
+    if meta.get("guidance_scale") is not None:
+        generation_args["guidance_scale"] = meta["guidance_scale"]
 
     # Filter to kwargs the pipeline actually accepts — i2v pipelines vary (e.g. HunyuanVideo15ImageToVideoPipeline
     # infers dims from the reference image and rejects width/height, while WanImageToVideoPipeline accepts them).

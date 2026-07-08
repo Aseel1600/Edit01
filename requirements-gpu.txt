@@ -20,6 +20,10 @@ torchvision>=0.20
 # 2026-07-07 that diffusers 0.39.0 imports both WanPipeline and Flux2Pipeline
 # cleanly once torch is actually >=2.10 -- the pin was never a diffusers
 # problem, so a floor is enough now.
+# NOTE: the wan2.2-ti2v-5b variant needs diffusers FROM SOURCE (git main / >=0.40.0.dev0) --
+# release builds' WanImageToVideoPipeline drops the 2.2 dual-expert transformer_2 -> jumpy motion.
+# The 0.39 floor below is enough for every OTHER pipeline (Wan 2.1, CogVideoX, LTX, Flux2); install
+# git main only where you actually run Wan 2.2-5B (see runpod/setup.sh, or a dedicated local venv).
 diffusers>=0.39.0
 transformers>=4.46
 accelerate>=1.0
