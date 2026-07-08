@@ -79,7 +79,7 @@ WAN_VARIANTS = {
         # git main on the GPU pod (release WanPipeline has transformer_2 but no image=).
         "i2v_pipeline_class": "WanImageToVideoPipeline",
         "vae_dtype": "float32",   # 2.2's high-compression VAE garbles motion in bf16; decode in fp32
-        "guidance_scale": 5.0,
+        "guidance_scale": 4.5,   # 5.0 default; nudged down to loosen adherence -> a bit more motion
         "vram_mb": 16000,   # 5B dense -> fits 24GB easily (likely 12GB w/ sequential offload)
         "quality": "high",
         "speed": "medium",
@@ -431,6 +431,8 @@ def generate_local_video(
         generation_args["negative_prompt"] = "worst quality, low quality, blurry, distorted, watermark"
     if meta.get("guidance_scale") is not None:
         generation_args["guidance_scale"] = meta["guidance_scale"]
+    if inputs.get("negative_prompt"):
+        generation_args["negative_prompt"] = inputs["negative_prompt"]
 
     # Filter to kwargs the pipeline actually accepts — i2v pipelines vary (e.g. HunyuanVideo15ImageToVideoPipeline
     # infers dims from the reference image and rejects width/height, while WanImageToVideoPipeline accepts them).

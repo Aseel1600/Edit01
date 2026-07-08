@@ -45,6 +45,8 @@ def main() -> int:
     parser.add_argument("--height", type=int, default=None)
     parser.add_argument("--frames", type=int, default=None, dest="num_frames")
     parser.add_argument("--steps", type=int, default=None, dest="num_inference_steps")
+    parser.add_argument("--negative", default=None, dest="negative_prompt",
+                         help="negative prompt (e.g. to suppress morphing/warping on subject-locked i2v)")
     parser.add_argument("--offload-mode", default="model", choices=["model", "sequential"],
                          help="'sequential' uses less peak VRAM but is much slower; try this if Wan-14B OOMs")
     parser.add_argument("--no-offload", action="store_true", help="disable CPU offload entirely (needs the most VRAM, fastest)")
@@ -71,6 +73,8 @@ def main() -> int:
         inputs["num_frames"] = args.num_frames
     if args.num_inference_steps:
         inputs["num_inference_steps"] = args.num_inference_steps
+    if args.negative_prompt:
+        inputs["negative_prompt"] = args.negative_prompt
     inputs = {k: v for k, v in inputs.items() if v is not None}
 
     tool = TOOLS[args.model]()

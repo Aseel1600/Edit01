@@ -32,15 +32,29 @@ import threading
 import time
 from pathlib import Path
 
+# Camera-DRIVEN motion for mostly-static Stoic stills: the realism comes from a slow
+# grounded camera move with real depth/parallax while the SUBJECT stays solid. Asking
+# the scene itself to "come alive" makes static subjects (busts, candles) morph or
+# erupt -- so we move the camera, lock the subject, and let ambient motion appear only
+# where it physically belongs. The negative prompt actively fights deformation.
 PROMPT = (
-    "subtle cinematic motion, slow gentle drift, soft shifting light, "
-    "delicate atmospheric movement, a very slow subtle push-in, "
-    "photorealistic, no morphing, no warping"
+    "a slow, smooth cinematic camera push-in with natural depth and parallax, "
+    "the subject stays still and solid, with gentle but clearly visible natural "
+    "ambient motion where it belongs, photorealistic, cinematic, sharp focus, "
+    "stable geometry"
+)
+# NB: keep "billowing smoke" (stops the candle smoke-bomb) + all anti-morph/anti-person
+# terms; but DROP "fast motion, chaotic movement" so ambient motion reads more clearly.
+NEGATIVE = (
+    "person, people, human, man, woman, figure, silhouette, body, hands, walking, "
+    "crowd, animal, new objects appearing, added objects, extra objects, "
+    "morphing, warping, distortion, deforming, melting, wobbling, unstable geometry, "
+    "shifting shapes, jitter, flickering artifacts, billowing smoke"
 )
 
 # --- pod connection (see memory: runpod-gpu-rental) ---
-POD_HOST = "root@157.157.221.29"
-POD_PORT = "30425"
+POD_HOST = "root@69.30.85.134"
+POD_PORT = "22075"
 POD_KEY = str(Path.home() / ".ssh" / "id_ed25519")
 POD_REPO = "/workspace/OpenMontage"
 POD_TMP = "/workspace/out/queue"
@@ -95,7 +109,7 @@ def render_local(still: Path, orient: str, out: Path) -> bool:
         LOCAL_PY, RENDER, "wan", "--variant", VARIANT, "--operation", "image_to_video",
         "--ref", str(still), "--width", str(w), "--height", str(h),
         "--steps", "50", "--offload-mode", "sequential",
-        "--prompt", PROMPT, "--out", str(out),
+        "--prompt", PROMPT, "--negative", NEGATIVE, "--out", str(out),
     ]
     env = {"VIDEO_GEN_LOCAL_ENABLED": "true", "HF_HUB_DISABLE_XET": "1"}
     import os
@@ -122,7 +136,8 @@ def render_pod(still: Path, orient: str, out: Path) -> bool:
         f"cd {POD_REPO} && export HF_HOME=/workspace/hf_cache HF_HUB_DISABLE_XET=1 "
         f"VIDEO_GEN_LOCAL_ENABLED=true && python3 {RENDER} wan --variant {VARIANT} "
         f"--operation image_to_video --ref {remote_ref} --width {w} --height {h} "
-        f"--steps 50 --offload-mode model --prompt '{PROMPT}' --out {remote_out}"
+        f"--steps 50 --no-offload --prompt '{PROMPT}' --negative '{NEGATIVE}' "
+        f"--out {remote_out}"
     )
     if subprocess.run(SSH + [POD_HOST, remote_cmd]).returncode != 0:
         log("POD", f"render FAILED {still.name}")
