@@ -79,7 +79,7 @@ WAN_VARIANTS = {
         # git main on the GPU pod (release WanPipeline has transformer_2 but no image=).
         "i2v_pipeline_class": "WanImageToVideoPipeline",
         "vae_dtype": "float32",   # 2.2's high-compression VAE garbles motion in bf16; decode in fp32
-        "guidance_scale": 4.5,   # 5.0 default; nudged down to loosen adherence -> a bit more motion
+        "guidance_scale": 5.0,   # native default; 4.5 loosened it too much -> motion too fast across the variety
         "vram_mb": 16000,   # 5B dense -> fits 24GB easily (likely 12GB w/ sequential offload)
         "quality": "high",
         "speed": "medium",
