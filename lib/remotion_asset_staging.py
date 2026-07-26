@@ -4,16 +4,19 @@ Headless Chromium blocks ``file://`` URIs for ``<Audio>`` (and can be flaky for
 other media). Remotion's ``staticFile()`` only serves paths under a public
 directory (default ``remotion-composer/public/``, or an explicit ``--public-dir``).
 
-This module stages into a **project-scoped** public directory under
-``projects/<id>/remotion-public/`` (never the shared composer tree), rewrites
-props to relative ``staticFile()`` paths, and supports reliable cleanup after
-render while leaving a debug report in the project workspace.
+This module stages into a **render-scoped** public directory under
+``projects/<id>/remotion-public-<render_id>/`` (never the shared composer tree),
+rewrites props to relative ``staticFile()`` paths, and supports reliable cleanup
+after render while leaving a debug report in the project workspace. Each render
+gets a unique directory so concurrent renders in the same project never collide,
+and cleanup only ever removes the directory this invocation created.
 """
 
 from __future__ import annotations
 
 import hashlib
 import re
+import secrets
 import shutil
 from pathlib import Path, PureWindowsPath
 from typing import Any
@@ -24,6 +27,10 @@ _REMOTE_PREFIXES = ("http://", "https://", "data:")
 _RESERVED_SLUGS = frozenset({".", ".."})
 # Dots are disallowed so metadata project_id=".." cannot escape via Path join.
 _SLUG_SAFE = re.compile(r"[^a-zA-Z0-9_-]+")
+# Render-scoped staging dirs we create: remotion-public-<hex> / .remotion-public-<hex>.
+# Cleanup only ever removes a dir whose name matches this contract, so a concurrent
+# render's dir (different id) and any pre-existing dir are never touched.
+_STAGING_DIR_RE = re.compile(r"^\.(?:remotion-public)-[0-9a-f]{4,}$|^remotion-public-[0-9a-f]{4,}$")
 
 
 def derive_staging_slug(output_path: Path, composition_data: dict[str, Any] | None = None) -> str:
@@ -60,13 +67,23 @@ def _sanitize_slug(value: str) -> str:
 def resolve_project_public_dir(
     output_path: Path,
     composition_data: dict[str, Any] | None = None,
+    *,
+    render_id: str | None = None,
 ) -> Path:
-    """Resolve a project-scoped Remotion ``--public-dir`` (not remotion-composer/public).
+    """Resolve a render-scoped Remotion ``--public-dir`` (not remotion-composer/public).
 
-    Prefer ``projects/<slug>/remotion-public/`` when the output lives under a
-    project tree; otherwise use ``<output_parent>/.remotion-public/``.
+    Each render gets a **unique** staging directory so concurrent renders in the
+    same project never share or overwrite each other's staged media, and cleanup
+    can only ever delete the directory this invocation created. The directory
+    name carries a short random id (``remotion-public-<hex>`` under a project
+    tree, ``.remotion-public-<hex>`` otherwise); cleanup refuses to remove any
+    directory whose name does not match this contract.
+
+    Prefer ``projects/<slug>/remotion-public-<render_id>/`` when the output lives
+    under a project tree; otherwise use ``<output_parent>/.remotion-public-<render_id>/``.
     """
     del composition_data  # reserved for future metadata overrides
+    rid = render_id or secrets.token_hex(4)
     resolved = output_path.resolve()
     parts = resolved.parts
     if "projects" in parts:
@@ -77,8 +94,8 @@ def resolve_project_public_dir(
             # parents[0] = one level up; we need (depth(file) - depth(slug)) - 1.
             levels_to_slug = (len(parts) - 1) - slug_idx
             project_dir = resolved.parents[levels_to_slug - 1] if levels_to_slug >= 1 else resolved.parent
-            return project_dir / "remotion-public"
-    return resolved.parent / ".remotion-public"
+            return project_dir / f"remotion-public-{rid}"
+    return resolved.parent / f".remotion-public-{rid}"
 
 
 def ensure_contained(path: Path, root: Path) -> Path:
@@ -95,11 +112,16 @@ def ensure_contained(path: Path, root: Path) -> Path:
 
 
 def cleanup_staging_dir(public_dir: Path) -> None:
-    """Remove a project-scoped Remotion public staging directory after render."""
+    """Remove a render-scoped Remotion public staging directory after render.
+
+    Only deletes the directory if its name matches the render-scoped staging
+    contract (``remotion-public-<hex>`` / ``.remotion-public-<hex>``). Because
+    each render creates a uniquely-named directory, this never touches a
+    concurrent render's directory or a pre-existing directory.
+    """
     if not public_dir.exists():
         return
-    # Only delete leaf staging dirs we created (name contract).
-    if public_dir.name not in ("remotion-public", ".remotion-public"):
+    if not _STAGING_DIR_RE.match(public_dir.name):
         return
     shutil.rmtree(public_dir, ignore_errors=True)
 
@@ -312,5 +334,5 @@ def stage_local_assets_for_remotion(
         "staging_dir": str(staging_root),
         "staged": staged,
         "skipped": skipped,
-        "lifecycle": "project-scoped; caller should cleanup_staging_dir after render",
+        "lifecycle": "render-scoped unique dir; caller should cleanup_staging_dir after render",
     }

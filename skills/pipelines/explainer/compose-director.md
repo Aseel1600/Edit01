@@ -187,13 +187,15 @@ for the proven formula — especially the all-dark-background rule for visual co
 
 **Local asset staging (automatic):** When `video_compose` runs the Remotion path, it
 copies local cut `source` paths and `audio.narration` / `audio.music` files into a
-**project-scoped** directory (`projects/<slug>/remotion-public/`) passed as Remotion
-`--public-dir`, and rewrites props to basename-relative `staticFile()` paths
-(`narration.mp3`). Do **not** hand-copy into `remotion-composer/public/` for this path —
+**render-scoped** directory (`projects/<slug>/remotion-public-<render_id>/`) passed as
+Remotion `--public-dir`, and rewrites props to basename-relative `staticFile()` paths
+(`narration.mp3`). Each render gets its own unique staging directory, so concurrent
+renders in the same project never collide, and only that render's directory is removed
+on cleanup. Do **not** hand-copy into `remotion-composer/public/` for this path —
 and never use absolute paths or `file://` for audio (headless Chromium blocks them).
-`https://` remote assets are unchanged. Staged media is cleaned up after render; a
-durable report lands in `renders/.remotion_asset_staging.json` and
-`metadata.remotion_asset_staging`.
+`https://` remote assets are unchanged. Staged media is cleaned up after render (and
+also on a pre-render staging/setup failure); a durable report lands in
+`renders/.remotion_asset_staging.json` and `metadata.remotion_asset_staging`.
 
 ### Step 5: Audio Post-Processing
 

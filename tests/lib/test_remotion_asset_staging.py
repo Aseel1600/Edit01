@@ -79,9 +79,21 @@ def test_ensure_contained_rejects_escape(tmp_path):
 def test_resolve_project_public_dir_under_projects(tmp_path):
     out = tmp_path / "projects" / "demo" / "renders" / "final.mp4"
     out.parent.mkdir(parents=True)
-    public = resolve_project_public_dir(out, {})
-    assert public == tmp_path / "projects" / "demo" / "remotion-public"
-    assert public.name == "remotion-public"
+    public = resolve_project_public_dir(out, {}, render_id="abcd1234")
+    assert public == tmp_path / "projects" / "demo" / "remotion-public-abcd1234"
+    assert public.name == "remotion-public-abcd1234"
+
+
+def test_resolve_project_public_dir_unique_per_render(tmp_path):
+    """Regression: two renders in the same project get distinct staging dirs."""
+    out = tmp_path / "projects" / "demo" / "renders" / "final.mp4"
+    out.parent.mkdir(parents=True)
+    a = resolve_project_public_dir(out, {})
+    b = resolve_project_public_dir(out, {})
+    assert a != b
+    assert a.parent == b.parent == (tmp_path / "projects" / "demo")
+    assert a.name.startswith("remotion-public-")
+    assert b.name.startswith("remotion-public-")
 
 
 def test_stage_rewrites_absolute_paths(tmp_path):
@@ -260,16 +272,51 @@ def test_stage_disambiguates_basename_collision(tmp_path):
 
 
 def test_cleanup_staging_dir_only_named_contract(tmp_path):
-    safe = tmp_path / "remotion-public"
+    # Render-scoped dir we created is removed.
+    safe = tmp_path / "remotion-public-abcd1234"
     safe.mkdir()
     (safe / "a.mp3").write_bytes(b"x")
+    # A concurrent render's dir (different id) must survive OUR cleanup —
+    # render A only ever calls cleanup_staging_dir on its own dir, never the
+    # sibling's, so the sibling is never passed in.
+    sibling = tmp_path / "remotion-public-deadbeef"
+    sibling.mkdir()
+    (sibling / "b.mp3").write_bytes(b"x")
+    # A pre-existing non-staging dir must survive.
     other = tmp_path / "not-staging"
     other.mkdir()
     (other / "keep.txt").write_text("keep")
+    # The legacy non-id name must NOT be deleted (no longer our contract).
+    legacy = tmp_path / "remotion-public"
+    legacy.mkdir()
+    (legacy / "old.mp3").write_bytes(b"x")
 
+    # Render A cleans up only its own dir.
     cleanup_staging_dir(safe)
+    # Passing a non-contract dir is a no-op (defensive — never erases pre-existing).
     cleanup_staging_dir(other)
+    cleanup_staging_dir(legacy)
 
     assert not safe.exists()
+    assert sibling.exists()  # concurrent render's dir untouched
     assert other.exists()
-    assert (other / "keep.txt").exists()
+    assert legacy.exists()  # over-broad basename-only delete is gone
+
+
+def test_cleanup_concurrent_renders_independent(tmp_path):
+    """Regression: first finisher must not delete a concurrent render's inputs."""
+    out = tmp_path / "projects" / "demo" / "renders" / "final.mp4"
+    out.parent.mkdir(parents=True)
+    a = resolve_project_public_dir(out, {}, render_id="aaaa1111")
+    b = resolve_project_public_dir(out, {}, render_id="bbbb2222")
+    a.mkdir(parents=True)
+    b.mkdir(parents=True)
+    (a / "narration.mp3").write_bytes(b"ID3")
+    (b / "narration.mp3").write_bytes(b"ID3")
+
+    # Render A finishes first and cleans up only its own dir.
+    cleanup_staging_dir(a)
+
+    assert not a.exists()
+    assert b.exists()
+    assert (b / "narration.mp3").exists()
