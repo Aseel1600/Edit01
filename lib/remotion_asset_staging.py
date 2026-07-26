@@ -126,6 +126,36 @@ def cleanup_staging_dir(public_dir: Path) -> None:
     shutil.rmtree(public_dir, ignore_errors=True)
 
 
+def _mirror_public_dir(source_root: Path, staging_root: Path) -> None:
+    """Make the render-scoped staging dir also serve pre-existing public/ assets.
+
+    ``--public-dir`` fully replaces Remotion's default public dir for the render,
+    so anything staticFile()'d from the real ``remotion-composer/public/`` tree
+    (demo-props fixtures, and — per SCENE_TYPES.md — pipeline-staged assets like
+    ``anime_scene.images[]`` / ``screenshot_scene.backgroundImage``, which are
+    documented as public/-relative paths copied there by the asset-director stage)
+    would otherwise 404 under the isolated staging dir. Symlink each top-level
+    entry in (read-only, nothing is written back to *source_root*); fall back to
+    a copy where symlinks aren't permitted (e.g. Windows without dev mode).
+    """
+    if not source_root.is_dir():
+        return
+    for entry in source_root.iterdir():
+        link = staging_root / entry.name
+        if link.exists() or link.is_symlink():
+            continue
+        try:
+            link.symlink_to(entry, target_is_directory=entry.is_dir())
+        except OSError:
+            try:
+                if entry.is_dir():
+                    shutil.copytree(entry, link)
+                else:
+                    shutil.copy2(entry, link)
+            except OSError:
+                pass
+
+
 def _is_remote_asset(src: str) -> bool:
     return src.startswith(_REMOTE_PREFIXES)
 
@@ -289,6 +319,7 @@ def stage_local_assets_for_remotion(
     *,
     public_dir: Path,
     project_slug: str | None = None,
+    mirror_from: Path | None = None,
 ) -> dict[str, Any]:
     """Stage local media into *public_dir* and rewrite props for ``staticFile()``.
 
@@ -296,12 +327,21 @@ def stage_local_assets_for_remotion(
     copied directly into that root; props get basename-relative paths
     (``narration.mp3``), not shared ``remotion-composer/public/<slug>/`` paths.
 
+    *mirror_from*, if given, is Remotion's real default public dir (e.g.
+    ``remotion-composer/public/``). Its top-level entries are linked (read-only)
+    into *public_dir* first, so composition fields this module doesn't stage
+    directly (``backgroundImage``, ``anime_scene.images[]``,
+    ``screenshot_scene.backgroundImage``, fixtures) still resolve — see
+    :func:`_mirror_public_dir`.
+
     Mutates *props* in place. Returns a report dict for render metadata / debugging.
     """
     slug = _sanitize_slug(project_slug) if project_slug else "remotion-staged"
     staging_root = public_dir.resolve()
     staging_root.mkdir(parents=True, exist_ok=True)
     ensure_contained(staging_root, staging_root)
+    if mirror_from is not None:
+        _mirror_public_dir(mirror_from.resolve(), staging_root)
 
     staged: list[dict[str, str]] = []
     skipped: list[dict[str, str]] = []

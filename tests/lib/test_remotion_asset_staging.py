@@ -126,6 +126,33 @@ def test_stage_rewrites_absolute_paths(tmp_path):
     assert report["skipped"] == []
 
 
+def test_stage_mirrors_preexisting_public_assets(tmp_path):
+    """anime_scene.images[] / screenshot_scene.backgroundImage are staticFile()
+    refs the composer resolves against the real public/ dir, staged there by
+    the asset-director stage — not by this module's cuts/audio staging. Since
+    --public-dir is now render-scoped (never the real public/ dir), those
+    pre-existing files must still be reachable from the new staging root.
+    """
+    composer_public = tmp_path / "remotion-composer" / "public"
+    project_assets = composer_public / "demo-project"
+    project_assets.mkdir(parents=True)
+    (project_assets / "scene1-a.png").write_bytes(b"\x89PNG")
+
+    render_public = tmp_path / "projects" / "demo-project" / "remotion-public-abcd1234"
+    props = {"cuts": [{"id": "c1", "type": "anime_scene", "images": ["demo-project/scene1-a.png"]}]}
+
+    stage_local_assets_for_remotion(
+        props,
+        public_dir=render_public,
+        project_slug="demo-project",
+        mirror_from=composer_public,
+    )
+
+    mirrored = render_public / "demo-project" / "scene1-a.png"
+    assert mirrored.exists()
+    assert mirrored.read_bytes() == b"\x89PNG"
+
+
 def test_stage_leaves_https_unchanged(tmp_path):
     public = tmp_path / "public"
     props = {

@@ -1734,6 +1734,7 @@ class VideoCompose(BaseTool):
                 props,
                 public_dir=public_dir,
                 project_slug=project_slug,
+                mirror_from=composer_dir / "public",
             )
             props.setdefault("metadata", {})["remotion_asset_staging"] = staging_report
             # Persist report next to the render so debug evidence survives media cleanup.
