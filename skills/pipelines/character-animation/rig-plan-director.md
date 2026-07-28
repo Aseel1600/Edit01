@@ -6,8 +6,12 @@ inputs:
     type: string
     required: true
 outputs:
-  rig_plan: string
-  pose_library: string
+  rig_plan:
+    type: string
+    source: "${steps.draft_rig.output}"
+  pose_library:
+    type: string
+    source: "${steps.draft_poses.output}"
 steps:
   - id: draft_rig
     tool: svg_rig_builder

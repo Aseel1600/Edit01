@@ -23,7 +23,18 @@
     },
     "outputs": {
       "type": "object",
-      "additionalProperties": { "type": "string" }
+      "additionalProperties": {
+        "type": "object",
+        "required": ["type", "source"],
+        "properties": {
+          "type": { "type": "string" },
+          "source": {
+            "type": "string",
+            "pattern": "^\\$\\{steps\\.[a-zA-Z0-9_-]+\\.output(\\.[a-zA-Z0-9_.-]+)?\\}$"
+          }
+        },
+        "additionalProperties": false
+      }
     },
     "steps": {
       "type": "array",

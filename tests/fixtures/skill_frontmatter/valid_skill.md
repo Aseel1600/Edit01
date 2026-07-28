@@ -6,7 +6,9 @@ inputs:
     type: string
     required: true
 outputs:
-  result: string
+  result:
+    type: string
+    source: "${steps.do_thing.output}"
 steps:
   - id: do_thing
     tool: some_tool

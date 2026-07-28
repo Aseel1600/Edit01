@@ -33,7 +33,8 @@ def test_valid_frontmatter_parses():
     assert frontmatter["name"] == "valid_skill"
     assert frontmatter["version"] == "1.0"
     assert frontmatter["inputs"]["topic"]["required"] is True
-    assert frontmatter["outputs"]["result"] == "string"
+    assert frontmatter["outputs"]["result"]["type"] == "string"
+    assert frontmatter["outputs"]["result"]["source"] == "${steps.do_thing.output}"
     assert frontmatter["steps"][0]["tool"] == "some_tool"
 
 
@@ -91,7 +92,9 @@ def test_pilot_rig_plan_director_frontmatter_validates():
     frontmatter = load_skill_frontmatter(RIG_PLAN_DIRECTOR)
     assert frontmatter["name"] == "rig-plan-director"
     assert frontmatter["inputs"]["character_design"]["required"] is True
-    assert frontmatter["outputs"]["rig_plan"] == "string"
-    assert frontmatter["outputs"]["pose_library"] == "string"
+    assert frontmatter["outputs"]["rig_plan"]["type"] == "string"
+    assert frontmatter["outputs"]["rig_plan"]["source"] == "${steps.draft_rig.output}"
+    assert frontmatter["outputs"]["pose_library"]["type"] == "string"
+    assert frontmatter["outputs"]["pose_library"]["source"] == "${steps.draft_poses.output}"
     tool_names = {step["tool"] for step in frontmatter["steps"]}
     assert tool_names == {"svg_rig_builder", "pose_library_builder"}
