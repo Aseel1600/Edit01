@@ -50,26 +50,77 @@ from tools.base_tool import (
     ToolTier,
 )
 
-FPS = 30
+DEFAULT_FPS = 30
+DEFAULT_WIDTH = 1920
+DEFAULT_HEIGHT = 1080
 FORMAT_ID = "r1"
 
 
-def _seconds_to_fcp_time(seconds: float) -> str:
-    """Rational time snapped to whole frames at FPS, e.g. '60/30s'."""
-    frames = round(seconds * FPS)
-    return f"{frames}/{FPS}s"
+def _seconds_to_fcp_time(seconds: float, fps: int = DEFAULT_FPS) -> str:
+    """Rational time snapped to whole frames at `fps`, e.g. '60/30s'."""
+    frames = round(seconds * fps)
+    return f"{frames}/{fps}s"
+
+
+class FcpxmlExportError(RuntimeError):
+    """The timeline could not be built from the given project."""
+
+
+def _run_ffprobe(path: Path, *args: str) -> dict:
+    """Probe `path`, raising FcpxmlExportError instead of leaking subprocess
+    failures. Declaring dependencies=['cmd:ffprobe'] documents the requirement
+    but doesn't stop the call, so every failure mode is handled here: a missing
+    binary, a hang, and — the quiet one — a non-zero exit, where ffprobe still
+    prints '{}' on stdout and the caller would otherwise carry on with a
+    zero-duration asset and emit a broken timeline that imports cleanly.
+    """
+    cmd = ["ffprobe", "-v", "quiet", "-print_format", "json", *args, str(path)]
+    try:
+        proc = subprocess.run(cmd, capture_output=True, text=True, timeout=15)
+    except FileNotFoundError as exc:
+        raise FcpxmlExportError(
+            "ffprobe not found on PATH — install the FFmpeg suite "
+            "('brew install ffmpeg' on macOS, 'apt-get install ffmpeg' on Linux)."
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise FcpxmlExportError(f"ffprobe timed out reading {path.name}") from exc
+
+    if proc.returncode != 0:
+        raise FcpxmlExportError(
+            f"ffprobe could not read {path.name} (exit {proc.returncode}) — "
+            "the file may be missing, truncated, or not media."
+        )
+    try:
+        return json.loads(proc.stdout)
+    except json.JSONDecodeError as exc:
+        raise FcpxmlExportError(
+            f"ffprobe returned unreadable output for {path.name}"
+        ) from exc
 
 
 def _probe_media(path: Path) -> tuple[float, bool]:
     """Return (duration_seconds, has_audio_stream)."""
-    proc = subprocess.run(
-        ["ffprobe", "-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", str(path)],
-        capture_output=True, text=True, timeout=15,
-    )
-    data = json.loads(proc.stdout)
+    data = _run_ffprobe(path, "-show_format", "-show_streams")
     duration = float(data.get("format", {}).get("duration", 0))
     has_audio = any(s.get("codec_type") == "audio" for s in data.get("streams", []))
     return duration, has_audio
+
+
+def _probe_video_format(path: Path) -> tuple[int, int, int] | None:
+    """Return (fps, width, height) of the first video stream, or None."""
+    streams = _run_ffprobe(path, "-show_streams", "-select_streams", "v:0").get("streams", [])
+    if not streams:
+        return None
+    s = streams[0]
+    # r_frame_rate is a rational string like "30000/1001" (29.97) or "25/1".
+    num, _, den = s.get("r_frame_rate", "").partition("/")
+    try:
+        fps = round(int(num) / int(den))
+    except (ValueError, ZeroDivisionError):
+        return None
+    if not fps or not s.get("width") or not s.get("height"):
+        return None
+    return fps, int(s["width"]), int(s["height"])
 
 
 def build_fcpxml(
@@ -80,14 +131,24 @@ def build_fcpxml(
     project_name: str,
     clip_rotations: dict[str, float] | None = None,
     clip_in_overrides: dict[str, dict[str, float]] | None = None,
+    fps: int = DEFAULT_FPS,
+    width: int = DEFAULT_WIDTH,
+    height: int = DEFAULT_HEIGHT,
 ) -> str:
     clip_rotations = clip_rotations or {}
     clip_in_overrides = clip_in_overrides or {}
+
+    def fcp_time(seconds: float) -> str:
+        return _seconds_to_fcp_time(seconds, fps)
+
     # --- resources: one asset per unique source file, plus music ---
     asset_ids: dict[str, str] = {}
+    # The format `name` is informational — Resolve reads frameDuration/width/
+    # height. Derived rather than hardcoded so a vertical or non-30fps
+    # sequence isn't mislabelled as 1080p30 in the NLE's format dropdown.
     resource_xml: list[str] = [
-        f'<format id="{FORMAT_ID}" name="FFVideoFormat1080p30" '
-        f'frameDuration="1/{FPS}s" width="1920" height="1080"/>'
+        f'<format id="{FORMAT_ID}" name="FFVideoFormat{height}p{fps}" '
+        f'frameDuration="1/{fps}s" width="{width}" height="{height}"/>'
     ]
 
     def get_or_create_asset(filename: str) -> str:
@@ -104,7 +165,7 @@ def build_fcpxml(
         )
         resource_xml.append(
             f'<asset id="{rid}" name={quoteattr(name)} src={quoteattr(p.as_uri())} '
-            f'start="0s" duration="{_seconds_to_fcp_time(dur)}" hasVideo="1" '
+            f'start="0s" duration="{fcp_time(dur)}" hasVideo="1" '
             f'format="{FORMAT_ID}" {audio_attrs}/>'
         )
         return rid
@@ -119,7 +180,7 @@ def build_fcpxml(
         p = Path(music_path)
         resource_xml.append(
             f'<asset id="{music_rid}" name={quoteattr(p.stem)} src={quoteattr(p.resolve().as_uri())} '
-            f'start="0s" duration="{_seconds_to_fcp_time(music_duration or 0)}" '
+            f'start="0s" duration="{fcp_time(music_duration or 0)}" '
             'hasAudio="1" audioSources="1" audioChannels="2" hasVideo="0"/>'
         )
 
@@ -146,8 +207,8 @@ def build_fcpxml(
 
     spine_items: list[str] = []
     for s in scenes:
-        dur = _seconds_to_fcp_time(s["end_seconds"] - s["start_seconds"])
-        offset = _seconds_to_fcp_time(s["start_seconds"])
+        dur = fcp_time(s["end_seconds"] - s["start_seconds"])
+        offset = fcp_time(s["start_seconds"])
         assets = s["required_assets"]
         n = len(assets)
 
@@ -156,7 +217,7 @@ def build_fcpxml(
             rid = asset_ids[path]
             name = Path(path).stem
             start_seconds = clip_in_overrides.get(s["id"], {}).get(path, 0.0)
-            start_time = _seconds_to_fcp_time(start_seconds) if start_seconds else "0s"
+            start_time = fcp_time(start_seconds) if start_seconds else "0s"
             rotation = clip_rotations.get(s["id"])
             inner = f'<adjust-transform rotation="{rotation}"/>' if rotation else ""
             if inner:
@@ -171,10 +232,18 @@ def build_fcpxml(
                 )
         else:
             template = GRID_TEMPLATES.get(n)
+            if template is None:
+                # Falling through with no template gave every cell zero
+                # adjustments, so all n videos rendered full-frame stacked and
+                # only the topmost was visible. That imports without complaint
+                # and is silently wrong, which is worse than refusing.
+                raise ValueError(
+                    f"scene {s['id']!r} has {n} grid cells, but only "
+                    f"{sorted(GRID_TEMPLATES)}-up layouts have verified Resolve "
+                    "transforms. Split the scene or measure a new template."
+                )
 
             def cell_adjustments(i: int) -> str:
-                if template is None:
-                    return ""
                 pos = template["positions"][i]
                 crop = template["crop_pct"]
                 crop_xml = (
@@ -190,7 +259,7 @@ def build_fcpxml(
 
             def cell_start(path: str) -> str:
                 secs = cell_in_overrides.get(path, 0.0)
-                return _seconds_to_fcp_time(secs) if secs else "0s"
+                return fcp_time(secs) if secs else "0s"
 
             anchor_path = assets[0]["path"]
             anchor_rid = asset_ids[anchor_path]
@@ -220,13 +289,13 @@ def build_fcpxml(
                 + "</asset-clip>"
             )
 
-    total_dur = _seconds_to_fcp_time(scenes[-1]["end_seconds"] if scenes else 0)
+    total_dur = fcp_time(scenes[-1]["end_seconds"] if scenes else 0)
 
     music_clip = ""
     if music_rid:
         music_clip = (
             f'<asset-clip ref="{music_rid}" lane="-1" offset="0s" '
-            f'duration="{_seconds_to_fcp_time(music_duration or 0)}" start="0s" name="music"/>'
+            f'duration="{fcp_time(music_duration or 0)}" start="0s" name="music"/>'
         )
 
     resources = "\n    ".join(resource_xml)
@@ -258,11 +327,15 @@ def export_project_to_fcpxml(
     project_dir: str | Path,
     out: str | Path | None = None,
     limit: int | None = None,
-) -> tuple[Path, int]:
+    fps: int | None = None,
+    width: int | None = None,
+    height: int | None = None,
+) -> tuple[Path, int, list[str]]:
     """Load a project's scene_plan + asset_manifest and write an FCPXML timeline.
 
     Shared core used by both the CLI (`main`) and the `FcpxmlExport` tool.
-    Returns ``(output_path, scene_count)``.
+    Returns ``(output_path, scene_count, sdr_substitutions)``, where the last
+    item names any source files redirected to their transcoded SDR copies.
     """
     proj = Path(project_dir)
     scene_plan = json.loads((proj / "artifacts/scene_plan.json").read_text())
@@ -285,25 +358,50 @@ def export_project_to_fcpxml(
     # Dolby Vision (10-bit HEVC profile 8) clips don't decode in Resolve on
     # some machines — route those specific files to their transcoded 8-bit
     # Rec.709 H.264 versions instead when present. See assets/transcoded_sdr/.
+    # The swap is reported back to the caller rather than made silently: the
+    # emitted timeline otherwise points somewhere the asset_manifest doesn't,
+    # with nothing to explain the mismatch.
+    sdr_substitutions: list[str] = []
     sdr_dir = proj / "assets" / "transcoded_sdr"
     if sdr_dir.exists():
         for filename in list(path_by_filename):
             sdr_path = sdr_dir / f"{Path(filename).stem}.mp4"
             if sdr_path.exists():
                 path_by_filename[filename] = str(sdr_path.resolve())
+                sdr_substitutions.append(filename)
 
     clip_rotations = scene_plan.get("metadata", {}).get("clip_rotations", {})
     clip_in_overrides = scene_plan.get("metadata", {}).get("clip_in_overrides", {})
 
+    # The sequence format follows the footage unless the caller overrides it:
+    # importing 25fps clips into a 30fps sequence makes Resolve conform every
+    # one of them, shifting every cut downstream. Probe the first source clip
+    # the timeline actually references and fall back to 1080p30 if unreadable.
+    if fps is None or width is None or height is None:
+        first = next(
+            (path_by_filename[ra["path"]]
+             for s in scenes for ra in s["required_assets"]
+             if ra["path"] in path_by_filename),
+            None,
+        )
+        probed = _probe_video_format(Path(first)) if first else None
+        if probed:
+            fps = fps if fps is not None else probed[0]
+            width = width if width is not None else probed[1]
+            height = height if height is not None else probed[2]
+
     xml = build_fcpxml(
         scenes, path_by_filename, music_path, music_duration, project_name=proj.name,
         clip_rotations=clip_rotations, clip_in_overrides=clip_in_overrides,
+        fps=fps if fps is not None else DEFAULT_FPS,
+        width=width if width is not None else DEFAULT_WIDTH,
+        height=height if height is not None else DEFAULT_HEIGHT,
     )
 
     out_path = Path(out) if out else proj / "renders" / f"{proj.name}{'_test' if limit else ''}.fcpxml"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(xml)
-    return out_path, len(scenes)
+    return out_path, len(scenes), sdr_substitutions
 
 
 class FcpxmlExport(BaseTool):
@@ -358,6 +456,18 @@ class FcpxmlExport(BaseTool):
                 "type": "integer",
                 "description": "Only export the first N scenes (for a quick test import into Resolve).",
             },
+            "fps": {
+                "type": "integer",
+                "description": "Sequence frame rate. Defaults to the frame rate of the first source clip.",
+            },
+            "width": {
+                "type": "integer",
+                "description": "Sequence width. Defaults to the first source clip's width.",
+            },
+            "height": {
+                "type": "integer",
+                "description": "Sequence height. Defaults to the first source clip's height.",
+            },
         },
     }
     output_schema = {
@@ -365,6 +475,11 @@ class FcpxmlExport(BaseTool):
         "properties": {
             "fcpxml_path": {"type": "string"},
             "scene_count": {"type": "integer"},
+            "sdr_substitutions": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Source filenames redirected to transcoded SDR copies.",
+            },
         },
     }
 
@@ -391,15 +506,26 @@ class FcpxmlExport(BaseTool):
                 )
 
         try:
-            out_path, scene_count = export_project_to_fcpxml(
-                project_dir, out=inputs.get("out"), limit=inputs.get("limit")
+            out_path, scene_count, sdr_substitutions = export_project_to_fcpxml(
+                project_dir,
+                out=inputs.get("out"),
+                limit=inputs.get("limit"),
+                fps=inputs.get("fps"),
+                width=inputs.get("width"),
+                height=inputs.get("height"),
             )
+        except FcpxmlExportError as exc:
+            return ToolResult(success=False, error=str(exc))
         except (KeyError, ValueError, json.JSONDecodeError) as exc:
             return ToolResult(success=False, error=f"FCPXML export failed: {exc}")
 
         return ToolResult(
             success=True,
-            data={"fcpxml_path": str(out_path), "scene_count": scene_count},
+            data={
+                "fcpxml_path": str(out_path),
+                "scene_count": scene_count,
+                "sdr_substitutions": sdr_substitutions,
+            },
             artifacts=[str(out_path)],
         )
 
@@ -411,8 +537,15 @@ def main() -> None:
     parser.add_argument("--out", default=None)
     args = parser.parse_args()
 
-    out_path, n_scenes = export_project_to_fcpxml(args.project_dir, out=args.out, limit=args.limit)
+    out_path, n_scenes, sdr_substitutions = export_project_to_fcpxml(
+        args.project_dir, out=args.out, limit=args.limit
+    )
     print(f"wrote {out_path} ({n_scenes} scenes)")
+    if sdr_substitutions:
+        print(
+            f"  note: {len(sdr_substitutions)} clip(s) point at transcoded SDR "
+            f"copies instead of the originals: {', '.join(sdr_substitutions)}"
+        )
 
 
 if __name__ == "__main__":
