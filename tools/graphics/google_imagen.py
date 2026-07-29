@@ -1,4 +1,10 @@
-"""Google Imagen image generation via Gemini API."""
+"""Google Imagen image generation via Gemini API.
+
+NOTE: Imagen 4 models (imagen-4.0-*) are deprecated and discontinued as of
+June 30, 2026. Google recommends migrating to gemini-2.5-flash-image via the
+Nano Banana / generateContent endpoint. This tool keeps the old models for
+backwards compatibility but will warn and attempt fallback when they 404.
+"""
 
 from __future__ import annotations
 
@@ -27,6 +33,25 @@ from tools.google_credentials import (
     has_google_credentials,
 )
 
+IMAGEN_MODELS = [
+    "imagen-4.0-generate-001",
+    "imagen-4.0-fast-generate-001",
+    "imagen-4.0-ultra-generate-001",
+]
+
+IMAGEN_DEPRECATION_NOTE = (
+    "Imagen 4 models were discontinued on June 30, 2026 and return 404 for "
+    "new users. If you get a 404, migrate to gemini-2.5-flash-image "
+    "(Nano Banana) via the generateContent endpoint. See "
+    "https://ai.google.dev/gemini-api/docs/imagen for details."
+)
+
+DEPRECATED_MODEL_NAMES = {
+    "imagen-4.0-generate-001",
+    "imagen-4.0-fast-generate-001",
+    "imagen-4.0-ultra-generate-001",
+}
+
 # Aspect ratio to approximate pixel dimensions (for cost/reporting only)
 ASPECT_RATIOS = {
     "1:1": (1024, 1024),
@@ -50,6 +75,14 @@ def _dims_to_aspect_ratio(width: int, height: int) -> str:
     return best
 
 
+def _is_404_error(response) -> bool:
+    """Check if a response is a 404 indicating the model is unavailable."""
+    try:
+        return response.status_code == 404
+    except AttributeError:
+        return False
+
+
 class GoogleImagen(BaseTool):
     name = "google_imagen"
     version = "0.1.0"
@@ -61,7 +94,7 @@ class GoogleImagen(BaseTool):
     determinism = Determinism.STOCHASTIC
     runtime = ToolRuntime.API
 
-    dependencies = []  # checked dynamically via env var
+    dependencies = []
     install_instructions = (
         "Auth option A — API key (AI Studio): set GOOGLE_API_KEY (or GEMINI_API_KEY).\n"
         "  Get one at https://aistudio.google.com/apikey\n"
@@ -88,6 +121,7 @@ class GoogleImagen(BaseTool):
         "negative prompt control (not supported)",
         "exact pixel dimensions (uses aspect ratios)",
         "offline generation",
+        "deprecated as of June 2026 — migrate to gemini-2.5-flash-image",
     ]
 
     input_schema = {
@@ -114,13 +148,12 @@ class GoogleImagen(BaseTool):
             },
             "model": {
                 "type": "string",
-                "enum": [
-                    "imagen-4.0-generate-001",
-                    "imagen-4.0-fast-generate-001",
-                    "imagen-4.0-ultra-generate-001",
-                ],
                 "default": "imagen-4.0-generate-001",
-                "description": "Imagen model variant",
+                "description": (
+                    "Imagen model variant. "
+                    "NOTE: Imagen 4 models were discontinued June 30, 2026. "
+                    "Use gemini-2.5-flash-image via generateContent for new projects."
+                ),
             },
             "number_of_images": {
                 "type": "integer",
@@ -147,11 +180,6 @@ class GoogleImagen(BaseTool):
 
     @staticmethod
     def _output_paths(output_path: str | None, count: int) -> list[Path]:
-        """Derive one output path per generated image.
-
-        With a single image, honor the requested path as-is. With several,
-        suffix each with `_1`, `_2`, … so no image overwrites another.
-        """
         ext = ".png"
         if not output_path:
             return [Path(f"generated_image_{idx + 1}{ext}") for idx in range(count)]
@@ -168,7 +196,6 @@ class GoogleImagen(BaseTool):
         return os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
 
     def get_status(self) -> ToolStatus:
-        # API key -> AI Studio endpoint; service-account JSON -> Vertex AI.
         if has_google_credentials():
             return ToolStatus.AVAILABLE
         return ToolStatus.UNAVAILABLE
@@ -183,9 +210,6 @@ class GoogleImagen(BaseTool):
         return 0.04 * n
 
     def execute(self, inputs: dict[str, Any]) -> ToolResult:
-        # Two auth paths: an AI Studio API key, or a service-account JSON that
-        # routes to Vertex AI (the AI Studio endpoint does not accept service
-        # accounts). API key wins when both are present.
         api_key = self._get_api_key()
         bearer_token: str | None = None
         project_id: str | None = None
@@ -219,7 +243,6 @@ class GoogleImagen(BaseTool):
 
         logger = logging.getLogger(__name__)
 
-        # Resolve aspect ratio: explicit > derived from width/height > default
         if "aspect_ratio" in inputs:
             aspect_ratio = inputs["aspect_ratio"]
         elif "width" in inputs and "height" in inputs:
@@ -261,52 +284,108 @@ class GoogleImagen(BaseTool):
                 "x-goog-api-key": api_key or "",
             }
 
-        try:
-            response = requests.post(
-                url,
-                headers=headers,
-                json={
-                    "instances": [{"prompt": prompt}],
-                    "parameters": parameters,
-                },
-                timeout=120,
-            )
-            response.raise_for_status()
-            data = response.json()
+        models_to_try = [model]
+        if model in DEPRECATED_MODEL_NAMES:
+            models_to_try = list(IMAGEN_MODELS)
 
-            predictions = data.get("predictions", [])
-            if not predictions:
+        last_error = None
+        for attempt_model in models_to_try:
+            attempt_url = url.replace(model, attempt_model) if model != attempt_model else url
+            try:
+                response = requests.post(
+                    attempt_url,
+                    headers=headers,
+                    json={
+                        "instances": [{"prompt": prompt}],
+                        "parameters": parameters,
+                    },
+                    timeout=120,
+                )
+
+                if _is_404_error(response):
+                    last_error = (
+                        f"Model '{attempt_model}' returned 404. "
+                        + IMAGEN_DEPRECATION_NOTE
+                    )
+                    if attempt_model in DEPRECATED_MODEL_NAMES:
+                        logger.warning(
+                            "google_imagen: model %s returned 404, "
+                            "trying next fallback model if available",
+                            attempt_model,
+                        )
+                        continue
+                    return ToolResult(success=False, error=last_error)
+
+                response.raise_for_status()
+                data = response.json()
+                predictions = data.get("predictions", [])
+                if not predictions:
+                    return ToolResult(
+                        success=False,
+                        error=f"No images returned from Imagen API (model: {attempt_model})",
+                    )
+
+                output_paths = self._output_paths(
+                    inputs.get("output_path"), len(predictions)
+                )
+                outputs: list[str] = []
+                for prediction, out_path in zip(predictions, output_paths):
+                    out_path.parent.mkdir(parents=True, exist_ok=True)
+                    out_path.write_bytes(
+                        base64.b64decode(prediction["bytesBase64Encoded"])
+                    )
+                    outputs.append(str(out_path))
+
+                used_fallback = attempt_model != model
+                data_result = {
+                    "provider": "google_imagen",
+                    "model": attempt_model,
+                    "requested_model": model,
+                    "prompt": prompt,
+                    "aspect_ratio": aspect_ratio,
+                    "output": outputs[0],
+                    "outputs": outputs,
+                    "images_generated": len(outputs),
+                }
+                if used_fallback:
+                    data_result["fallback"] = True
+                    data_result["fallback_note"] = (
+                        f"Requested model '{model}' unavailable; "
+                        f"used '{attempt_model}' instead. "
+                        + IMAGEN_DEPRECATION_NOTE
+                    )
+
                 return ToolResult(
-                    success=False, error="No images returned from Imagen API"
+                    success=True,
+                    data=data_result,
+                    artifacts=outputs,
+                    cost_usd=self.estimate_cost({**inputs, "model": attempt_model}),
+                    duration_seconds=round(time.time() - start, 2),
+                    model=attempt_model,
                 )
 
-            output_paths = self._output_paths(
-                inputs.get("output_path"), len(predictions)
-            )
-            outputs: list[str] = []
-            for prediction, out_path in zip(predictions, output_paths):
-                out_path.parent.mkdir(parents=True, exist_ok=True)
-                out_path.write_bytes(
-                    base64.b64decode(prediction["bytesBase64Encoded"])
+            except requests.exceptions.HTTPError as e:
+                if e.response is not None and _is_404_error(e.response):
+                    if attempt_model in DEPRECATED_MODEL_NAMES:
+                        logger.warning(
+                            "google_imagen: model %s HTTP 404, "
+                            "trying next fallback model",
+                            attempt_model,
+                        )
+                        last_error = (
+                            f"Model '{attempt_model}' returned 404. "
+                            + IMAGEN_DEPRECATION_NOTE
+                        )
+                        continue
+                return ToolResult(
+                    success=False,
+                    error=f"Imagen generation failed: {e}",
                 )
-                outputs.append(str(out_path))
-
-        except Exception as e:
-            return ToolResult(success=False, error=f"Imagen generation failed: {e}")
+            except Exception as e:
+                last_error = f"Imagen generation failed: {e}"
+                break
 
         return ToolResult(
-            success=True,
-            data={
-                "provider": "google_imagen",
-                "model": model,
-                "prompt": prompt,
-                "aspect_ratio": aspect_ratio,
-                "output": outputs[0],
-                "outputs": outputs,
-                "images_generated": len(outputs),
-            },
-            artifacts=outputs,
-            cost_usd=self.estimate_cost(inputs),
-            duration_seconds=round(time.time() - start, 2),
-            model=model,
+            success=False,
+            error=last_error or "All Imagen model attempts failed",
         )
