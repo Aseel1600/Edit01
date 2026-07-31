@@ -14,20 +14,40 @@
         "required": ["id", "source", "in_seconds", "out_seconds"],
         "properties": {
           "id": { "type": "string" },
-          "source": { "type": "string", "description": "Source file path or asset-manifest ID" },
+          "source": { "type": "string", "description": "Source file path or asset-manifest ID. Empty string for pure component scenes (cut.type set, no media)." },
           "in_seconds": { "type": "number", "minimum": 0 },
           "out_seconds": { "type": "number", "minimum": 0 },
+          "source_in_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Seek offset INTO the source media before playback. Distinct from in_seconds (timeline position). Read by remotion-composer/src/Explainer.tsx."
+          },
           "speed": { "type": "number", "minimum": 0.1, "default": 1.0 },
           "layer": {
             "type": "string",
             "enum": ["primary", "overlay", "background"],
             "default": "primary"
           },
+          "type": {
+            "$ref": "#/$defs/scene_type",
+            "description": "Remotion scene-component type. Absent = plain media cut (image via <Img>, video via <OffthreadVideo>). See remotion-composer/SCENE_TYPES.md — that file and this enum must be updated together."
+          },
           "transform": {
             "type": "object",
             "properties": {
               "scale": { "type": "number", "minimum": 0, "default": 1.0 },
-              "position": { "type": "string", "default": "center" },
+              "position": {
+                "oneOf": [
+                  { "type": "string" },
+                  {
+                    "type": "object",
+                    "required": ["x", "y"],
+                    "properties": { "x": { "type": "number" }, "y": { "type": "number" } },
+                    "additionalProperties": false
+                  }
+                ],
+                "default": "center"
+              },
               "animation": {
                 "type": "string",
                 "description": "Motion applied to still images (e.g. ken-burns-slow-zoom, pan-left, static)"
@@ -44,6 +64,10 @@
             },
             "additionalProperties": false
           },
+          "animation": {
+            "type": "string",
+            "description": "Cut-level motion (zoom-in, ken-burns, pan-left, drift-up, parallax, static). Read directly by Explainer.tsx and by video_compose._needs_remotion; transform.animation is the older nested spelling."
+          },
           "transition_in": {
             "type": "string",
             "description": "Transition type entering this cut (e.g. fade, dissolve, cut, wipe)"
@@ -57,43 +81,191 @@
             "minimum": 0,
             "description": "Duration of transition in seconds"
           },
-          "reason": { "type": "string" }
+          "reason": { "type": "string" },
+
+          "text": { "type": "string", "description": "text_card / callout / hero_title body copy" },
+          "title": { "type": "string", "description": "callout / comparison / kpi_grid heading" },
+          "subtitle": { "type": "string", "description": "stat_card secondary line" },
+          "caption": { "type": "string", "description": "HyperFrames scene caption (tools/video/hyperframes_compose.py)" },
+          "stat": { "type": "string", "description": "stat_card headline number" },
+          "callout_type": { "type": "string", "enum": ["info", "warning", "tip", "quote"] },
+          "heroSubtitle": { "type": "string", "description": "hero_title secondary line" },
+
+          "leftLabel": { "type": "string" },
+          "rightLabel": { "type": "string" },
+          "leftValue": { "type": "string" },
+          "rightValue": { "type": "string" },
+
+          "chartData": { "type": "array", "items": { "type": "object" }, "description": "bar_chart / pie_chart / kpi_grid data rows" },
+          "chartSeries": { "type": "array", "items": { "type": "object" }, "description": "line_chart series" },
+          "chartColors": { "type": "array", "items": { "type": "string" } },
+          "chartAnimation": { "type": "string" },
+          "donut": { "type": "boolean" },
+          "centerLabel": { "type": "string" },
+          "centerValue": { "type": "string" },
+          "showGrid": { "type": "boolean" },
+          "showValues": { "type": "boolean" },
+          "showLegend": { "type": "boolean" },
+          "showMarkers": { "type": "boolean" },
+          "xLabel": { "type": "string" },
+          "yLabel": { "type": "string" },
+          "columns": { "type": "integer", "enum": [2, 3, 4] },
+
+          "progress": { "type": "number" },
+          "progressLabel": { "type": "string" },
+          "progressColor": { "type": "string" },
+          "progressAnimation": { "type": "string" },
+          "progressSegments": { "type": "array", "items": { "type": "object" } },
+
+          "backgroundColor": { "type": "string" },
+          "backgroundImage": { "type": "string", "description": "Still rendered behind the component (also the screenshot_scene plate)" },
+          "backgroundVideo": { "type": "string", "description": "Clip rendered behind the component; takes priority over backgroundImage" },
+          "backgroundVideoStart": { "type": "number", "minimum": 0 },
+          "backgroundOverlay": { "type": "number", "minimum": 0, "maximum": 1 },
+          "color": { "type": "string" },
+          "accentColor": { "type": "string" },
+          "fontSize": { "type": "number", "minimum": 1 },
+
+          "images": { "type": "array", "items": { "type": "string" }, "description": "anime_scene stills" },
+          "particles": { "type": "string" },
+          "particleColor": { "type": "string" },
+          "particleCount": { "type": "number", "minimum": 0 },
+          "particleIntensity": { "type": "number", "minimum": 0 },
+          "vignette": { "type": "boolean" },
+          "lightingFrom": { "type": "string" },
+          "lightingTo": { "type": "string" },
+
+          "steps": { "type": "array", "items": { "type": "object" }, "description": "terminal_scene timeline primitives" },
+          "terminalTitle": { "type": "string" },
+          "prompt": { "type": "string", "description": "terminal_scene shell prompt string" },
+
+          "screenshotSteps": { "type": "array", "items": { "type": "object" } },
+          "screenshotSize": {
+            "type": "object",
+            "properties": { "width": { "type": "number" }, "height": { "type": "number" } },
+            "additionalProperties": false
+          },
+          "cursorStartAt": {
+            "type": "array",
+            "items": { "type": "number" },
+            "minItems": 2,
+            "maxItems": 2
+          },
+
+          "shot_language": { "type": "object", "description": "Cinematography vocabulary carried over from scene_plan. Read by lib/slideshow_risk.py via video_compose._pre_compose_validation." },
+          "shot_intent": { "type": "string" },
+          "narrative_role": { "type": "string" },
+          "information_role": { "type": "string" },
+          "hero_moment": { "type": "boolean", "default": false }
+        },
+        "additionalProperties": false
+      }
+    },
+    "captions": {
+      "type": "array",
+      "description": "Word-level captions burned in by the Remotion CaptionOverlay component (ExplainerProps.captions / TalkingHeadProps.captions). Distinct from `subtitles`, which configures the FFmpeg file-based burn.",
+      "items": {
+        "type": "object",
+        "required": ["word", "startMs", "endMs"],
+        "properties": {
+          "word": { "type": "string" },
+          "startMs": { "type": "number", "minimum": 0 },
+          "endMs": { "type": "number", "minimum": 0 }
         },
         "additionalProperties": false
       }
     },
     "overlays": {
       "type": "array",
+      "description": "Timed overlays composited above the primary layer. Two shapes are valid: (a) an asset-backed overlay (asset_id + start_seconds/end_seconds + geometric position), used by the FFmpeg path; (b) a Remotion component overlay (type + in_seconds/out_seconds + component props, position as a named slot), consumed by Explainer.tsx and TalkingHead.tsx. See remotion-composer/SCENE_TYPES.md → 'Overlay types'.",
       "items": {
         "type": "object",
-        "required": ["asset_id", "start_seconds", "end_seconds", "position"],
+        "anyOf": [
+          { "required": ["asset_id", "start_seconds", "end_seconds", "position"] },
+          { "required": ["type", "in_seconds", "out_seconds"] }
+        ],
         "properties": {
+          "id": { "type": "string" },
           "asset_id": { "type": "string" },
           "start_seconds": { "type": "number", "minimum": 0 },
           "end_seconds": { "type": "number", "minimum": 0 },
+          "in_seconds": { "type": "number", "minimum": 0 },
+          "out_seconds": { "type": "number", "minimum": 0 },
+          "type": {
+            "oneOf": [
+              {
+                "type": "string",
+                "enum": ["section_title", "stat_reveal", "hero_title", "provider_chip"],
+                "description": "Explainer overlay types"
+              },
+              {
+                "$ref": "#/$defs/scene_type",
+                "description": "TalkingHead reuses the scene-component catalog as positioned overlays"
+              }
+            ]
+          },
           "position": {
-            "type": "object",
-            "properties": {
-              "x": { "type": "number" },
-              "y": { "type": "number" },
-              "width": { "type": "number" },
-              "height": { "type": "number" }
-            },
-            "required": ["x", "y"]
+            "oneOf": [
+              {
+                "type": "string",
+                "description": "Named slot: lower_third, upper_third, left_panel, right_panel, full_overlay, top-left, …"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "x": { "type": "number" },
+                  "y": { "type": "number" },
+                  "width": { "type": "number" },
+                  "height": { "type": "number" }
+                },
+                "required": ["x", "y"]
+              }
+            ]
           },
           "animation": { "type": "string" },
-          "opacity": { "type": "number", "minimum": 0, "maximum": 1 }
+          "opacity": { "type": "number", "minimum": 0, "maximum": 1 },
+
+          "text": { "type": "string" },
+          "title": { "type": "string" },
+          "subtitle": { "type": "string" },
+          "stat": { "type": "string" },
+          "callout_type": { "type": "string", "enum": ["info", "warning", "tip", "quote"] },
+          "leftLabel": { "type": "string" },
+          "rightLabel": { "type": "string" },
+          "leftValue": { "type": "string" },
+          "rightValue": { "type": "string" },
+          "chartData": { "type": "array", "items": { "type": "object" } },
+          "chartSeries": { "type": "array", "items": { "type": "object" } },
+          "chartColors": { "type": "array", "items": { "type": "string" } },
+          "chartAnimation": { "type": "string" },
+          "donut": { "type": "boolean" },
+          "centerLabel": { "type": "string" },
+          "centerValue": { "type": "string" },
+          "showGrid": { "type": "boolean" },
+          "showValues": { "type": "boolean" },
+          "showLegend": { "type": "boolean" },
+          "showMarkers": { "type": "boolean" },
+          "columns": { "type": "integer", "enum": [2, 3, 4] },
+          "backgroundColor": { "type": "string" },
+          "accentColor": { "type": "string" },
+          "fontSize": { "type": "number", "minimum": 1 },
+
+          "providers": { "type": "array", "items": { "type": "string" }, "description": "provider_chip rotation list" },
+          "cycleSeconds": { "type": "number", "minimum": 0 },
+          "label": { "type": "string" }
         },
         "additionalProperties": false
       }
     },
     "audio": {
       "type": "object",
-      "description": "Audio configuration for narration, music, and SFX.",
+      "description": "Audio configuration for narration, music, and SFX. Two shapes are valid and both are in use: the asset-id shape (`segments[].asset_id`, `music.asset_id`, snake_case fades) resolved by tools/video/hyperframes_compose.py and the FFmpeg path; and the Remotion shape (`narration.src`, `music.src`, camelCase `fadeInSeconds`/`fadeOutSeconds`/`offsetSeconds`/`loop`) passed straight through to <Audio> by remotion-composer. The narration/music objects are intentionally open so both survive validation.",
       "properties": {
         "narration": {
           "type": "object",
           "properties": {
+            "src": { "type": "string", "description": "Remotion shape — direct path to the narration file" },
+            "volume": { "type": "number", "minimum": 0 },
             "segments": {
               "type": "array",
               "items": {
@@ -113,9 +285,14 @@
           "type": "object",
           "properties": {
             "asset_id": { "type": "string" },
+            "src": { "type": "string", "description": "Remotion shape — direct path to the music file" },
             "volume": { "type": "number", "minimum": 0, "maximum": 1 },
             "fade_in_seconds": { "type": "number", "minimum": 0 },
             "fade_out_seconds": { "type": "number", "minimum": 0 },
+            "fadeInSeconds": { "type": "number", "minimum": 0, "description": "Remotion spelling of fade_in_seconds" },
+            "fadeOutSeconds": { "type": "number", "minimum": 0, "description": "Remotion spelling of fade_out_seconds" },
+            "offsetSeconds": { "type": "number", "minimum": 0, "description": "Start playback this far into the track (skip quiet intros)" },
+            "loop": { "type": "boolean", "description": "Loop the track when it is shorter than the video" },
             "ducking": {
               "oneOf": [
                 { "type": "boolean" },
@@ -227,7 +404,55 @@
         "verdict": { "type": "string", "enum": ["strong", "acceptable", "revise", "fail"] }
       }
     },
+    "theme": {
+      "type": "string",
+      "description": "Named Remotion theme preset. Resolved by resolveTheme() in remotion-composer/src/Root.tsx; falls back to `playbook`, then `themeConfig`, then DEFAULT_THEME."
+    },
+    "playbook": {
+      "type": "string",
+      "description": "Style playbook name. Doubles as a theme preset key in resolveTheme(), and is the lookup key video_compose._build_theme_from_playbook uses to derive themeConfig from the playbook YAML's real colors."
+    },
+    "themeConfig": {
+      "type": "object",
+      "description": "Fully-specified Remotion ThemeConfig (colors, fonts, spring config). Overrides the preset lookup. Normally synthesized by video_compose._build_theme_from_playbook rather than hand-authored.",
+      "additionalProperties": true
+    },
+    "delivery_promise": {
+      "type": "object",
+      "description": "Copy of proposal_packet.production_plan.delivery_promise, carried onto edit_decisions so video_compose._pre_compose_validation can enforce it at compose time. May also be nested under metadata.delivery_promise — the tool checks both.",
+      "additionalProperties": true
+    },
+    "end_tag": {
+      "type": "object",
+      "description": "Documentary-montage end-tag placement. Written by the edit director, read by the compose director (edit_decisions.end_tag.offset_seconds) when brief.metadata.end_tag_plan.mode == 'overlay'.",
+      "properties": {
+        "offset_seconds": { "type": "number", "minimum": 0, "description": "When the tag overlay starts, normally body_duration - tag_duration" },
+        "notes": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
     "metadata": { "type": "object" }
+  },
+  "$defs": {
+    "scene_type": {
+      "type": "string",
+      "enum": [
+        "text_card",
+        "hero_title",
+        "stat_card",
+        "callout",
+        "comparison",
+        "bar_chart",
+        "line_chart",
+        "pie_chart",
+        "kpi_grid",
+        "progress_bar",
+        "anime_scene",
+        "terminal_scene",
+        "screenshot_scene"
+      ],
+      "description": "Scene components dispatched by remotion-composer/src/Explainer.tsx. Keep in lockstep with remotion-composer/SCENE_TYPES.md."
+    }
   },
   "additionalProperties": false
 }

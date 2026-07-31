@@ -137,7 +137,7 @@ Process asset tasks grouped by tool for efficiency:
    - **User-selected library track**: If the proposal specified a track from `music_library/`, copy it to `projects/<project>/assets/music/background_music.mp3`
    - **User music library (`music_library/`)**: If the folder exists and has tracks, pick the best match for the playbook's `audio.music_mood`. List candidates by filename and let the EP decide.
    - **Music generation API**: Use `music_gen` (ElevenLabs) or `suno_music` if available. Check status via registry first — if the tool is unavailable or quota-exhausted, skip immediately (do NOT attempt and fail silently).
-   - **No music available**: Log this clearly in the asset manifest as `"music_status": "unavailable"` with the reason. Do NOT silently produce a video without music — the EP and user should know.
+   - **No music available**: Log this clearly in the asset manifest as `metadata.music_status: "unavailable"` with the reason (the manifest sets `additionalProperties: false` at the top level, so free-form status flags belong under `metadata`). Do NOT silently produce a video without music — the EP and user should know.
 4. Duration should be at least as long as total video duration. If shorter, it can be looped by the compose stage.
 5. Verify the audio file exists at `projects/<project>/assets/music/background_music.mp3`
 
@@ -180,11 +180,14 @@ Assemble all generated assets into the manifest:
     }
   ],
   "total_cost_usd": 0.053,
-  "generation_summary": {
-    "narration_sections": 5,
-    "images_generated": 8,
-    "diagrams_generated": 2,
-    "music_tracks": 1
+  "metadata": {
+    "generation_summary": {
+      "narration_sections": 5,
+      "images_generated": 8,
+      "diagrams_generated": 2,
+      "music_tracks": 1
+    },
+    "music_status": "generated"
   }
 }
 ```

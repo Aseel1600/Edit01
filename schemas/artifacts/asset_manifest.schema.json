@@ -11,7 +11,7 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["id", "type", "path", "source_tool", "scene_id"],
+        "required": ["id", "type", "path", "source_tool"],
         "properties": {
           "id": { "type": "string" },
           "type": {
@@ -20,7 +20,10 @@
           },
           "path": { "type": "string", "description": "Relative path within the pipeline project directory" },
           "source_tool": { "type": "string" },
-          "scene_id": { "type": "string" },
+          "scene_id": {
+            "type": "string",
+            "description": "Scene this asset belongs to. REQUIRED for every scene-bound asset — the reviewer treats a missing scene_id on an image/video/narration entry as a finding. Omitted only for project-global assets that have no scene: background music, fonts, LUTs, a whole-video subtitle track."
+          },
           "prompt": { "type": "string", "description": "Generation prompt if AI-generated" },
           "seed": { "type": "integer", "description": "Seed if applicable" },
           "model": { "type": "string", "description": "Model used for generation" },
