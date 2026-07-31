@@ -30,8 +30,10 @@ the agent to re-ask the user rather than substituting a different engine.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
+import shutil
 import subprocess
 import time
 from pathlib import Path
@@ -678,8 +680,15 @@ class VideoCompose(BaseTool):
                 except OSError:
                     pass
 
+    # Scene components the Explainer composition dispatches on `cut.type`.
+    # Source of truth: remotion-composer/SCENE_TYPES.md and the `cut.type ===`
+    # branches in remotion-composer/src/Explainer.tsx. The older version of this
+    # set listed "progress"/"chart", which no component ever matched, and was
+    # missing every chart and synthetic-UI type added since.
     _REMOTION_SCENE_TYPES = {
-        "text_card", "stat_card", "callout", "comparison", "progress", "chart",
+        "text_card", "hero_title", "stat_card", "callout", "comparison",
+        "bar_chart", "line_chart", "pie_chart", "kpi_grid", "progress_bar",
+        "anime_scene", "terminal_scene", "screenshot_scene",
     }
 
     # Maps renderer_family (set at proposal stage) to Remotion composition ID.
@@ -1407,8 +1416,18 @@ class VideoCompose(BaseTool):
             )
         # --- Explicit Remotion path (render_runtime == 'remotion') ---
         if self._needs_remotion(resolved_cuts):
+            resolved_audio, audio_error = self._resolve_audio_sources(
+                edit_decisions.get("audio") or {}, asset_lookup
+            )
+            if audio_error:
+                return ToolResult(success=False, error=audio_error)
+
+            remotion_edit_decisions = dict(edit_decisions, cuts=resolved_cuts)
+            if resolved_audio:
+                remotion_edit_decisions["audio"] = resolved_audio
+
             remotion_inputs: dict[str, Any] = {
-                "edit_decisions": dict(edit_decisions, cuts=resolved_cuts),
+                "edit_decisions": remotion_edit_decisions,
                 "output_path": str(output_path),
             }
             if profile:
@@ -1670,6 +1689,358 @@ class VideoCompose(BaseTool):
 
         return render_result
 
+    @staticmethod
+    def _resolve_audio_sources(
+        audio: dict[str, Any],
+        asset_lookup: dict[str, Any],
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        """Fill in Remotion's `src` from the asset-id audio spelling.
+
+        The Remotion compositions read `audio.narration.src` and
+        `audio.music.src` directly. The asset-id spelling
+        (`music.asset_id`, `narration.segments[].asset_id`) that the edit
+        directors document for the FFmpeg and HyperFrames runtimes had no
+        resolver on this path, so a documentary-montage edit — which is
+        required to run on Remotion — rendered silent.
+
+        Resolving here keeps both spellings working without asking the edit
+        stage to know which runtime it will land on. Returns
+        (resolved_audio_or_None, error_message_or_None).
+        """
+        if not audio:
+            return None, None
+
+        resolved = json.loads(json.dumps(audio))
+
+        music = resolved.get("music")
+        if isinstance(music, dict) and not music.get("src"):
+            asset = asset_lookup.get(music.get("asset_id"))
+            if asset and asset.get("path"):
+                music["src"] = asset["path"]
+
+        narration = resolved.get("narration")
+        if isinstance(narration, dict) and not narration.get("src"):
+            segments = narration.get("segments") or []
+            if len(segments) == 1:
+                asset = asset_lookup.get(segments[0].get("asset_id"))
+                if asset and asset.get("path"):
+                    narration["src"] = asset["path"]
+            elif len(segments) > 1:
+                # Explainer's AudioConfig carries ONE narration track. Picking
+                # the first segment would ship a video with a fraction of the
+                # narration and no warning, which the governance contract
+                # forbids — make the agent choose instead.
+                return None, (
+                    f"edit_decisions.audio.narration has {len(segments)} segments, but the "
+                    "Remotion compositions accept a single narration track. Either mix the "
+                    "segments into one file first (audio_mixer) and set "
+                    "audio.narration.src to the mixed file, or render this composition on a "
+                    "runtime that lays out segments individually (hyperframes/ffmpeg)."
+                )
+
+        return resolved, None
+
+    # Cut types the CinematicRenderer can express as a title card. Every other
+    # scene component (charts, KPI grids, terminals) has no counterpart there.
+    _CINEMATIC_TITLE_TYPES = {"text_card", "hero_title"}
+    _CINEMATIC_TONES = {"cold", "steel", "void", "neutral"}
+    # Transition names that mean "ramp the opacity" rather than "hard cut".
+    _FADE_TRANSITIONS = {"fade", "fade_in", "fade_out", "fadein", "fadeout", "dissolve", "crossfade"}
+    _CINEMATIC_FPS = 30  # CinematicRenderer hardcodes FPS = 30
+
+    @classmethod
+    def _to_cinematic_props(
+        cls,
+        props: dict[str, Any],
+    ) -> tuple[dict[str, Any] | None, str | None]:
+        """Adapt the canonical `cuts` artifact to CinematicRendererProps.
+
+        `renderer_family` of "cinematic-trailer" or "documentary-montage" routes
+        to the CinematicRenderer composition, whose props are a different shape
+        entirely: `scenes[]` of {kind, id, startSeconds, durationSeconds}, plus
+        `soundtrack`/`music`/`captions.words`. Handing it raw edit_decisions
+        crashed in calculateCinematicMetadata (`props.scenes.length` on
+        undefined), so this render path never worked.
+
+        The adaptation lives here rather than in the artifact because `cuts` is
+        the cross-stage contract — every edit director writes it, and
+        backlot/state.py, lib/slideshow_risk.py, and _pre_compose_validation all
+        read it. HyperFrames already adapts the same artifact for its runtime
+        (hyperframes_compose._resolve_audio_refs); Explainer needs no adapter
+        only because its prop names happen to match.
+
+        Returns (cinematic_props, None) or (None, error_message).
+        """
+        cuts = props.get("cuts") or []
+        metadata = props.get("metadata") or {}
+
+        tone = metadata.get("cinematic_tone")
+        if tone not in cls._CINEMATIC_TONES:
+            tone = None  # let the component's own default apply
+
+        scenes: list[dict[str, Any]] = []
+        unsupported: list[str] = []
+
+        for index, cut in enumerate(cuts):
+            in_s = float(cut.get("in_seconds", 0) or 0)
+            out_s = float(cut.get("out_seconds", 0) or 0)
+            duration = out_s - in_s
+            if duration <= 0:
+                continue
+
+            scene: dict[str, Any] = {
+                "id": cut.get("id") or f"cut-{index + 1}",
+                "startSeconds": in_s,
+                "durationSeconds": duration,
+            }
+
+            cut_type = cut.get("type")
+            if cut_type in cls._CINEMATIC_TITLE_TYPES:
+                text = cut.get("text")
+                if not text:
+                    unsupported.append(f"{scene['id']} (type={cut_type!r} with no `text`)")
+                    continue
+                scene["kind"] = "title"
+                scene["text"] = text
+                if cut.get("accentColor"):
+                    scene["accent"] = cut["accentColor"]
+                if cut.get("backgroundImage") or cut.get("backgroundVideo"):
+                    scene["backgroundSrc"] = cut.get("backgroundVideo") or cut["backgroundImage"]
+                    if cut.get("backgroundVideoStart") is not None:
+                        scene["backgroundTrimBeforeSeconds"] = cut["backgroundVideoStart"]
+                    scene["variant"] = "overlay"
+                scenes.append(scene)
+                continue
+
+            if cut_type is not None:
+                # A chart / terminal / anime scene has no CinematicRenderer
+                # counterpart. Dropping it would silently change the
+                # deliverable, so refuse and let the agent decide.
+                unsupported.append(f"{scene['id']} (type={cut_type!r})")
+                continue
+
+            source = cut.get("source")
+            if not source:
+                unsupported.append(f"{scene['id']} (no `source` and no `type`)")
+                continue
+
+            scene["kind"] = "video"
+            scene["src"] = source
+            if cut.get("source_in_seconds") is not None:
+                scene["trimBeforeSeconds"] = cut["source_in_seconds"]
+            if tone:
+                scene["tone"] = tone
+
+            fade_frames = round(
+                float(cut.get("transition_duration", 0) or 0) * cls._CINEMATIC_FPS
+            )
+            for prop, key in (("fadeInFrames", "transition_in"), ("fadeOutFrames", "transition_out")):
+                transition = cut.get(key)
+                if transition is None:
+                    continue  # omit → the component's default ramp applies
+                scene[prop] = fade_frames if str(transition).lower() in cls._FADE_TRANSITIONS else 0
+
+            scenes.append(scene)
+
+        if unsupported:
+            return None, (
+                "These cuts cannot be rendered by the CinematicRenderer composition "
+                f"(renderer_family={props.get('renderer_family')!r}): "
+                + ", ".join(unsupported)
+                + ".\nCinematicRenderer renders video scenes and title cards only. Options:\n"
+                "  1. Re-cut them as plain media cuts, or as text_card/hero_title titles\n"
+                "  2. Switch renderer_family to an explainer-* family (Explainer composition "
+                "handles the full scene-type catalog) — this changes the creative grammar, so "
+                "it needs user approval and a logged decision\n"
+                "  3. Hand-author the composition via composition_mode='atelier'"
+            )
+
+        if not scenes:
+            return None, (
+                "No renderable cuts for the CinematicRenderer composition — every cut had a "
+                "zero or negative duration (out_seconds must be greater than in_seconds)."
+            )
+
+        cinematic: dict[str, Any] = {"scenes": scenes}
+
+        audio = props.get("audio") or {}
+        narration = audio.get("narration") or {}
+        if narration.get("src"):
+            cinematic["soundtrack"] = {
+                "src": narration["src"],
+                **({"volume": narration["volume"]} if narration.get("volume") is not None else {}),
+            }
+        music = audio.get("music") or {}
+        if music.get("src"):
+            track: dict[str, Any] = {"src": music["src"]}
+            if music.get("volume") is not None:
+                track["volume"] = music["volume"]
+            # Accept either spelling of the fades.
+            fade_in = music.get("fadeInSeconds", music.get("fade_in_seconds"))
+            fade_out = music.get("fadeOutSeconds", music.get("fade_out_seconds"))
+            if fade_in is not None:
+                track["fadeInSeconds"] = fade_in
+            if fade_out is not None:
+                track["fadeOutSeconds"] = fade_out
+            if music.get("offsetSeconds") is not None:
+                track["trimBeforeSeconds"] = music["offsetSeconds"]
+            cinematic["music"] = track
+
+        captions = props.get("captions")
+        if captions:
+            cinematic["captions"] = {"words": captions}
+
+        # Carry the governance fields through so the props file stays auditable.
+        for key in ("renderer_family", "render_runtime", "composition_mode", "metadata"):
+            if key in props:
+                cinematic[key] = props[key]
+
+        return cinematic, None
+
+    # Props fields that hold a media path handed to a component's
+    # resolveAsset(). Scoped per container rather than matched anywhere in the
+    # tree, because key names collide with non-asset fields — `subtitles.source`
+    # is an .srt for the FFmpeg burn, not something Remotion ever loads.
+    # Adding a media-bearing scene prop is a one-line change here; miss it and
+    # the asset 404s silently at render time.
+    _REMOTION_MEDIA_FIELDS: dict[str, tuple[str, ...]] = {
+        # Explainer cuts + TalkingHead/Explainer overlays
+        "cuts": ("source", "backgroundImage", "backgroundVideo"),
+        "overlays": ("backgroundImage", "backgroundVideo"),
+        # CinematicRenderer scenes
+        "scenes": ("src", "backgroundSrc"),
+    }
+    # Lists of bare media paths on a cut (anime_scene stills).
+    _REMOTION_MEDIA_LIST_FIELDS = ("images",)
+    # Single-media props hanging off the root of a composition.
+    _REMOTION_ROOT_MEDIA_PATHS = (
+        ("videoSrc",),                 # TalkingHead
+        ("audio", "narration", "src"),
+        ("audio", "music", "src"),
+        ("soundtrack", "src"),         # CinematicRenderer
+        ("music", "src"),
+    )
+
+    @staticmethod
+    def _stage_remotion_assets(
+        props: dict[str, Any],
+        composer_dir: Path,
+        output_path: Path,
+    ) -> Path | None:
+        """Copy on-disk assets into remotion-composer/public/ and rewrite paths.
+
+        Remotion serves the composition from a dev server rooted at
+        `remotion-composer/`, and every component resolves its media through a
+        local `resolveAsset()` that ultimately calls Remotion's `staticFile()`.
+        `staticFile()` only understands paths *relative to public/* — it
+        prefixes whatever it is given with the public URL. Handing it an
+        absolute path or a `file://` URI produces requests like
+        `http://localhost:3000/public/Users/...`, which 404. (AnimeScene's copy
+        of resolveAsset() does not even special-case absolute paths, so it
+        fails this way for every local file.)
+
+        The reliable path is therefore to stage the assets: copy each referenced
+        file into a per-render directory under `public/` and rewrite the prop to
+        the public-relative location. Returns the staging dir so the caller can
+        remove it after the render, or None if nothing needed staging.
+        """
+        log = logging.getLogger("video_compose")
+        public_dir = composer_dir / "public"
+
+        # One dir per output file — deterministic (no clock/RNG), so a retry of
+        # the same render reuses the same location, and two different renders
+        # never collide.
+        digest = hashlib.sha1(str(output_path).encode("utf-8")).hexdigest()[:10]
+        stage_dir = public_dir / "om-staged" / f"{output_path.stem}-{digest}"
+
+        # abs source path -> public-relative posix path (copy each file once)
+        staged: dict[str, str] = {}
+        used = False
+
+        def stage_one(value: Any) -> Any:
+            nonlocal used
+            if not isinstance(value, str) or not value:
+                return value
+            if value.startswith(("http://", "https://", "data:")):
+                return value
+
+            raw = value
+            if raw.startswith("file://"):
+                raw = raw[len("file://"):]
+                # file:///C:/x -> C:/x ; file:///x -> /x
+                if len(raw) > 2 and raw[0] == "/" and raw[2] == ":":
+                    raw = raw[1:]
+
+            candidate = Path(raw)
+            if not candidate.is_absolute():
+                # A bare relative path is ambiguous: it may already be
+                # public-relative (the convention for hand-authored props), or
+                # relative to cwd. Prefer the public/ reading and leave it be.
+                if (public_dir / raw).exists():
+                    return raw
+                candidate = Path.cwd() / raw
+
+            try:
+                resolved = candidate.resolve()
+            except OSError:
+                return value
+            if not resolved.is_file():
+                # Not something we can stage — leave it untouched so Remotion
+                # reports the missing asset rather than us silently rewriting.
+                return value
+
+            # Already inside public/: just make it public-relative.
+            try:
+                return resolved.relative_to(public_dir.resolve()).as_posix()
+            except ValueError:
+                pass
+
+            key = str(resolved)
+            if key in staged:
+                return staged[key]
+
+            # Namespace by the source directory so two files with the same
+            # basename from different asset dirs cannot overwrite each other.
+            bucket = hashlib.sha1(str(resolved.parent).encode("utf-8")).hexdigest()[:8]
+            dest_dir = stage_dir / bucket
+            dest_dir.mkdir(parents=True, exist_ok=True)
+            dest = dest_dir / resolved.name
+            try:
+                shutil.copy2(resolved, dest)
+            except OSError as exc:
+                log.warning("Could not stage %s into public/: %s", resolved, exc)
+                return value
+
+            rel = dest.relative_to(public_dir).as_posix()
+            staged[key] = rel
+            used = True
+            return rel
+
+        for container, fields in VideoCompose._REMOTION_MEDIA_FIELDS.items():
+            for item in props.get(container) or []:
+                if not isinstance(item, dict):
+                    continue
+                for field in fields:
+                    if isinstance(item.get(field), str):
+                        item[field] = stage_one(item[field])
+                for field in VideoCompose._REMOTION_MEDIA_LIST_FIELDS:
+                    if isinstance(item.get(field), list):
+                        item[field] = [stage_one(v) for v in item[field]]
+
+        for path in VideoCompose._REMOTION_ROOT_MEDIA_PATHS:
+            node: Any = props
+            for key in path[:-1]:
+                node = node.get(key) if isinstance(node, dict) else None
+                if node is None:
+                    break
+            if isinstance(node, dict) and isinstance(node.get(path[-1]), str):
+                node[path[-1]] = stage_one(node[path[-1]])
+
+        if used:
+            log.info("Staged %d asset(s) into %s", len(staged), stage_dir)
+            return stage_dir
+        return None
+
     def _remotion_render(self, inputs: dict[str, Any]) -> ToolResult:
         """Render via Remotion (requires Node.js + npx).
 
@@ -1677,8 +2048,6 @@ class VideoCompose(BaseTool):
         types, and transitions using React-based frame-accurate rendering.
         Accepts edit_decisions (with resolved file paths) or raw composition_data.
         """
-        import shutil
-
         if not shutil.which("npx"):
             return ToolResult(
                 success=False,
@@ -1697,18 +2066,33 @@ class VideoCompose(BaseTool):
         # Absolutise so the CLI can resolve the output regardless of cwd.
         output_path = output_path.resolve()
 
+        # remotion-composer lives at project root
+        composer_dir = Path(__file__).resolve().parent.parent.parent / "remotion-composer"
+        if not composer_dir.exists():
+            return ToolResult(
+                success=False,
+                error=f"Remotion composer project not found at {composer_dir}",
+            )
+
+        # Route to the correct Remotion composition based on renderer_family.
+        # This prevents all pipelines from collapsing into the Explainer visual
+        # grammar. Resolved before props are built because CinematicRenderer
+        # takes a different prop shape entirely.
+        renderer_family = (composition_data or {}).get("renderer_family", "explainer-data")
+        composition_id = self._get_composition_id(renderer_family)
+
         # Deep-copy props so we don't mutate the original
         props = json.loads(json.dumps(composition_data))
 
-        # Convert absolute file paths to file:// URIs for Remotion's
-        # Img and OffthreadVideo components
-        for cut in props.get("cuts", []):
-            source = cut.get("source", "")
-            if source and not source.startswith(("http://", "https://", "file://")):
-                resolved = Path(source).resolve()
-                if resolved.exists():
-                    posix = resolved.as_posix()
-                    cut["source"] = f"file:///{posix}" if not posix.startswith("/") else f"file://{posix}"
+        if composition_id == "CinematicRenderer":
+            props, adapt_error = self._to_cinematic_props(props)
+            if adapt_error:
+                return ToolResult(success=False, error=adapt_error)
+
+        # Stage every on-disk asset into remotion-composer/public/ and rewrite
+        # the reference public-relative. See _stage_remotion_assets for why
+        # file:// URIs do not work with the components' resolveAsset().
+        stage_dir = self._stage_remotion_assets(props, composer_dir, output_path)
 
         # Build a custom themeConfig from the playbook's actual colors.
         # This ensures every video gets a unique visual identity derived
@@ -1727,19 +2111,6 @@ class VideoCompose(BaseTool):
         props_path = output_path.parent / ".remotion_props.json"
         with open(props_path, "w", encoding="utf-8") as f:
             json.dump(props, f)
-
-        # remotion-composer lives at project root
-        composer_dir = Path(__file__).resolve().parent.parent.parent / "remotion-composer"
-        if not composer_dir.exists():
-            return ToolResult(
-                success=False,
-                error=f"Remotion composer project not found at {composer_dir}",
-            )
-
-        # Route to the correct Remotion composition based on renderer_family.
-        # This prevents all pipelines from collapsing into the Explainer visual grammar.
-        renderer_family = (composition_data or {}).get("renderer_family", "explainer-data")
-        composition_id = self._get_composition_id(renderer_family)
 
         cmd = [
             "npx", "remotion", "render",
@@ -1808,6 +2179,16 @@ class VideoCompose(BaseTool):
         finally:
             if props_path.exists():
                 props_path.unlink()
+            # Staged copies exist only for the duration of this render — the
+            # shared public/ dir would otherwise grow by the full asset set of
+            # every render ever run. The dir is unique per output path, so
+            # concurrent renders never clean up each other's assets.
+            if stage_dir is not None and stage_dir.exists():
+                shutil.rmtree(stage_dir, ignore_errors=True)
+                try:
+                    stage_dir.parent.rmdir()  # only succeeds while no other render holds a dir
+                except OSError:
+                    pass
 
         if not output_path.exists():
             return ToolResult(

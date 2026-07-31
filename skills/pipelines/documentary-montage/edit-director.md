@@ -259,6 +259,7 @@ Canonical shape for this pipeline:
 {
   "version": "1.0",
   "renderer_family": "documentary-montage",
+  "render_runtime": "remotion",
   "cuts": [
     {
       "id": "cut_01",

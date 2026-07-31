@@ -401,13 +401,15 @@ result = Transcriber().execute({
       "resolution": "1920x1080",
       "fps": 30,
       "duration_seconds": 62.4,
-      "file_size_mb": 45.2,
+      "file_size_bytes": 47395635,
       "audio_codec": "aac",
       "audio_channels": 2,
-      "render_strategy": "ffmpeg",
-      "render_time_seconds": 180
+      "platform_target": "youtube"
     }
   ],
+  "render_time_seconds": 180,
+  "render_grammar": "explainer-data",
+  "render_runtime": "remotion",
   "render_summary": {
     "total_cuts_rendered": 12,
     "subtitles_burned": true,

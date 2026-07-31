@@ -17,7 +17,20 @@
           "id": { "type": "string" },
           "type": {
             "type": "string",
-            "enum": ["talking_head", "broll", "animation", "character_scene", "diagram", "text_card", "transition", "generated", "screen_recording"]
+            "enum": ["talking_head", "broll", "animation", "character_scene", "diagram", "text_card", "transition", "generated", "screen_recording", "overlay"]
+          },
+          "overlay_type": {
+            "type": "string",
+            "description": "Only for type='overlay' — which component renders in the slot (text_card, stat_card, bar_chart, callout, comparison, …). Carried into edit_decisions.overlays[].type at the edit stage."
+          },
+          "content": {
+            "type": "object",
+            "description": "Only for type='overlay' — the component props for overlay_type (text, subtext, stat, chartData, backgroundColor, accentColor, …).",
+            "additionalProperties": true
+          },
+          "position": {
+            "type": "string",
+            "description": "Only for type='overlay' — named slot: lower_third, upper_third, side_panel, left_panel, right_panel, full_overlay."
           },
           "description": { "type": "string" },
           "start_seconds": { "type": "number", "minimum": 0 },

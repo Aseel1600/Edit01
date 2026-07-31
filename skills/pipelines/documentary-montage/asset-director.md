@@ -363,7 +363,7 @@ visually identical. Re-rank the slot whose clip got dropped with
 
 ### 8. Handle The Music Plan
 
-Read `brief.music_plan`. Execute exactly the plan the idea director
+Read `brief.metadata.music_plan`. Execute exactly the plan the idea director
 recorded — do not invent a new source here:
 
 - **`source=library`**: Verify the file at `music_plan.path` exists.

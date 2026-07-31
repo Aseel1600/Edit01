@@ -47,7 +47,11 @@
           "type": "object",
           "description": "Sample frames inspected from opening, middle, climax, ending",
           "properties": {
-            "frames_sampled": { "type": "integer", "minimum": 4 },
+            "frames_sampled": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "How many frames were actually extracted. The target is 4 (opening/middle/climax/ending); video_compose._run_final_review records under-sampling as an issue rather than failing, so this is a count of what happened and must not be constrained to >= 4."
+            },
             "frame_paths": {
               "type": "array",
               "items": { "type": "string" }

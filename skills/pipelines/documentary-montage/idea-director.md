@@ -153,32 +153,42 @@ there's no narration — don't leave the field missing.
 
 ### 7. Record The Brief
 
-Minimum fields the brief must carry:
+Minimum fields the brief must carry. The `brief` schema sets
+`additionalProperties: false`, so every documentary-specific field lives
+under `metadata` — which is also exactly where the downstream directors
+read them from (`brief.metadata.end_tag_plan`, `brief.metadata.music_plan`):
 
 ```json
 {
-  "topic": "A minute in the rain",
-  "thematic_question": "What does rain show you about a city?",
+  "version": "1.0",
+  "title": "A minute in the rain",
+  "hook": "What does rain show you about a city?",
+  "key_points": ["The city keeps its own vigil in the rain"],
   "tone": "elegiac",
-  "duration_seconds": 90,
-  "shape": "list",
-  "sources_allowed": ["pexels", "pixabay_video", "coverr", "mixkit", "archive_org", "nara", "nasa"],
-  "generated_clips_allowed": false,
-  "narration": "none",
-  "music_plan": {
-    "source": "generated",
-    "provider": "elevenlabs",
-    "prompt_seed": "slow ambient drone in A minor, no percussion, 60s sustained swell, Max Richter register"
-  },
-  "end_tag_plan": {
-    "text": "THE CITY KEEPS ITS OWN VIGIL.",
-    "palette": "cool_offwhite_on_black",
-    "duration_seconds": 5.5,
-    "render_engine": "remotion",
-    "component": "EndTag"
-  },
-  "era_mix": "any",
-  "target_platform": "social_short"
+  "style": "documentary-montage",
+  "target_platform": "generic",
+  "target_duration_seconds": 90,
+  "metadata": {
+    "thematic_question": "What does rain show you about a city?",
+    "shape": "list",
+    "sources_allowed": ["pexels", "pixabay_video", "coverr", "mixkit", "archive_org", "nara", "nasa"],
+    "generated_clips_allowed": false,
+    "narration": "none",
+    "music_plan": {
+      "source": "generated",
+      "provider": "elevenlabs",
+      "prompt_seed": "slow ambient drone in A minor, no percussion, 60s sustained swell, Max Richter register"
+    },
+    "end_tag_plan": {
+      "text": "THE CITY KEEPS ITS OWN VIGIL.",
+      "palette": "cool_offwhite_on_black",
+      "duration_seconds": 5.5,
+      "render_engine": "remotion",
+      "component": "EndTag"
+    },
+    "era_mix": "any",
+    "delivery_target": "social_short"
+  }
 }
 ```
 

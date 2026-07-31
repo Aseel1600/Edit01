@@ -139,7 +139,7 @@ each. No filler words.
 
 ### 5. Target Sources Per Slot (Era-Aware)
 
-Read `brief.era_mix`. Assign each slot one or more `preferred_sources`
+Read `brief.metadata.era_mix`. Assign each slot one or more `preferred_sources`
 based on what footage lives where:
 
 | Source | Strengths | Use when |

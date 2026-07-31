@@ -456,11 +456,16 @@ const Soundtrack: React.FC<{
 
 export const calculateCinematicMetadata: CalculateMetadataFunction<CinematicRendererProps> =
   async ({ props }) => {
+    // `scenes` may be absent when a caller passes props shaped for a different
+    // composition. Default rather than throwing, so the failure surfaces as a
+    // blank render with a readable message instead of a TypeError inside
+    // Remotion's metadata phase.
+    const sceneList = props.scenes ?? [];
     const totalSeconds =
-      props.scenes.length === 0
+      sceneList.length === 0
         ? 30
         : Math.max(
-            ...props.scenes.map((scene) => scene.startSeconds + scene.durationSeconds),
+            ...sceneList.map((scene) => scene.startSeconds + scene.durationSeconds),
           );
 
     return {
@@ -472,7 +477,7 @@ export const calculateCinematicMetadata: CalculateMetadataFunction<CinematicRend
   };
 
 export const CinematicRenderer: React.FC<CinematicRendererProps> = ({
-  scenes,
+  scenes = [],
   titleFontSize = 78,
   titleWidth = 1320,
   signalLineCount = 18,

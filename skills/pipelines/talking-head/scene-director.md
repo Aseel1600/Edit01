@@ -187,8 +187,9 @@ For each approved overlay from Step 3, create an overlay scene entry:
   "id": "overlay_1",
   "type": "overlay",
   "overlay_type": "text_card",
+  "description": "Define 'Agentic AI' while the speaker first says it",
   "start_seconds": 22.0,
-  "duration_seconds": 4.0,
+  "end_seconds": 26.0,
   "content": {
     "text": "Agentic AI",
     "subtext": "Software that acts autonomously toward goals",

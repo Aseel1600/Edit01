@@ -50,7 +50,22 @@ When you add a new component, append it here and in `src/components/index.ts`.
      return maybeWrapWithBg(<MyScene ... />);
    }
    ```
-5. Document it in this file. That's what makes it discoverable to the next agent.
+5. Add the `type` to **`schemas/artifacts/edit_decisions.schema.json`** — the
+   `$defs.scene_type` enum — and declare any new prop fields on `cuts[]`. The
+   schema sets `additionalProperties: false`, so a type or prop that is missing
+   there is rejected at checkpoint time even though the renderer handles it.
+6. Add the `type` to **`VideoCompose._REMOTION_SCENE_TYPES`** in
+   `tools/video/video_compose.py`.
+7. Document it in this file. That's what makes it discoverable to the next agent.
+
+Steps 3–7 are enforced by `tests/contracts/test_artifact_schema_drift.py`, which
+fails if the dispatch cases, this table, the schema enum, and the Python set ever
+disagree.
+
+> If a media-bearing prop is added (something that points at a file on disk),
+> also add it to `VideoCompose._REMOTION_MEDIA_FIELDS` so `_stage_remotion_assets`
+> copies it into `public/` before the render. Assets outside `public/` cannot be
+> reached by `staticFile()` and 404 silently.
 
 ## Existing synthetic-UI components
 

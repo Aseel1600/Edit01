@@ -21,6 +21,7 @@
           "fps": { "type": "number" },
           "duration_seconds": { "type": "number", "minimum": 0 },
           "file_size_bytes": { "type": "integer" },
+          "audio_channels": { "type": "integer", "minimum": 0 },
           "platform_target": { "type": "string" }
         },
         "additionalProperties": false
@@ -40,6 +41,21 @@
       "type": "string",
       "description": "Which renderer family was used for this render",
       "enum": ["explainer-data", "explainer-teacher", "cinematic-trailer", "documentary-montage", "product-reveal", "screen-demo", "presenter", "animation-first"]
+    },
+    "render_runtime": {
+      "type": "string",
+      "enum": ["remotion", "hyperframes", "ffmpeg"],
+      "description": "Technical runtime that actually executed this render. Records the governance fact 'what ran'; compare against proposal_packet.production_plan.render_runtime to detect a silent swap."
+    },
+    "composition_mode": {
+      "type": "string",
+      "enum": ["templated", "atelier"],
+      "description": "Authoring mode that produced the composition, carried through from edit_decisions."
+    },
+    "render_summary": {
+      "type": "object",
+      "description": "Free-form rollup of what the render actually did (cuts rendered, subtitle burn, audio tracks mixed, planned vs actual duration).",
+      "additionalProperties": true
     },
     "slideshow_risk_score": {
       "type": "object",
