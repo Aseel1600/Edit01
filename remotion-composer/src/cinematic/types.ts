@@ -56,7 +56,9 @@ export interface CinematicCaptionConfig {
 
 export interface CinematicRendererProps {
   [key: string]: unknown;
-  scenes: CinematicScene[];
+  /** Optional so a caller passing props for a different composition renders
+   *  blank rather than throwing inside calculateMetadata. */
+  scenes?: CinematicScene[];
   titleFontSize?: number;
   titleWidth?: number;
   signalLineCount?: number;
