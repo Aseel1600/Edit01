@@ -9,7 +9,11 @@ either placed as frame-accurate ``<Audio>`` cues inside a Remotion composition
 (the product-motion atelier path) or mixed in post via ``audio_mixer``'s ``sfx``
 track role using ``edit_decisions.audio.sfx[]``.
 
+Billing is per minute of generated audio, not per effect — see
+``estimate_cost``.
+
 Docs: https://elevenlabs.io/docs/api-reference/text-to-sound-effects/convert
+Pricing: https://elevenlabs.io/pricing/api
 """
 
 from __future__ import annotations
@@ -32,6 +36,15 @@ from tools.base_tool import (
     ToolTier,
 )
 
+# Published pay-as-you-go list price for sound-effect generation, billed per
+# minute of generated audio (https://elevenlabs.io/pricing/api). Subscription
+# tiers bundle a monthly generation allowance, so the effective cost of a run
+# is usually lower; this is the honest upper bound to quote.
+_USD_PER_MINUTE = 0.12
+# The API infers length from the prompt when duration_seconds is omitted.
+# Used only to keep cost estimation non-zero for auto-duration calls.
+_ASSUMED_AUTO_DURATION_S = 4.0
+
 
 class SfxGen(BaseTool):
     name = "sfx_gen"
@@ -44,7 +57,7 @@ class SfxGen(BaseTool):
     determinism = Determinism.STOCHASTIC
     runtime = ToolRuntime.API
 
-    dependencies = []  # checked dynamically via API key
+    dependencies = ["env:ELEVENLABS_API_KEY"]
     install_instructions = (
         "Set the ELEVENLABS_API_KEY environment variable:\n"
         "  export ELEVENLABS_API_KEY=your_key_here\n"
@@ -137,9 +150,24 @@ class SfxGen(BaseTool):
         return ToolStatus.UNAVAILABLE
 
     def estimate_cost(self, inputs: dict[str, Any]) -> float:
-        # ElevenLabs bills sound generation per effect (credit-based);
-        # roughly $0.03 per generated effect on paid tiers.
-        return 0.03
+        """Estimate USD cost from generated audio length.
+
+        ElevenLabs bills sound generation by the minute of generated audio,
+        not per effect — a 0.6s UI tick and a 20s ambient bed are not the same
+        charge. The rate below is the published pay-as-you-go list price
+        (https://elevenlabs.io/pricing/api); subscription tiers include a
+        monthly generation allowance and bill overage at their own rate, so
+        treat this as an upper-bound list estimate, not a durable per-call
+        price. Re-check the pricing page before quoting figures to a user.
+
+        When `duration_seconds` is omitted the API picks the length from the
+        prompt, so the estimate falls back to a documented nominal duration.
+        """
+        duration = inputs.get("duration_seconds")
+        seconds = (
+            float(duration) if duration is not None else _ASSUMED_AUTO_DURATION_S
+        )
+        return round(seconds / 60.0 * _USD_PER_MINUTE, 4)
 
     def estimate_runtime(self, inputs: dict[str, Any]) -> float:
         return 10.0

@@ -61,6 +61,12 @@ stages:
       - design_system
       - ui_inventory
       - decision_log
+    # Both grounding artifacts are load-bearing: every downstream truthfulness
+    # claim and the assets fidelity gate read ui_inventory, so a repo_analysis
+    # checkpoint carrying only design_system is not a completed stage.
+    required_outputs:
+      - design_system
+      - ui_inventory
     required_tools:
       - repo_design_extractor
     tools_available:

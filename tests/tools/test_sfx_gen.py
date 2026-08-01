@@ -54,8 +54,65 @@ class TestContract:
         """generate_sfx moved here — music_gen must not double-claim it."""
         assert "generate_sfx" not in MusicGen.capabilities
 
-    def test_cost_is_flat_per_effect(self):
-        assert SfxGen().estimate_cost({"prompt": "tick"}) == pytest.approx(0.03)
+    def test_declares_its_env_dependency(self):
+        """Registry setup/dependency reporting groups providers by env var —
+        a tool that needs a key but declares none cannot be explained."""
+        assert SfxGen.dependencies == ["env:ELEVENLABS_API_KEY"]
+        assert "ELEVENLABS_API_KEY" in SfxGen.install_instructions
+
+
+# ---- Cost ----
+
+class TestCost:
+    """Billing is per minute of generated audio, so cost scales with duration
+    rather than being one flat figure presented as durable."""
+
+    def test_cost_scales_with_duration(self):
+        t = SfxGen()
+        short = t.estimate_cost({"prompt": "tick", "duration_seconds": 0.6})
+        long = t.estimate_cost({"prompt": "bed", "duration_seconds": 20})
+        assert short < long
+        # $0.12/min list rate
+        assert short == pytest.approx(0.6 / 60 * 0.12, abs=1e-4)
+        assert long == pytest.approx(20 / 60 * 0.12, abs=1e-4)
+
+    def test_auto_duration_uses_nominal_estimate(self):
+        cost = SfxGen().estimate_cost({"prompt": "tick"})
+        assert 0 < cost < 0.02
+
+    def test_reported_cost_matches_estimate(self, eleven_env, tmp_path, monkeypatch):
+        import requests
+
+        monkeypatch.setattr(
+            requests, "post",
+            lambda *a, **k: _FakeResponse(),
+        )
+        inputs = {
+            "prompt": "soft glass tick",
+            "duration_seconds": 1.0,
+            "output_path": str(tmp_path / "tick.mp3"),
+        }
+        res = SfxGen().execute(inputs)
+        assert res.cost_usd == pytest.approx(SfxGen().estimate_cost(inputs))
+
+
+# ---- Idempotency ----
+
+class TestIdempotency:
+    def test_omitted_defaults_hash_like_explicit_defaults(self):
+        """Omitting prompt_influence/loop and passing their declared defaults
+        describe the same request — they must not cause a duplicate paid call."""
+        t = SfxGen()
+        assert t.idempotency_key({"prompt": "tick"}) == t.idempotency_key(
+            {"prompt": "tick", "prompt_influence": 0.3, "loop": False}
+        )
+
+    def test_real_differences_still_change_the_key(self):
+        t = SfxGen()
+        base = t.idempotency_key({"prompt": "tick"})
+        assert base != t.idempotency_key({"prompt": "tick", "prompt_influence": 0.9})
+        assert base != t.idempotency_key({"prompt": "tick", "loop": True})
+        assert base != t.idempotency_key({"prompt": "whoosh"})
 
 
 # ---- Registry discovery ----
@@ -71,6 +128,41 @@ class TestDiscovery:
         reg.discover("tools")
         names = [t.name for t in reg.get_by_capability("sfx_generation")]
         assert names == ["sfx_gen"]
+
+    def test_appears_in_provider_menu(self):
+        reg = ToolRegistry()
+        reg.discover("tools")
+        menu = reg.provider_menu()
+        assert "sfx_generation" in menu
+        entries = menu["sfx_generation"]["available"] + menu["sfx_generation"]["unavailable"]
+        entry = next(e for e in entries if e["name"] == "sfx_gen")
+        assert entry["provider"] == "elevenlabs"
+        assert "env:ELEVENLABS_API_KEY" in entry["dependencies"]
+
+    def test_setup_offer_groups_by_env_var(self, monkeypatch):
+        """Without the key the tool must show up as a 1-minute env-var fix,
+        grouped with the other ELEVENLABS_API_KEY tools.
+
+        Status is forced rather than unset via the environment: registry
+        discovery reloads .env, so a developer machine with a real key would
+        otherwise skip this assertion silently.
+        """
+        monkeypatch.setattr(SfxGen, "get_status", lambda self: ToolStatus.UNAVAILABLE)
+        reg = ToolRegistry()
+        reg.discover("tools")
+        offers = reg.provider_menu_summary()["setup_offers"]
+        offer = next((o for o in offers if o["tool"] == "sfx_gen"), None)
+        assert offer is not None, "sfx_gen must be offered as a setup upgrade"
+        assert offer["kind"] == "env_var"
+        assert "ELEVENLABS_API_KEY" in offer["env_vars"]
+
+    def test_capability_counted_in_summary(self, monkeypatch):
+        monkeypatch.setattr(SfxGen, "get_status", lambda self: ToolStatus.AVAILABLE)
+        reg = ToolRegistry()
+        reg.discover("tools")
+        caps = {c["capability"]: c for c in reg.provider_menu_summary()["capabilities"]}
+        assert "sfx_generation" in caps
+        assert "elevenlabs" in caps["sfx_generation"]["available_providers"]
 
 
 # ---- Status ----
@@ -116,7 +208,7 @@ class TestExecute:
 
         assert res.success
         assert res.model == "elevenlabs-sound-generation"
-        assert res.cost_usd == pytest.approx(0.03)
+        assert res.cost_usd == pytest.approx(0.5 / 60 * 0.12, abs=1e-4)
         assert out.read_bytes() == FAKE_MP3
         assert res.artifacts == [str(out)]
         assert captured["url"] == "https://api.elevenlabs.io/v1/sound-generation"

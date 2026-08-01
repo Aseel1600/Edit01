@@ -196,12 +196,62 @@ class TestCheckpointWiring:
                 human_approval_required=True,
             )
 
+    def test_repo_analysis_requires_ui_inventory(self, tmp_path):
+        """design_system alone does not close repo_analysis.
+
+        Every downstream truthfulness claim and the assets fidelity gate read
+        ui_inventory, so a checkpoint without it is a half-finished stage.
+        """
+        with pytest.raises(CheckpointValidationError, match="ui_inventory"):
+            write_checkpoint(
+                tmp_path, "proj", "repo_analysis", "awaiting_human",
+                artifacts={"design_system": GOLDEN_DESIGN_SYSTEM},
+                pipeline_type="product-motion",
+                human_approval_required=True,
+            )
+
+    def test_repo_analysis_completed_requires_ui_inventory(self, tmp_path):
+        with pytest.raises(CheckpointValidationError, match="ui_inventory"):
+            write_checkpoint(
+                tmp_path, "proj", "repo_analysis", "completed",
+                artifacts={"design_system": GOLDEN_DESIGN_SYSTEM},
+                pipeline_type="product-motion",
+                human_approval_required=True,
+                human_approved=True,
+            )
+
+    def test_in_progress_checkpoint_may_be_partial(self, tmp_path):
+        """The requirement is about closing the stage, not entering it —
+        the in_progress heartbeat must still be writable."""
+        path = write_checkpoint(
+            tmp_path, "proj", "repo_analysis", "in_progress",
+            artifacts={"design_system": GOLDEN_DESIGN_SYSTEM},
+            pipeline_type="product-motion",
+            human_approval_required=True,
+        )
+        assert path.exists()
+
+    def test_required_outputs_declared_in_manifest(self, manifest):
+        """The enforcement is manifest-driven — the declaration is the source
+        of truth, not a hardcoded stage list in lib/checkpoint.py."""
+        stage = next(s for s in manifest["stages"] if s["name"] == "repo_analysis")
+        assert set(stage["required_outputs"]) == {"design_system", "ui_inventory"}
+        assert set(stage["required_outputs"]) <= set(stage["produces"])
+
+    def test_required_outputs_are_known_artifacts(self, manifest):
+        for stage in manifest["stages"]:
+            for name in stage.get("required_outputs", []):
+                assert name in ARTIFACT_NAMES
+
     def test_repo_analysis_gate_enforced(self, tmp_path):
         """Gated stage cannot be completed without human approval."""
         with pytest.raises(CheckpointValidationError, match="GATE VIOLATION"):
             write_checkpoint(
                 tmp_path, "proj", "repo_analysis", "completed",
-                artifacts={"design_system": GOLDEN_DESIGN_SYSTEM},
+                artifacts={
+                    "design_system": GOLDEN_DESIGN_SYSTEM,
+                    "ui_inventory": GOLDEN_UI_INVENTORY,
+                },
                 pipeline_type="product-motion",
             )
 

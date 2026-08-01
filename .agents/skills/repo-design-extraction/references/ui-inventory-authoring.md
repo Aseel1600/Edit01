@@ -8,13 +8,17 @@ real text from the source.
 ## Walking screens
 
 - **Next app router** (`app/**/page.tsx`): the scanner derived the route from
-  the directory. Read the page *and* the components it imports — the page file
-  is often just a shell; the real UI lives one import away. Add those files to
-  `source_files` too.
-- **Next pages router / Vue pages**: same, route from file path.
-- **Non-routed roots** (`src/views`, `src/screens`, `src/features`): treat
-  each top-level view as a screen; leave `route` unset unless a router config
-  says otherwise.
+  the directory (`route_source: "next-app-router"`). Read the page *and* the
+  components it imports — the page file is often just a shell; the real UI
+  lives one import away. Add those files to `source_files` too.
+- **Next pages router** and **SvelteKit** (`src/routes/**/+page.svelte`): same,
+  route derived from the file path.
+- **Non-routed roots** (`src/views`, `src/screens`, `src/features`, and
+  `src/routes` outside SvelteKit): the scanner reports `route: null` /
+  `route_source: "not_derivable"` because the URL lives in a router config it
+  does not read. Treat each top-level view as a screen and leave `route` unset
+  unless you **read** the router config and can cite it. Do not reconstruct a
+  route from the filename — an invented route reads as fact in the artifact.
 - Skip auth walls, error pages, and legal pages unless the brief asks for
   them — they are rarely flagship surfaces.
 

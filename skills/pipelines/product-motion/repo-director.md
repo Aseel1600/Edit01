@@ -4,8 +4,15 @@
 
 First stage of a product-motion run. You have a path to the user's product
 repository. You produce the two artifacts everything downstream is grounded
-in: **`design_system`** (canonical) and **`ui_inventory`** (supplementary),
-plus `decision_log` entries.
+in: **`design_system`** (the stage's canonical artifact) and
+**`ui_inventory`**, plus `decision_log` entries.
+
+**Both are mandatory.** The manifest declares them as the stage's
+`required_outputs`, and `write_checkpoint` refuses a `completed` or
+`awaiting_human` repo_analysis checkpoint that is missing either — every
+downstream truthfulness claim and the assets fidelity gate read
+`ui_inventory`. Use an `in_progress` checkpoint while the stage is still
+being assembled.
 
 ## Prerequisites
 
@@ -21,8 +28,18 @@ plus `decision_log` entries.
    the scan detects `framework: "other"` or no UI code, stop and tell the
    user what was found — do not force a backend repo through this pipeline.
 2. **Run the scanner** with `output_path` under
-   `projects/<id>/artifacts/repo_scan_report.json`. Surface `truncated: true`
-   if reported.
+   `projects/<id>/artifacts/repo_scan_report.json` — a path inside the
+   product repo is rejected; the analyzed repo is never written to. Surface
+   `truncated: true` and everything in `warnings[]` if reported.
+
+   The scanner does **not** execute the product's code. If `tailwind_theme`
+   is `null`, open the config and read it — do not reach for the
+   `allow_config_execution` opt-in, which runs the repo's JavaScript. If you
+   ever think a run genuinely needs it, that is a user decision: say what it
+   does and get approval first.
+   Screens whose `route_source` is `not_derivable` have no route the scanner
+   can know; leave `route` unset in `ui_inventory` unless you read the router
+   config yourself.
 3. **Read the flagged sources** and author both artifacts per the
    `repo-design-extraction` skill. Non-negotiables:
    - every token value copied verbatim with provenance,

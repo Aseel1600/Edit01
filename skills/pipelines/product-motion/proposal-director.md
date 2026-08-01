@@ -80,6 +80,10 @@ and let the user choose. Record both in the proposal.
 
 ### 6. Cost + production plan
 
-Itemize: narration TTS (chars × provider rate), music (1 track), SFX (4-6
-effects × ~$0.03), render (local, $0). State per-stage plan and gates. Then
-checkpoint `awaiting_human`, present, **end your turn**.
+Itemize: narration TTS (chars × provider rate), music (1 track), SFX, render
+(local, $0). Do not hardcode provider rates — call `estimate_cost()` on the
+tool you actually plan to use. SFX in particular is billed per minute of
+generated audio, not per effect, so 4-6 short cues cost far less than a
+single ambient bed; `sfx_gen.estimate_cost()` returns a list-rate upper
+bound. State per-stage plan and gates. Then checkpoint `awaiting_human`,
+present, **end your turn**.

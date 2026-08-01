@@ -8,8 +8,13 @@ them.
 
 ### Tailwind v3 (`tailwind.config.{js,ts,cjs,mjs}`)
 
-- Scanner evaluates JS configs into `tailwind_theme`; **TS configs come back
-  `null` — read the file yourself** and extract `theme` / `theme.extend`.
+- The scanner parses the `theme` literal **statically** (JS and TS alike) into
+  `tailwind_theme`, with `tailwind_theme_source: "static"`. It never executes
+  the config — that would run arbitrary repo JavaScript.
+- A config that builds its theme at runtime (spreads a preset, calls a
+  function, `require`s another module) comes back `null` with a warning:
+  **read the file yourself** and extract `theme` / `theme.extend`. That is the
+  normal path, not a failure.
 - `theme.extend.*` **extends** defaults; a color under `extend.colors` is a
   brand token. A full `theme.colors` (no extend) **replaces** defaults — then
   the listed palette is the entire palette.

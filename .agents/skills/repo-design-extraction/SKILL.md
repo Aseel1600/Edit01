@@ -2,7 +2,7 @@
 name: repo-design-extraction
 description: Extract a design system and UI inventory from a product's source-code repository (React/Next/Vue/Tailwind web frontends). Use in the product-motion pipeline's repo_analysis stage, or whenever a video must be grounded in a repo's real design tokens rather than a live URL. Produces the schema-validated design_system and ui_inventory artifacts with per-token provenance.
 license: MIT
-compatibility: No API keys. Optional `node` on PATH improves tailwind config evaluation.
+compatibility: No API keys. Reads the target repo only; never executes its code by default.
 metadata: {"openclaw": {"requires": {"env": []}}}
 ---
 
@@ -44,12 +44,28 @@ scan = registry._tools["repo_design_extractor"].execute({
 
 The scan report gives you: `framework`, `styling_systems`, `candidate_files`
 (tailwind configs, `:root`/`@theme` CSS, theme modules, app shells),
-`css_custom_properties` (name/value/**file/line**), `tailwind_theme` (JS
-configs evaluated via node; `null` for TS configs — read those yourself),
-`fonts`, `screen_candidates` (with routes), and `components_index`.
+`css_custom_properties` (name/value/**file/line**), `tailwind_theme` +
+`tailwind_theme_source`, `fonts`, `screen_candidates` (each with `route` and
+`route_source`), `components_index`, and `warnings`.
+
+Repo-relative paths are POSIX (`app/globals.css`) on every platform — quote
+them verbatim into artifact provenance.
 
 If `truncated: true`, say so — a partial scan silently presented as complete
-violates the no-silent-caps rule.
+violates the no-silent-caps rule. Read `warnings[]` and surface anything in it.
+
+**The scanner never runs the product's code.** A `tailwind.config.*` is
+executable JavaScript: requiring it would let an untrusted repo read secrets,
+write files, or make network calls. So the `theme` literal is parsed
+*statically* (works for `.ts` configs too). A config that computes its theme at
+runtime returns `tailwind_theme: null` with a warning — **read the config file
+yourself**, that is the intended path, not the `allow_config_execution` opt-in.
+Only reach for that opt-in on a repo you personally trust, tell the user you
+are doing it and why, and expect `tailwind_theme_source: "executed"` plus a
+warning in the run record.
+
+`output_path` must live under `projects/<project-id>/artifacts/`; the scanner
+rejects a path inside `repo_path` — the analyzed repo is never written to.
 
 ### Step 2 — Read the flagged files
 
