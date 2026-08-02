@@ -1,12 +1,11 @@
 import hashlib
-import shutil
-import tempfile
 from pathlib import Path
 from typing import Any, Optional
 from .contracts import Artifact
+from .atomic import atomic_copy_file, atomic_write_bytes
 
 class CAS:
-    """Content-Addressable Store. Deduplica y da inmutabilidad a los medios."""
+    """Content-Addressable Store con Garantía de Atomicidad Estricta."""
 
     def __init__(self, root: Path, public_root: Optional[Path] = None):
         self.root = Path(root)
@@ -32,10 +31,8 @@ class CAS:
 
         dest = self._shard(digest)
         if not dest.exists():
-            dest.parent.mkdir(parents=True, exist_ok=True)
-            tmp = dest.with_suffix(".tmp")
-            shutil.copy2(src, tmp)
-            tmp.replace(dest)
+            # Escritura atómica
+            atomic_copy_file(src, dest)
 
         return Artifact(
             sha256=digest, uri=f"cas://{digest}", mime=mime,
@@ -43,30 +40,32 @@ class CAS:
         )
 
     def put_bytes(self, data: bytes, mime: str, **kw) -> Artifact:
-        with tempfile.NamedTemporaryFile(delete=False) as t:
-            t.write(data)
-            tmp = Path(t.name)
-        try:
-            return self.put_file(tmp, mime, **kw)
-        finally:
-            tmp.unlink(missing_ok=True)
+        h = hashlib.sha256(data).hexdigest()
+        dest = self._shard(h)
+        if not dest.exists():
+            atomic_write_bytes(dest, data)
+
+        return Artifact(
+            sha256=h, uri=f"cas://{h}", mime=mime,
+            size_bytes=len(data), meta=kw.get("meta", {}), lineage=kw.get("lineage", []),
+        )
 
     def path(self, a: Artifact) -> Path:
         return self._shard(a.sha256)
 
     def publish_for_remotion(self, a: Artifact, job_id: str, filename: str) -> str:
-        """Enlaza el activo en public/omega/<job_id>/ y devuelve la ruta relativa para staticFile()."""
+        """Enlaza/copia atómicamente el activo en public/omega/<job_id>/ para Remotion."""
         if self.public_root is None:
             raise RuntimeError("CAS.public_root no configurado.")
             
         rel = Path("omega") / job_id / filename
         dest = self.public_root / rel
-        dest.parent.mkdir(parents=True, exist_ok=True)
         
         if not dest.exists():
             try:
+                dest.parent.mkdir(parents=True, exist_ok=True)
                 dest.hardlink_to(self.path(a))
             except Exception:
-                shutil.copy2(self.path(a), dest)
+                atomic_copy_file(self.path(a), dest)
                 
         return str(rel).replace("\\", "/")
