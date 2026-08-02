@@ -1,6 +1,11 @@
 <p align="center">
-  <img src="assets/logo.png" alt="OpenMontage" width="200">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/monty-dark.svg">
+    <img src="assets/monty-light.svg" alt="Monty the Clapper — OpenMontage 官方吉祥物" width="200">
+  </picture>
 </p>
+
+<p align="center"><sub><em>Monty the Clapper — OpenMontage 官方吉祥物</em></sub></p>
 
 <h1 align="center">OpenMontage</h1>
 
@@ -177,7 +182,7 @@ SUNO_API_KEY=your-key          # 完整的歌曲、伴奏，涵盖任何流派
 
 # 语音与图像:
 ELEVENLABS_API_KEY=your-key    # 顶级 TTS、AI 音乐、音效
-OPENAI_API_KEY=your-key        # OpenAI TTS、DALL-E 3 图像
+OPENAI_API_KEY=your-key        # OpenAI TTS、GPT Image 2 图像
 XAI_API_KEY=your-key           # xAI Grok 图像编辑/生成 + Grok 视频生成
 GOOGLE_API_KEY=your-key        # Google Imagen 图像、Google TTS（700+ 种声音）
 
@@ -441,7 +446,7 @@ OpenMontage/
 | **FLUX** | 云端 API | 业界顶尖质量 |
 | **Google Imagen** | 云端 API | Imagen 4 — 高质量、多种长宽比 |
 | **Grok Imagine Image** | 云端 API | 强大的图像编辑、风格转换和多图合成 |
-| **DALL-E 3** | 云端 API | OpenAI 的图像模型 |
+| **GPT Image 2** | 云端 API | OpenAI 的图像模型 |
 | **Recraft** | 云端 API | 专注于设计的生成 |
 | **Local Diffusion** | 本地 GPU | Stable Diffusion，免费 |
 | **Pexels** | 素材库 | 免费的库存图片 |
