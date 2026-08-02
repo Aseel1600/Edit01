@@ -1144,6 +1144,28 @@ class HyperFramesCompose(BaseTool):
                 cwd=str(cwd) if cwd else None,
                 check=False,
             )
+        except (OSError, subprocess.SubprocessError) as e:
+            # Fallback to c5_exec.py for deterministic shell execution
+            import sys
+            c5_exec_path = Path(__file__).resolve().parent.parent.parent / "scripts" / "c5_exec.py"
+            venv_python = Path(sys.executable)
+            fallback_cmd = [str(venv_python), str(c5_exec_path), " ".join(cmd)]
+            try:
+                return subprocess.run(
+                    fallback_cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=timeout,
+                    cwd=str(cwd) if cwd else None,
+                    check=False,
+                )
+            except subprocess.TimeoutExpired as te:
+                return subprocess.CompletedProcess(
+                    args=cmd,
+                    returncode=124,
+                    stdout=te.stdout or "",
+                    stderr=(te.stderr or "") + f"\n[timeout after {timeout}s in c5_exec fallback]",
+                )
         except subprocess.TimeoutExpired as e:
             # Surface timeouts as a failed CompletedProcess so callers get a
             # uniform shape. The stderr tail will say timeout.

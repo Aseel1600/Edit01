@@ -19,7 +19,7 @@
     "timestamp": { "type": "string", "format": "date-time" },
     "pipeline_type": { "type": "string", "description": "Pipeline manifest name" },
     "style_playbook": { "type": "string" },
-    "checkpoint_policy": { "type": "string", "enum": ["guided", "manual_all", "auto_noncreative"] },
+    "checkpoint_policy": { "type": "string", "enum": ["guided", "manual_all", "auto_noncreative", "bft_quorum"] },
     "human_approval_required": { "type": "boolean" },
     "human_approved": { "type": "boolean" },
     "artifacts": {

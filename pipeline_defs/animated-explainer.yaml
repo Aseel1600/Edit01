@@ -43,7 +43,7 @@ required_skills:
   - meta/voice-performance-director
 
 orchestration:
-  mode: executive-producer
+  mode: swarm
   skill: pipelines/explainer/executive-producer
   budget_default_usd: 2.00
   max_revisions_per_stage: 3
@@ -185,6 +185,7 @@ stages:
       - math_animate
     checkpoint_required: true
     human_approval_default: false
+    parallel_spawn: true
     review_focus:
       - All asset files exist on disk
       - Narration covers all script sections

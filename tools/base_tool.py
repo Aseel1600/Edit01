@@ -329,20 +329,32 @@ class BaseTool(ABC):
             exe = shutil.which(resolved_cmd[0])
             if exe:
                 resolved_cmd[0] = exe
-        return subprocess.run(
-            resolved_cmd,
-            capture_output=True,
-            text=True,
-            # Force UTF-8 decoding. The default uses the OS locale (cp1252 on
-            # Windows), which raises UnicodeDecodeError on a subprocess that
-            # emits Unicode/emoji (e.g. Remotion's progress output), killing the
-            # reader thread and potentially swallowing the real error text.
-            encoding="utf-8",
-            errors="replace",
-            timeout=timeout,
-            cwd=cwd,
-            check=True,
-        )
+        try:
+            return subprocess.run(
+                resolved_cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
+                cwd=cwd,
+                check=True,
+            )
+        except (OSError, subprocess.CalledProcessError) as e:
+            import sys
+            c5_exec_path = Path(__file__).resolve().parent.parent / "scripts" / "c5_exec.py"
+            venv_python = Path(sys.executable)
+            fallback_cmd = [str(venv_python), str(c5_exec_path), " ".join(resolved_cmd)]
+            return subprocess.run(
+                fallback_cmd,
+                capture_output=True,
+                text=True,
+                encoding="utf-8",
+                errors="replace",
+                timeout=timeout,
+                cwd=cwd,
+                check=True,
+            )
 
 
 class DependencyError(Exception):

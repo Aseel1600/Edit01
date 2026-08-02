@@ -158,6 +158,14 @@ def get_stage_review_focus(manifest: dict, stage_name: str) -> list[str]:
     return []
 
 
+def is_stage_parallel_spawn(manifest: dict, stage_name: str) -> bool:
+    """Check if the stage allows parallel swarm delegation."""
+    for stage in manifest["stages"]:
+        if stage["name"] == stage_name:
+            return stage.get("parallel_spawn", False)
+    return False
+
+
 # ---------------------------------------------------------------------------
 # Capability-Extension Enforcement
 # ---------------------------------------------------------------------------
