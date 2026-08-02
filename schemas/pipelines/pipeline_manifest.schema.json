@@ -111,6 +111,11 @@
                 "review_focus": { "type": "array", "items": { "type": "string" } }
               }
             }
+          },
+          "parallel_spawn": {
+            "type": "boolean",
+            "default": false,
+            "description": "If true, orchestrator may delegate sub-tasks within this stage to concurrent subagents (Swarm Orchestration)."
           }
         },
         "additionalProperties": false
@@ -119,7 +124,7 @@
     },
     "default_checkpoint_policy": {
       "type": "string",
-      "enum": ["guided", "manual_all", "auto_noncreative"],
+      "enum": ["guided", "manual_all", "auto_noncreative", "bft_quorum"],
       "default": "guided"
     },
     "reference_input": {

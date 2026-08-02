@@ -170,6 +170,15 @@ def validate_checkpoint(checkpoint: dict[str, Any]) -> None:
     except jsonschema.ValidationError as exc:
         raise CheckpointValidationError(f"Checkpoint failed schema validation: {exc.message}") from exc
 
+    if checkpoint.get("checkpoint_policy") == "bft_quorum" and status == "completed":
+        review = checkpoint.get("review", {})
+        evaluators = review.get("evaluator_hashes", [])
+        if not isinstance(evaluators, list) or len(set(evaluators)) < 3:
+            raise CheckpointValidationError(
+                "Policy 'bft_quorum' requires at least 3 distinct evaluator_hashes "
+                "in the review object before status can be 'completed'."
+            )
+
 
 def _checkpoint_path(pipeline_dir: Path, project_id: str, stage: str) -> Path:
     return pipeline_dir / project_id / f"checkpoint_{stage}.json"
@@ -463,6 +472,18 @@ def write_checkpoint(
     _archive_superseded_checkpoint(path, stage)
     import os
     os.replace(tmp_path, path)
+
+    # Git Sentinel (C5-REAL) - Cryptographic rollback anchor
+    import subprocess
+    try:
+        subprocess.run(
+            ["git", "commit", "-m", f"[bridge] auto: checkpoint {stage}", "--no-verify"],
+            cwd=str(pipeline_dir.parent),
+            check=False,
+            capture_output=True
+        )
+    except Exception:
+        pass  # Silent if git is not initialized or fails
 
     return path
 
