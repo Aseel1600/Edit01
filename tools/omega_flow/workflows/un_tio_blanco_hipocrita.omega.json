@@ -1,0 +1,31 @@
+{
+  "id": "un-tio-blanco-hipocrita",
+  "name": "Un Tío Blanco Hipócrita - Pipeline Forense Atómico",
+  "version": "1.0.0",
+  "settings": {
+    "concurrency": 1,
+    "on_error": "stop"
+  },
+  "nodes": [
+    {
+      "id": "broker",
+      "type": "media.broker",
+      "name": "Extraer y empaquetar evidencias",
+      "params": {
+        "input_dir": "./inputs",
+        "min_duration_frames": 30,
+        "extract_captions": true
+      }
+    },
+    {
+      "id": "render",
+      "type": "remotion.render",
+      "name": "Renderizar vídeo forense atómico",
+      "params": {
+        "composition": "UnTioBlancoHipocrita",
+        "remotion_dir": "/Users/borjafernandezangulo/10_PROJECTS/20_VAULT/OpenMontage/remotion-composer"
+      },
+      "dependsOn": ["broker"]
+    }
+  ]
+}
