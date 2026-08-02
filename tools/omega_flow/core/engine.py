@@ -1,13 +1,14 @@
 import asyncio
 import json
 import os
+import sys
 import time
 from graphlib import TopologicalSorter
 from pathlib import Path
 from typing import Any, Dict, List, Set
 
-from .contracts import Artifact, Cost, NodeStatus, stable_hash
-from .cas import CAS
+from core.contracts import Artifact, Cost, NodeStatus, stable_hash
+from core.cas import CAS
 
 class NodeContext:
     def __init__(self, run_id: str, node_id: str, cas: CAS, workdir: Path, params: dict, outputs: dict):
@@ -76,10 +77,13 @@ class OmegaFlowEngine:
 
     def _load_node_fn(self, node_type: str):
         if node_type == "media.broker":
-            from ..nodes.media_broker import run_media_broker
+            try:
+                from nodes.media_broker import run_media_broker
+            except ImportError:
+                from tools.omega_flow.nodes.media_broker import run_media_broker
             return run_media_broker
         elif node_type == "remotion.render":
-            from ..nodes.remotion_render import run_remotion_render
+            from nodes.remotion_render import run_remotion_render
             return run_remotion_render
         else:
             raise ValueError(f"Nodo desconocido: {node_type}")
