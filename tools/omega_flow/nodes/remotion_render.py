@@ -4,15 +4,14 @@ import os
 import shutil
 import subprocess
 from pathlib import Path
-from ..core.engine import NodeContext
-from ..core.contracts import Artifact
-from ..core.atomic import atomic_write_json, atomic_copy_file
+from core.engine import NodeContext
+from core.contracts import Artifact
+from core.atomic import atomic_write_json, atomic_copy_file
 
 async def run_remotion_render(ctx: NodeContext) -> dict:
     """Nodo Remotion Render: Ejecuta compilación atómica de vídeo inyectando props dinámicos."""
     broker_output = ctx.get_output("broker") or {}
     
-    # Preparar el payload de props para Remotion
     props_payload = {
         "jobId": ctx.run_id,
         "title": broker_output.get("title", "UN TÍO BLANCO HIPÓCRITA"),
@@ -28,7 +27,6 @@ async def run_remotion_render(ctx: NodeContext) -> dict:
     remotion_dir = Path(ctx.params.get("remotion_dir", "/Users/borjafernandezangulo/10_PROJECTS/20_VAULT/OpenMontage/remotion-composer"))
     composition = ctx.params.get("composition", "UnTioBlancoHipocrita")
     
-    # Render atómico: Escribir primero a un temporal
     tmp_out = ctx.workdir / "render_tmp.mp4"
     final_out = remotion_dir / "out" / "podcast_20min_max_exergy.mp4"
 
@@ -42,7 +40,6 @@ async def run_remotion_render(ctx: NodeContext) -> dict:
 
     print(f"  ▶ [Remotion Render Node] Iniciando renderizado atómico para {composition}...")
 
-    # Si estamos en entorno sin npx real, simular generación de bytes atómica
     if not shutil.which("npx"):
         print("  ⚠️ [Simulación Render] 'npx' no hallado. Generando artefacto atómico simulación...")
         tmp_out.write_bytes(b"MP4_HEADER_SIMULATED_PRODUCER_DATA")
@@ -59,14 +56,11 @@ async def run_remotion_render(ctx: NodeContext) -> dict:
             print(f"  ⚠️ Excepción durante npx render: {e}. Aplicando salvaguarda atómica...")
             tmp_out.write_bytes(b"MP4_HEADER_SIMULATED_PRODUCER_DATA")
 
-    # Verificación de integridad pre-reemplazo atómico
     if not tmp_out.exists() or tmp_out.stat().st_size == 0:
         raise RuntimeError("El renderizado falló: El archivo de salida temporal está vacío o no existe.")
 
-    # Reemplazo atómico hacia el destino final
     atomic_copy_file(tmp_out, final_out)
 
-    # Registrar el render final en el CAS con linaje
     lineage = [ev.get("src") for ev in props_payload["evidences"] if isinstance(ev, dict)]
     render_artifact = ctx.cas.put_file(final_out, "video/mp4", meta={"composition": composition}, lineage=lineage)
 
