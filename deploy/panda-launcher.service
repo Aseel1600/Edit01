@@ -1,0 +1,18 @@
+[Unit]
+Description=Panda AI - Dify Launcher (OpenMontage engine front door)
+After=network.target
+
+[Service]
+# Adjust User + paths to your box. Assumes clone at /opt/panda/OpenMontage-prod.
+User=ec2-user
+WorkingDirectory=/opt/panda/OpenMontage-prod
+EnvironmentFile=/opt/panda/OpenMontage-prod/.env
+# --root-path /panda  → serve under dev.om.mvnoc.ai/panda (matches nginx-panda.conf).
+# If you use a SUBDOMAIN (panda.om.mvnoc.ai) instead, REMOVE --root-path.
+ExecStart=/opt/panda/OpenMontage-prod/.venv/bin/uvicorn dify_launcher.app:app \
+    --host 127.0.0.1 --port 8600 --root-path /panda
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
