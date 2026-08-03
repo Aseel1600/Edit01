@@ -32,3 +32,53 @@ Files added
 - COLAB_SETUP.md — short step-by-step instructions and rationale.
 
 If you want, commit these files and I can also add a minimal example Python script (colab/colab_run.py) to run the same steps non-interactively.
+
+GPU / Local video generation (optional)
+
+To follow the README note about "Have a GPU? Unlock free local video generation":
+
+1. Install GPU/deps (Colab):
+
+   - Use the project's Makefile equivalent from Colab (no sudo):
+     - pip install -r requirements-gpu.txt
+     - pip install diffusers transformers accelerate
+
+   - In Colab a safer, minimal sequence (recommended):
+     - Check preinstalled torch + CUDA: run `import torch; print(torch.__version__, torch.cuda.is_available())`.
+     - If CUDA-enabled torch is missing, install a matching wheel (Colab often has a working torch; installing a mismatched wheel can break CUDA).
+     - Then install the diffusers stack: `pip install -q diffusers transformers accelerate safetensors huggingface_hub`
+
+2. Enable local video generation in the environment used by the notebook: set
+
+   - `VIDEO_GEN_LOCAL_ENABLED=true`
+   - `VIDEO_GEN_LOCAL_MODEL=wan2.1-1.3b`  # or wan2.1-14b, hunyuan-1.5, ltx2-local, cogvideo-5b
+
+   Example in Colab cell:
+
+   ```python
+   import os
+   os.environ['VIDEO_GEN_LOCAL_ENABLED'] = 'true'
+   os.environ['VIDEO_GEN_LOCAL_MODEL'] = 'wan2.1-1.3b'
+   ```
+
+3. Status check (safe, no model download): run the repo's availability probe to confirm the local stack is reachable. In Colab, after installing dependencies and cloning the repo, run:
+
+   ```python
+   from tools.video.wan_video import WanVideo
+   print('WanVideo status:', WanVideo().get_status())
+   ```
+
+   - If status reports UNAVAILABLE, the notebook will show the install instructions and missing packages.
+   - If status is AVAILABLE, generating will still download model weights the first time and requires a HuggingFace token for some models. Model downloads can be large (GBs) and may exceed Colab storage or runtime limits.
+
+4. Running a small local test (cautious):
+
+   - If you have a HuggingFace token and sufficient disk/VRAM, set `HF_TOKEN` in Colab and run a one-shot generate with a short prompt using the `wan_video` tool. This step is optional and may take minutes and substantial memory.
+
+Notes and recommendations
+
+- The repository's Makefile target `make install-gpu` maps to `pip install -r requirements-gpu.txt` + `pip install diffusers transformers accelerate` — the notebook's optional GPU cells follow that.
+- On Colab prefer not to pip-reinstall torch unless you know the correct CUDA wheel; trust Colab's preinstalled torch when possible.
+- WAN / Hunyuan / LTX models are large; for a safe Colab demo prefer the image-based diffusers -> moviepy path already in the notebook. If you want, I can add optional notebook cells that perform the `make install-gpu` steps and a commented example of running `wan_video.execute()` so you can opt-in and run it manually.
+
+Would you like me to add those optional GPU cells to the Colab notebook now? (They will be commented and opt-in to avoid accidental large downloads.)
