@@ -1,0 +1,19 @@
+{
+  "_comment": "SCAFFOLD — Panda brand wiring the agent reads alongside skills/meta/higgsfield-mcp-bridge.md. Fill in the real Higgsfield element/character ids. Keys/secrets do NOT go here — env only.",
+  "brand": {
+    "name": "Panda Mobile",
+    "colors": { "black": "#000000", "yellow": "#fdc50d" },
+    "notes": "See memory: panda-mobile-brand-assets for exact logo/mascot paths, fonts."
+  },
+  "higgsfield": {
+    "_note": "Element / character ids used to keep the panda consistent across stills and clips. Confirm live via MCP show_reference_elements / show_characters.",
+    "panda_master_character_id": "TODO",
+    "panda_reference_element_ids": ["TODO"],
+    "student_ugc_element_id": "TODO — reusable id noted in memory panda-airport-arrival-ugc",
+    "default_model_identity": "seedance_2_0"
+  },
+  "montage_svc": {
+    "profiles": ["bgc", "ugc"],
+    "default_profile": "bgc"
+  }
+}
