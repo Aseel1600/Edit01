@@ -33,9 +33,19 @@ At the **clips** gate, every generated shot is reviewed together; revise specifi
 ## Runners (env `DIFY_RUNNER`)
 - **`mock`** (default) — no LLM, no Higgsfield. Fakes script + storyboard and REALLY renders a
   clean master via the folded `panda_render`. Lets you test the whole Dify handshake locally.
-- **`claude`** — the EC2 path (skeleton in `runner.py`): invokes Claude Code headless against
-  the engine repo, mirrors the agent's checkpoints into the job store. Wire this on the box
-  where `claude` + OpenRouter + the Higgsfield MCP are available.
+- **`claude`** — the EC2 path (implemented in `runner.py`). Each start/resume runs Claude Code
+  headless (`claude -p`) against the engine repo; OpenMontage's checkpoint-based resume means
+  every leg reads the latest checkpoint and continues to the next gate. The runner maps
+  checkpoints → gates and mirrors artifacts into the job store. Needs `claude` + OpenRouter env
+  + the Higgsfield MCP on the box. Config: `CLAUDE_BIN`, `CLAUDE_EXTRA_ARGS`, `CLAUDE_TIMEOUT_S`,
+  `PANDA_PIPELINE_TYPE`, `OPENMONTAGE_PROJECTS_DIR` (see `.env.example`).
+  **Verify on the box:** exact `claude` flags, the agent's stop-at-gate behavior, and the
+  artifact key/paths the panda-video skills emit (see `_mirror_artifacts`).
+
+## Tests
+- `python dify_launcher/test_dify_flow.py` — full 4-gate handshake on the mock runner (real render)
+- `python dify_launcher/test_claude_adapter.py` — the claude runner's checkpoint adapter
+  (gate mapping, artifact mirroring, sync, approval) against the real `lib/checkpoint`
 
 ## Run it
 ```bash

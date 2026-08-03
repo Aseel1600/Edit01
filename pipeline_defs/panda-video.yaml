@@ -8,7 +8,7 @@ description: >
   applied ONLY on explicit user request AFTER approval, via the standalone panda_brand tool
   — never baked into the pipeline.
 category: hybrid
-stability: experimental          # SCAFFOLD — not yet runnable end to end
+stability: beta                   # schema allows only production|beta
 default_checkpoint_policy: guided
 
 orchestration:
@@ -135,8 +135,6 @@ stages:
     review_focus:
       - Clean master is correct (assembly, captions, audio, grade) — NO branding yet
       - final.mp4 exists and passes ffprobe
-    notes:
-      - "Branding is NOT applied here. The Panda logo/watermark/cards are added ONLY on
-         explicit user request AFTER this video is approved, via the standalone `panda_brand`
-         tool (an /overlay-style pass on the approved master). See memory
-         openmontage-render-fold-and-branding."
+    # NOTE: branding is NOT applied here. The Panda logo/watermark/cards are added ONLY on
+    # explicit user request AFTER this video is approved, via the standalone panda_brand tool
+    # (an /overlay-style pass on the approved master). See memory openmontage-render-fold-and-branding.

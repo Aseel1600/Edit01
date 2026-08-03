@@ -19,9 +19,10 @@ Branding is NOT a gate — it's a separate on-demand step after approve_final.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional
 
 from dify_launcher import store
 
@@ -196,33 +197,207 @@ class MockRunner(Runner):
 
 
 # ---------------------------------------------------------------------------
-# ClaudeCodeRunner — the EC2 path (skeleton)
+# ClaudeCodeRunner — the EC2 path (real agent)
 # ---------------------------------------------------------------------------
 
+# OpenMontage stage  ->  launcher gate name (matches pipeline_defs/panda-video.yaml)
+_STAGE_GATE = {
+    "script": "approve_script",
+    "scene_plan": "approve_storyboard",
+    "assets": "approve_clips",
+    "compose": "approve_final",
+}
+_PIPELINE_TYPE = os.environ.get("PANDA_PIPELINE_TYPE", "panda-video")
+
+
 class ClaudeCodeRunner(Runner):
-    """Drives the REAL agent on the box. Not runnable here (no `claude` CLI, no LLM).
+    """Drives the REAL agent: Claude Code headless against the engine repo.
 
-    Intended behavior on EC2:
-      start():  launch `claude -p "<brief>"` headless in the engine repo with the
-                panda-video pipeline, pointed at OpenRouter (ANTHROPIC_BASE_URL) and the
-                Higgsfield MCP. Run in the BACKGROUND (long job). When the agent's
-                checkpoint hits status=awaiting_human, read the checkpoint + artifacts and
-                mirror them into this job's local store; return awaiting_human + gate.
-      resume(): write the human decision/answer/stills into the checkpoint, then relaunch
-                `claude -p --resume <checkpoint>` so the agent continues to the next gate.
+    Each start()/resume() runs the agent until it writes an `awaiting_human` checkpoint (or
+    the pipeline finishes), then mirrors the checkpoint + artifacts into the launcher job
+    store. OpenMontage's resume is checkpoint-based, so we don't depend on a CLI session —
+    every leg is a fresh `claude -p` that reads the latest checkpoint and continues.
 
-    The checkpoint files live under the engine's lib/checkpoint state; this runner is the
-    adapter between that and the launcher's job store. Fill in when deploying.
+    Config (env):
+      CLAUDE_BIN          claude CLI path (default "claude")
+      CLAUDE_EXTRA_ARGS   extra CLI args, space-split (e.g. "--dangerously-skip-permissions")
+      CLAUDE_TIMEOUT_S    per-leg timeout seconds (default 3600)
+      PANDA_PIPELINE_TYPE pipeline manifest name (default "panda-video")
+      OPENMONTAGE_PROJECTS_DIR  checkpoints/projects root (default engine/projects)
+      LLM (OpenRouter): ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN inherited from process env
+
+    >>> VERIFY ON THE BOX <<<  the exact `claude` flags, the agent's stop-at-gate behavior,
+    and the artifact key/paths the panda-video skills emit (see _mirror_artifacts). The
+    checkpoint calls below use the real lib/checkpoint API.
     """
 
+    def __init__(self) -> None:
+        if str(_ENGINE_ROOT) not in sys.path:
+            sys.path.insert(0, str(_ENGINE_ROOT))
+        from lib.paths import PROJECTS_DIR
+        self._projects_dir = PROJECTS_DIR
+        self._bin = os.environ.get("CLAUDE_BIN", "claude")
+        self._extra = os.environ.get("CLAUDE_EXTRA_ARGS", "").split()
+        self._timeout = int(os.environ.get("CLAUDE_TIMEOUT_S", "3600"))
+
+    # -- lifecycle ----------------------------------------------------------
     def start(self, state: dict[str, Any]) -> dict[str, Any]:
-        raise NotImplementedError(
-            "ClaudeCodeRunner is the EC2 path. Set DIFY_RUNNER=mock to test locally. "
-            "On the box, wire this to `claude -p` headless + checkpoint mirroring."
-        )
+        job_id = state["job_id"]
+        from lib import checkpoint as cp
+        cp.init_project(job_id, title=(state.get("brief") or "Panda video")[:80],
+                        pipeline_type=_PIPELINE_TYPE)
+        self._run_agent(self._start_prompt(job_id, state.get("brief", "")))
+        return self._sync(state)
 
     def resume(self, state: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]:
-        raise NotImplementedError
+        job_id = state["job_id"]
+        decision = (response or {}).get("decision", "approve")
+        stage = self._gate_stage(state.get("gate"))
+        if decision == "approve":
+            self._approve_stage(job_id, stage)
+            prompt = self._continue_prompt(job_id)
+        else:
+            prompt = self._revise_prompt(job_id, stage, response or {})
+        self._run_agent(prompt)
+        return self._sync(state)
+
+    # -- agent invocation ---------------------------------------------------
+    def _run_agent(self, prompt: str) -> None:
+        import subprocess
+        cmd = [self._bin, "-p", prompt, *self._extra]
+        proc = subprocess.run(
+            cmd, cwd=str(_ENGINE_ROOT), capture_output=True, text=True, timeout=self._timeout,
+        )
+        if proc.returncode != 0:
+            tail = (proc.stderr or proc.stdout or "").strip().splitlines()[-8:]
+            raise RuntimeError(f"claude exited {proc.returncode}: " + " | ".join(tail))
+
+    # -- checkpoint <-> launcher state --------------------------------------
+    def _sync(self, state: dict[str, Any]) -> dict[str, Any]:
+        job_id = state["job_id"]
+        from lib import checkpoint as cp
+        latest = cp.get_latest_checkpoint(self._projects_dir, job_id)
+        if not latest:
+            state.update(status="failed", question="agent produced no checkpoint")
+            return state
+        stage, status = latest.get("stage"), latest.get("status")
+        arts = self._mirror_artifacts(job_id, latest.get("artifacts", {}))
+        if status == "failed":
+            state.update(status="failed", stage=stage, gate=None,
+                         question=latest.get("error", "stage failed"), artifacts=arts)
+        elif status == "awaiting_human":
+            state.update(status="awaiting_human", stage=stage,
+                         gate=_STAGE_GATE.get(stage, f"approve_{stage}"),
+                         question=f"Approve {stage}, or request a revision.", artifacts=arts)
+        else:  # completed
+            nxt = cp.get_next_stage(self._projects_dir, job_id, _PIPELINE_TYPE)
+            if nxt is None:
+                state.update(status="done", stage=stage, gate=None, question=None, artifacts=arts)
+            else:
+                state.update(status="running", stage=stage, gate=None,
+                             question=f"stage {stage} completed; next: {nxt}", artifacts=arts)
+        return state
+
+    def _mirror_artifacts(self, job_id: str, artifacts: dict[str, Any]) -> dict[str, Any]:
+        """Copy file-path artifacts from the project into the launcher store and group them
+        by kind so Dify can render them. VERIFY on the box: align the grouping with the
+        exact artifact keys/paths the panda-video skills emit."""
+        store.ensure_job(job_id)
+        out: dict[str, Any] = {}
+        stills: list[str] = []
+        clips: list[str] = []
+        final: Optional[str] = None
+
+        def _copy(src: str) -> Optional[str]:
+            p = Path(src)
+            if not p.is_absolute():
+                p = self._projects_dir / job_id / src
+            if not p.is_file():
+                return None
+            dst = store.artifact_path(job_id, p.name)
+            dst.write_bytes(p.read_bytes())
+            return dst.name
+
+        def _walk(v: Any) -> list[str]:
+            names: list[str] = []
+            if isinstance(v, str):
+                n = _copy(v)
+                if n:
+                    names.append(n)
+            elif isinstance(v, dict):
+                for vv in v.values():
+                    names += _walk(vv)
+            elif isinstance(v, list):
+                for vv in v:
+                    names += _walk(vv)
+            return names
+
+        for name in _walk(artifacts):
+            low = name.lower()
+            if low.endswith((".png", ".jpg", ".jpeg")):
+                stills.append(name)
+            elif low.endswith(".mp4"):
+                if "final" in low or "render" in low:
+                    final = name
+                else:
+                    clips.append(name)
+            elif low.endswith(".md"):
+                out["script"] = name
+        if stills:
+            out["stills"] = stills
+        if clips:
+            out["clips"] = clips
+        if final:
+            out["final"] = final
+            out["branded"] = False
+        out["_checkpoint_artifacts"] = artifacts  # raw non-file data for Dify context
+        return out
+
+    # -- approvals + prompts ------------------------------------------------
+    def _gate_stage(self, gate: Optional[str]) -> Optional[str]:
+        for s, g in _STAGE_GATE.items():
+            if g == gate:
+                return s
+        return None
+
+    def _approve_stage(self, job_id: str, stage: Optional[str]) -> None:
+        if not stage:
+            return
+        from lib import checkpoint as cp
+        existing = cp.read_checkpoint(self._projects_dir, job_id, stage) or {}
+        cp.write_checkpoint(
+            self._projects_dir, job_id, stage, "completed",
+            existing.get("artifacts", {}), pipeline_type=_PIPELINE_TYPE,
+            human_approval_required=True, human_approved=True,
+        )
+
+    def _start_prompt(self, job_id: str, brief: str) -> str:
+        return (
+            f"Run the `{_PIPELINE_TYPE}` pipeline to produce a video.\n"
+            f"project_id: {job_id}\nBrief: {brief}\n\n"
+            "Follow AGENT_GUIDE.md and skills/meta/checkpoint-protocol.md. Execute stages in "
+            "order. At every stage whose manifest sets human_approval_default: true, write the "
+            "checkpoint with status='awaiting_human' and STOP (end your turn) — do NOT "
+            "self-approve. Generate video via the Higgsfield MCP bridge "
+            "(skills/meta/higgsfield-mcp-bridge.md) and compose with the `panda_render` tool. "
+            "Stop at the first gate."
+        )
+
+    def _continue_prompt(self, job_id: str) -> str:
+        return (
+            f"Continue the `{_PIPELINE_TYPE}` pipeline for project_id: {job_id}. Read the latest "
+            "checkpoint, proceed from the next stage, and STOP at the next human_approval gate "
+            "(status='awaiting_human', end your turn). If the pipeline is complete, finish."
+        )
+
+    def _revise_prompt(self, job_id: str, stage: Optional[str], response: dict[str, Any]) -> str:
+        note = response.get("answer", "(no note)")
+        shots = response.get("shots") or []
+        shot_txt = f" Regenerate only shots {shots}." if shots else ""
+        return (
+            f"Revise stage '{stage}' for project_id: {job_id} per this feedback: {note}.{shot_txt} "
+            "Rewrite that stage's checkpoint with status='awaiting_human' and STOP for approval."
+        )
 
 
 def get_runner(name: str) -> Runner:
