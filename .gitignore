@@ -98,3 +98,6 @@ venv/
 # Backlot local cache (thumbnails)
 .backlot/
 vendor/data/
+
+# Dify launcher job storage (local artifacts)
+data/jobs/
