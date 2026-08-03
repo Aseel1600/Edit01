@@ -17,23 +17,25 @@ bash deploy/install.sh
 # 3) configure env
 nano .env          # set DIFY_TOKEN (long random), DIFY_RUNNER=mock, DIFY_DATA_DIR=/opt/panda/data
 
-# 4) run as a service
+# 4) free port 8501 — retire the old montage-svc (replaced by this engine)
+sudo systemctl disable --now montage-svc   # skip if it isn't a systemd service
+
+# 5) run the launcher as a service (listens on 8501)
 sudo cp deploy/panda-launcher.service /etc/systemd/system/
 sudo systemctl daemon-reload && sudo systemctl enable --now panda-launcher
 systemctl status panda-launcher --no-pager
 
-# 5) reverse proxy — add deploy/nginx-panda.conf to your nginx (subpath or subdomain),
-#    then: sudo nginx -t && sudo systemctl reload nginx
+# 6) reverse proxy — NO CHANGE NEEDED. dev.om.mvnoc.ai already forwards to 8501;
+#    the launcher now answers there instead of montage-svc.
 
-# 6) verify it's live
-curl -s -H "X-Dify-Token: <token>" https://dev.om.mvnoc.ai/panda/health
+# 7) verify it's live
+curl -s -H "X-Dify-Token: <token>" https://dev.om.mvnoc.ai/health
 #   -> {"status":"ok","runner":"mock"}
 ```
 
 ## Then connect Dify
 Point Dify at the base URL and follow `dify_launcher/DIFY_INTEGRATION.md`:
-- subpath  → `BASE_URL = https://dev.om.mvnoc.ai/panda`
-- subdomain→ `BASE_URL = https://panda.om.mvnoc.ai`
+- `BASE_URL = https://dev.om.mvnoc.ai`   (root — proxy already forwards to 8501)
 
 ## Two things to know
 1. **Runner:** `DIFY_RUNNER=mock` proves the whole Dify handshake (fakes script/gen, but

@@ -89,7 +89,7 @@ step to collect **approve / request revision** (and any note). Map that to the `
 
 ## Quick curl smoke test (before wiring Dify)
 ```bash
-BASE=https://your-launcher-url ; TOK=your-token
+BASE=https://dev.om.mvnoc.ai ; TOK=your-token
 # start
 curl -s -X POST $BASE/jobs -H "X-Dify-Token: $TOK" -H 'Content-Type: application/json' \
      -d '{"brief":"35s eSIM tip, panda mascot"}'
@@ -99,12 +99,13 @@ curl -s -X POST $BASE/jobs/<job_id>/respond -H "X-Dify-Token: $TOK" \
 ```
 
 ## Deploying the launcher (to get {BASE_URL})
+On EC2 the launcher **replaces montage-svc on port 8501**, so `dev.om.mvnoc.ai` reaches it
+with **no reverse-proxy change**. See `deploy/README.md` for the full steps; in short:
 ```bash
-pip install -r dify_launcher/requirements.txt
-export DIFY_RUNNER=mock            # or 'claude' on the box with the real agent
+export DIFY_RUNNER=mock            # or 'claude' once the real agent is wired
 export DIFY_TOKEN='<a long random secret>'
 export DIFY_DATA_DIR=/opt/panda/data
-uvicorn dify_launcher.app:app --host 0.0.0.0 --port 8600
+sudo systemctl disable --now montage-svc     # free port 8501
+uvicorn dify_launcher.app:app --host 127.0.0.1 --port 8501   # (systemd unit does this)
 ```
-Put HTTPS in front (nginx/Cloudflare) and that public URL is your `{BASE_URL}`.
-On EC2, run it under systemd (same pattern as montage-svc in the setup guide).
+→ **`BASE_URL = https://dev.om.mvnoc.ai`** (proxy already forwards root → 8501).
