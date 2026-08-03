@@ -1,11 +1,12 @@
 name: panda-video
 version: "0.1"
 description: >
-  Panda Mobile branded video pipeline. Agent-driven production with three human-approval
-  gates (script, storyboard stills, final video). Generation runs through the Higgsfield MCP
-  bridge + ElevenLabs; the compose stage delegates the branded render to montage-svc
-  (logo, CJK captions, cards) instead of upstream ffmpeg — so brand craft is never
-  re-implemented here.
+  Panda Mobile video pipeline. Agent-driven production with three human-approval gates
+  (script, storyboard stills, final video). Generation runs through the Higgsfield MCP
+  bridge + ElevenLabs; the compose stage produces a CLEAN (unbranded) master via the folded
+  montage-svc render code (tool: panda_render). Panda branding (logo/watermark/cards) is
+  applied ONLY on explicit user request AFTER approval, via the standalone panda_brand tool
+  — never baked into the pipeline.
 category: hybrid
 stability: experimental          # SCAFFOLD — not yet runnable end to end
 default_checkpoint_policy: guided
@@ -113,7 +114,7 @@ stages:
     checkpoint_required: true
     human_approval_default: false
 
-  # ---- compose : delegates the branded render to montage-svc : NO gate ----
+  # ---- compose : CLEAN render (no branding) via folded montage-svc code ----
   - name: compose
     skill: pipelines/hybrid/compose-director
     required_artifacts_in:
@@ -123,11 +124,16 @@ stages:
       - render_report
       - final_review
     required_tools:
-      - montage_svc_compose      # THE HINGE — replaces upstream video_compose
+      - panda_render        # folded montage-svc render (in-process). CLEAN/ugc profile.
     tools_available:
-      - montage_svc_compose
+      - panda_render
     checkpoint_required: true
-    human_approval_default: true       # 🚦 GATE 3 (approve final video)
+    human_approval_default: true       # 🚦 GATE 3 (approve the finished video)
     review_focus:
-      - Branded render is correct (logo, CJK captions, cards, grade)
+      - Clean master is correct (assembly, captions, audio, grade) — NO branding yet
       - final.mp4 exists and passes ffprobe
+    notes:
+      - "Branding is NOT applied here. The Panda logo/watermark/cards are added ONLY on
+         explicit user request AFTER this video is approved, via the standalone `panda_brand`
+         tool (an /overlay-style pass on the approved master). See memory
+         openmontage-render-fold-and-branding."
