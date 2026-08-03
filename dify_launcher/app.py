@@ -69,6 +69,7 @@ class Respond(BaseModel):
     decision: str = "approve"          # "approve" | "revise"
     answer: Optional[str] = None
     stills: list[str] = []             # optional user-supplied storyboard stills (paths)
+    shots: list[int] = []              # optional: at the clips gate, which shot indices to revise
 
 
 @app.get("/health")

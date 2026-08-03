@@ -63,8 +63,19 @@ _step("respond revise (storyboard)", c.post(f"/jobs/{job}/respond",
       json={"decision": "revise", "answer": "make scene 2 brighter"}),
       want_gate="approve_storyboard", want_status="awaiting_human")
 
-# 3) user approves storyboard -> production runs -> GATE 3 (approve_final)
+# 3) user approves storyboard -> clips generated -> GATE 3 (approve_clips)
 b = _step("respond approve (storyboard)", c.post(f"/jobs/{job}/respond", json={"decision": "approve"}),
+          want_gate="approve_clips", want_status="awaiting_human")
+clips = b["artifacts"].get("clips")
+assert clips and len(clips) == 3, f"expected 3 clips, got {clips}"
+
+# revise a specific shot (only that clip regenerates) -> stays at clips gate
+_step("respond revise shot 1 (clips)", c.post(f"/jobs/{job}/respond",
+      json={"decision": "revise", "shots": [1], "answer": "more motion on shot 2"}),
+      want_gate="approve_clips", want_status="awaiting_human")
+
+# 3b) approve clips -> production assembles -> GATE 4 (approve_final)
+b = _step("respond approve (clips)", c.post(f"/jobs/{job}/respond", json={"decision": "approve"}),
           want_gate="approve_final", want_status="awaiting_human")
 assert b["artifacts"].get("final") == f"/jobs/{job}/artifacts/final.mp4"
 assert b["artifacts"].get("branded") is False, "final should be UNBRANDED"

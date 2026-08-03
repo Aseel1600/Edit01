@@ -12,13 +12,13 @@ Two runners:
                         Skeleton only; swap it in where the box has `claude` + OpenRouter + MCP.
 
 Gate sequence (matches pipeline_defs/panda-video.yaml):
-    start ─▶ GATE 1 approve_script ─▶ GATE 2 approve_storyboard ─▶ GATE 3 approve_final ─▶ done
+    start ─▶ GATE 1 approve_script ─▶ GATE 2 approve_storyboard ─▶ GATE 3 approve_clips
+          ─▶ GATE 4 approve_final ─▶ done
 Branding is NOT a gate — it's a separate on-demand step after approve_final.
 """
 
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any
@@ -28,7 +28,7 @@ from dify_launcher import store
 _ENGINE_ROOT = Path(__file__).resolve().parents[1]
 
 # gate -> the stage the agent pauses AFTER producing that stage's artifact
-GATES = ["approve_script", "approve_storyboard", "approve_final"]
+GATES = ["approve_script", "approve_storyboard", "approve_clips", "approve_final"]
 
 
 class Runner:
@@ -48,39 +48,53 @@ class Runner:
 
 class MockRunner(Runner):
     def start(self, state: dict[str, Any]) -> dict[str, Any]:
-        job_id = state["job_id"]
-        brief = state.get("brief", "")
-        # GATE 1: produce a (fake) script from the brief
-        script = (
-            f"# Script (mock)\n\n**Brief:** {brief}\n\n"
-            "1. Open on the Panda mascot.\n2. Explain the tip.\n3. CTA.\n"
-        )
-        store.artifact_path(job_id, "script.md").write_text(script, encoding="utf-8")
-        state.update(
-            stage="script", status="awaiting_human", gate="approve_script",
-            question="Approve the script, or request a revision.",
-            artifacts={"script": "script.md"},
-        )
-        return state
+        return self._do_script(state, {})
 
     def resume(self, state: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]:
-        job_id = state["job_id"]
         decision = (response or {}).get("decision", "approve")
         gate = state.get("gate")
 
-        # A revision re-runs the current stage and stops at the same gate.
+        # revise: regenerate the CURRENT gate's artifact, stay at the same gate
         if decision == "revise":
-            state["question"] = f"Revised {state['stage']} per: {response.get('answer','(no note)')}"
-            return state
+            regen = {
+                "approve_script": self._do_script,
+                "approve_storyboard": self._do_storyboard,
+                "approve_clips": self._do_clips,
+                "approve_final": self._do_production,
+            }.get(gate)
+            if not regen:
+                raise ValueError(f"cannot revise from gate {gate!r}")
+            return regen(state, response)
 
+        # approve: advance to the next stage/gate
         if gate == "approve_script":
             return self._do_storyboard(state, response)
         if gate == "approve_storyboard":
+            return self._do_clips(state, response)
+        if gate == "approve_clips":
             return self._do_production(state, response)
         if gate == "approve_final":
             state.update(status="done", gate=None, question=None)
             return state
         raise ValueError(f"cannot resume from gate {gate!r}")
+
+    # --- GATE 1: script ----------------------------------------------------
+    def _do_script(self, state: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]:
+        job_id = state["job_id"]
+        brief = state.get("brief", "")
+        note = (response or {}).get("answer")
+        script = (
+            f"# Script (mock)\n\n**Brief:** {brief}\n\n"
+            + (f"_Revision note: {note}_\n\n" if note else "")
+            + "1. Open on the Panda mascot.\n2. Explain the tip.\n3. CTA.\n"
+        )
+        store.artifact_path(job_id, "script.md").write_text(script, encoding="utf-8")
+        state.update(
+            stage="script", status="awaiting_human", gate="approve_script",
+            question="Approve the script, or request a revision.",
+            artifacts={**state.get("artifacts", {}), "script": "script.md"},
+        )
+        return state
 
     # --- GATE 2: storyboard stills -----------------------------------------
     def _do_storyboard(self, state: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]:
@@ -105,12 +119,42 @@ class MockRunner(Runner):
         )
         return state
 
-    # --- assets/edit/compose (no gates) -> GATE 3 clean master -------------
-    def _do_production(self, state: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]:
+    # --- GATE 3: generate one motion clip per approved still ---------------
+    def _do_clips(self, state: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]:
+        """Animate each APPROVED still into a clip. Real gen is the Higgsfield MCP
+        (image_to_video) on the box; the mock renders each still to a short clip so the
+        per-shot clip gate is exercised locally. Reviewer approves the set or asks to
+        revise specific shots (response.shots) — only those regenerate."""
         job_id = state["job_id"]
         stills = state.get("artifacts", {}).get("stills", [])
-        scene_paths = [str(store.artifact_path(job_id, s)) for s in stills] or \
-            [self._placeholder_stills(job_id, 2)[0]]
+        only = set((response or {}).get("shots", []))  # optional: regenerate specific shots
+        clips = list(state.get("artifacts", {}).get("clips", []))
+        if len(clips) != len(stills):
+            clips = [None] * len(stills)
+        for i, still in enumerate(stills):
+            if only and i not in only and clips[i]:
+                continue  # keep already-approved shot
+            clip_name = f"clip_{i:02d}.mp4"
+            self._render_clean(
+                [str(store.artifact_path(job_id, still))],
+                str(store.artifact_path(job_id, clip_name)),
+            )
+            clips[i] = clip_name
+        state.update(
+            stage="assets", status="awaiting_human", gate="approve_clips",
+            question="Approve the generated clips, or request revision of specific shots "
+                     "(send {\"decision\":\"revise\",\"shots\":[i,...]}).",
+            artifacts={**state.get("artifacts", {}), "clips": clips},
+        )
+        return state
+
+    # --- edit/compose (no gates) -> GATE 4 clean master --------------------
+    def _do_production(self, state: dict[str, Any], response: dict[str, Any]) -> dict[str, Any]:
+        job_id = state["job_id"]
+        clips = state.get("artifacts", {}).get("clips", [])
+        scene_paths = [str(store.artifact_path(job_id, c)) for c in clips]
+        if not scene_paths:
+            scene_paths = [self._placeholder_stills(job_id, 2)[0]]
 
         out = store.artifact_path(job_id, "final.mp4")
         self._render_clean(scene_paths, str(out))

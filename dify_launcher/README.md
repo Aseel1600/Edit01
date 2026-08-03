@@ -21,11 +21,14 @@ Dify ──HTTP──▶ Dify Launcher ──▶ runner ──▶ agent/pipeline
 | GET  | `/jobs/{id}/artifacts/{name}` | download a script / still / final.mp4 |
 
 **Gate sequence** (matches `pipeline_defs/panda-video.yaml`):
-`start → approve_script → approve_storyboard → approve_final → done`.
+`start → approve_script → approve_storyboard → approve_clips → approve_final → done`.
 Branding is **not** a gate — it's an on-demand step after `approve_final`.
 
 At the storyboard gate, Dify may pass user-supplied stills:
 `POST /jobs/{id}/respond {"decision":"approve","stills":["/path/a.png","/path/b.png"]}`.
+
+At the **clips** gate, every generated shot is reviewed together; revise specific shots:
+`POST /jobs/{id}/respond {"decision":"revise","shots":[1,4]}` regenerates only those.
 
 ## Runners (env `DIFY_RUNNER`)
 - **`mock`** (default) — no LLM, no Higgsfield. Fakes script + storyboard and REALLY renders a

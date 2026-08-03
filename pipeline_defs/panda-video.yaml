@@ -87,7 +87,7 @@ stages:
       - One approved still exists per scene
       - Stills are on-brand (see styles/panda.yaml) and character-consistent
 
-  # ---- produce clips + voice from APPROVED stills : NO gate ----
+  # ---- produce clips + voice from APPROVED stills ----
   - name: assets
     skill: pipelines/hybrid/asset-director
     required_artifacts_in:
@@ -100,7 +100,10 @@ stages:
       - elevenlabs_tts
       - image_selector
     checkpoint_required: true
-    human_approval_default: false
+    human_approval_default: true       # 🚦 GATE 3 (approve the generated clips)
+    review_focus:
+      - Every generated motion clip is acceptable (motion coherence, on-brand, on-model)
+      - Reviewer can approve the set or request revision of specific shots (regenerate only those)
 
   # ---- edit decisions : NO gate ----
   - name: edit
@@ -128,7 +131,7 @@ stages:
     tools_available:
       - panda_render
     checkpoint_required: true
-    human_approval_default: true       # 🚦 GATE 3 (approve the finished video)
+    human_approval_default: true       # 🚦 GATE 4 (approve the finished video)
     review_focus:
       - Clean master is correct (assembly, captions, audio, grade) — NO branding yet
       - final.mp4 exists and passes ffprobe
