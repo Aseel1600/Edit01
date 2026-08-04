@@ -1,7 +1,8 @@
 """Agnes AI video generation via Sapiens AI API.
 
-Best for cost-free video generation with text-to-video, image-to-video,
-multi-image video, and keyframe animation workflows.
+Best for keyframe animation, multi-image video compositing, and
+budget-constrained video generation. Pricing is currently free during the
+launch promo — verify current terms at https://www.agnes-ai.com.
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ class AgnesVideo(BaseTool):
     determinism = Determinism.STOCHASTIC
     runtime = ToolRuntime.API
 
-    dependencies = []
+    dependencies = ["env:AGNES_API_KEY"]
     install_instructions = (
         "Set AGNES_API_KEY to your Agnes AI API key.\n"
         "  Get one at https://www.agnes-ai.com"
@@ -54,7 +55,7 @@ class AgnesVideo(BaseTool):
         "cinematic_quality": True,
     }
     best_for = [
-        "cost-free video generation (currently $0/second)",
+        "currently free during the Agnes AI launch promo — verify current pricing at https://www.agnes-ai.com",
         "keyframe animation and smooth transitions between visual states",
         "multi-image video compositing",
         "budget-constrained cinematic b-roll",
@@ -84,11 +85,15 @@ class AgnesVideo(BaseTool):
             },
             "num_frames": {
                 "type": "integer",
+                "minimum": 1,
+                "maximum": 441,
                 "default": 121,
-                "description": "Total frames. Must follow 8n+1 rule, max 441. 121=5s@24fps, 241=10s@24fps.",
+                "description": "Total frames. Must follow 8n+1 rule (1, 9, 17, ...), max 441. 121=5s@24fps, 241=10s@24fps.",
             },
             "frame_rate": {
                 "type": "integer",
+                "minimum": 1,
+                "maximum": 60,
                 "default": 24,
                 "description": "Playback frame rate (1-60).",
             },
@@ -125,7 +130,21 @@ class AgnesVideo(BaseTool):
         cpu_cores=1, ram_mb=512, vram_mb=0, disk_mb=500, network_required=True
     )
     retry_policy = RetryPolicy(max_retries=2, retryable_errors=["rate_limit", "timeout"])
-    idempotency_key_fields = ["prompt", "num_frames", "frame_rate", "seed"]
+    idempotency_key_fields = [
+        "prompt",
+        "operation",
+        "num_frames",
+        "frame_rate",
+        "seed",
+        "width",
+        "height",
+        "aspect_ratio",
+        "negative_prompt",
+        "image_url",
+        "image_path",
+        "image_urls",
+        "image_paths",
+    ]
     side_effects = ["writes video file to output_path", "calls Agnes AI API"]
     user_visible_verification = [
         "Watch generated clip for motion coherence and visual quality"
@@ -232,6 +251,30 @@ class AgnesVideo(BaseTool):
         data = Path(image_path).read_bytes()
         return f"data:{mime};base64,{base64.b64encode(data).decode()}"
 
+    def _validate_combo(self, inputs: dict[str, Any]) -> str | None:
+        """Return an error string for invalid num_frames/frame_rate combos, else None.
+
+        num_frames must follow the 8n+1 rule (1, 9, 17, ...) and be at most 441.
+        frame_rate must be between 1 and 60. Malformed values are rejected before
+        any paid/remote request is submitted.
+        """
+        num_frames = inputs.get("num_frames", 121)
+        frame_rate = inputs.get("frame_rate", 24)
+
+        if not isinstance(num_frames, int) or num_frames < 1 or num_frames > 441:
+            return (
+                f"num_frames must be an integer between 1 and 441 (got {num_frames!r})"
+            )
+        if (num_frames - 1) % 8 != 0:
+            return (
+                f"num_frames must follow the 8n+1 rule (1, 9, 17, ...) — got {num_frames}"
+            )
+        if not isinstance(frame_rate, int) or frame_rate < 1 or frame_rate > 60:
+            return (
+                f"frame_rate must be an integer between 1 and 60 (got {frame_rate!r})"
+            )
+        return None
+
     def execute(self, inputs: dict[str, Any]) -> ToolResult:
         api_key = self._get_api_key()
         if not api_key:
@@ -239,6 +282,10 @@ class AgnesVideo(BaseTool):
                 success=False,
                 error="AGNES_API_KEY not set. " + self.install_instructions,
             )
+
+        validation_error = self._validate_combo(inputs)
+        if validation_error:
+            return ToolResult(success=False, error=f"Agnes AI video: {validation_error}")
 
         import requests
         from requests.adapters import HTTPAdapter
@@ -278,11 +325,7 @@ class AgnesVideo(BaseTool):
                 try:
                     payload["image"] = self._upload_image_via_agnes(inputs["image_path"])
                 except Exception:
-                    try:
-                        from tools.video._shared import upload_image_fal
-                        payload["image"] = upload_image_fal(inputs["image_path"])
-                    except Exception:
-                        payload["image"] = self._local_to_data_uri(inputs["image_path"])
+                    payload["image"] = self._local_to_data_uri(inputs["image_path"])
 
         extra_body: dict[str, Any] = {}
         if operation in ("multi_image_to_video", "keyframe_animation"):
@@ -292,11 +335,7 @@ class AgnesVideo(BaseTool):
                 try:
                     image_urls.append(self._upload_image_via_agnes(ip))
                 except Exception:
-                    try:
-                        from tools.video._shared import upload_image_fal
-                        image_urls.append(upload_image_fal(ip))
-                    except Exception:
-                        image_urls.append(self._local_to_data_uri(ip))
+                    image_urls.append(self._local_to_data_uri(ip))
             if image_urls:
                 extra_body["image"] = image_urls
             if operation == "keyframe_animation":

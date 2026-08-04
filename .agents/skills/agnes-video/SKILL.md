@@ -1,7 +1,7 @@
 ---
 name: agnes-video
 description: |
-  Agnes AI video generation with Sapiens AI models. Use when: (1) Generating video via agnes-video-v2.0, (2) Cost-free video generation, (3) Keyframe animation, (4) Multi-image video compositing, (5) Budget-constrained cinematic content.
+  Agnes AI video generation with Sapiens AI models. Use when: (1) Generating video via agnes-video-v2.0, (2) Currently-free (launch promo) video generation, (3) Keyframe animation, (4) Multi-image video compositing, (5) Budget-constrained cinematic content.
 allowed-tools: Bash, Read, Write
 metadata:
   author: Sapiens AI
@@ -13,7 +13,7 @@ metadata:
 
 ## When to Use
 
-- Cost-free video generation (currently $0/second, standard price $0.005/second)
+- Currently-free video generation during the launch promo (verify current pricing at https://www.agnes-ai.com)
 - Keyframe animation — smooth transitions between visual states
 - Multi-image video compositing — combine reference images into video
 - Budget-constrained cinematic b-roll and short clips
@@ -128,7 +128,7 @@ The Agnes API normalizes width/height to the nearest standard resolution (480p, 
 | Result field | `remixed_from_video_id` | `video.url` |
 | Duration control | `num_frames` + `frame_rate` | `duration` string |
 | Reference images | In `extra_body.image` top-level or array | `image_url` or `reference_image_urls` |
-| Pricing | Currently free | Paid per second |
+| Pricing | Free during launch promo | Paid per second |
 
 ## Calling via OpenMontage
 

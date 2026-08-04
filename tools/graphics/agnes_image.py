@@ -1,6 +1,8 @@
 """Agnes AI image generation via Sapiens AI API.
 
-Best for high-density visuals, multi-image composition, and cost-free generation.
+Best for high-information-density visuals, multi-image composition, and
+budget-constrained generation. Pricing is currently free during the launch
+promo — verify current terms at https://www.agnes-ai.com.
 """
 
 from __future__ import annotations
@@ -36,7 +38,7 @@ class AgnesImage(BaseTool):
     determinism = Determinism.STOCHASTIC
     runtime = ToolRuntime.API
 
-    dependencies = []
+    dependencies = ["env:AGNES_API_KEY"]
     install_instructions = (
         "Set AGNES_API_KEY to your Agnes AI API key.\n"
         "  Get one at https://www.agnes-ai.com"
@@ -58,7 +60,7 @@ class AgnesImage(BaseTool):
         "seed": False,
     }
     best_for = [
-        "cost-free image generation (currently $0/image)",
+        "currently free during the Agnes AI launch promo — verify current pricing at https://www.agnes-ai.com",
         "high-information-density visuals and complex compositions",
         "multi-image composition and character compositing",
         "image editing and style transfer",
@@ -114,7 +116,15 @@ class AgnesImage(BaseTool):
         cpu_cores=1, ram_mb=512, vram_mb=0, disk_mb=100, network_required=True
     )
     retry_policy = RetryPolicy(max_retries=2, retryable_errors=["rate_limit", "timeout"])
-    idempotency_key_fields = ["prompt", "size", "model"]
+    idempotency_key_fields = [
+        "prompt",
+        "size",
+        "model",
+        "image_url",
+        "image_path",
+        "image_urls",
+        "image_paths",
+    ]
     side_effects = ["writes image file to output_path", "calls Agnes AI API"]
     user_visible_verification = ["Inspect generated image for relevance and quality"]
 

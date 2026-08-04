@@ -1,7 +1,7 @@
 ---
 name: agnes-image
 description: |
-  Agnes AI image generation with Sapiens AI models. Use when: (1) Generating images via agnes-image-2.0-flash or agnes-image-2.1-flash, (2) Cost-free image generation, (3) High-information-density visuals, (4) Multi-image composition, (5) Image editing and style transfer.
+  Agnes AI image generation with Sapiens AI models. Use when: (1) Generating images via agnes-image-2.0-flash or agnes-image-2.1-flash, (2) Currently-free (launch promo) image generation, (3) High-information-density visuals, (4) Multi-image composition, (5) Image editing and style transfer.
 metadata:
   author: Sapiens AI
   version: "1.0.0"
@@ -12,7 +12,7 @@ metadata:
 
 ## When to Use
 
-- Cost-free image generation (currently $0/image, standard price $0.003/image)
+- Currently-free image generation during the launch promo (verify current pricing at https://www.agnes-ai.com)
 - High-information-density visuals with complex compositions (use 2.1-flash)
 - Multi-image composition (combine characters or elements into one scene)
 - Image editing, style transfer, background replacement
@@ -81,7 +81,7 @@ in a cinematic sci-fi battle scene
 | `response_format` placement | Inside `extra_body` | Top-level |
 | Image input for I2I | `extra_body.image` (array) | Varies by provider |
 | Tags for I2I | Not required | Not applicable |
-| Pricing | Currently free | Paid |
+| Pricing | Free during launch promo | Paid |
 
 ## Calling via OpenMontage
 
