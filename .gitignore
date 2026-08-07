@@ -97,3 +97,6 @@ venv/
 
 # Backlot local cache (thumbnails)
 .backlot/
+
+# Playwright MCP browser scratch output
+.playwright-mcp/
