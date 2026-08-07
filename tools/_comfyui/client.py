@@ -21,6 +21,16 @@ class ComfyUIError(Exception):
     """Raised when ComfyUI returns an error or times out."""
 
 
+# ComfyUI serves HTTP from the same process that loads models. A large workflow
+# (e.g. the Wan 2.2 i2v pair, ~29GB across two checkpoints) blocks the event loop
+# for tens of seconds while weights stream off disk, so short socket timeouts
+# report a healthy-but-busy server as dead. These are deliberately generous:
+# they bound a hung server, not a working one.
+HEALTH_TIMEOUT_SECONDS = 30
+INFO_TIMEOUT_SECONDS = 30
+POLL_REQUEST_TIMEOUT_SECONDS = 60
+
+
 class ComfyUIClient:
     """Client for the ComfyUI REST API.
 
@@ -50,7 +60,7 @@ class ComfyUIClient:
         """Return True if the ComfyUI server is reachable."""
         try:
             resp = requests.get(
-                f"{self.server_url}/system_stats", timeout=5
+                f"{self.server_url}/system_stats", timeout=HEALTH_TIMEOUT_SECONDS
             )
             return resp.status_code == 200
         except Exception:
@@ -98,7 +108,7 @@ class ComfyUIClient:
         for node_class, (field, group) in node_to_key.items():
             try:
                 resp = requests.get(
-                    f"{self.server_url}/object_info/{node_class}", timeout=10
+                    f"{self.server_url}/object_info/{node_class}", timeout=INFO_TIMEOUT_SECONDS
                 )
                 resp.raise_for_status()
                 data = resp.json()
@@ -163,12 +173,22 @@ class ComfyUIClient:
     ) -> dict:
         """Block until *prompt_id* finishes.  Returns the history entry."""
         deadline = time.time() + timeout
+        last_transport_error: Exception | None = None
         while time.time() < deadline:
-            resp = requests.get(
-                f"{self.server_url}/history/{prompt_id}", timeout=10
-            )
-            resp.raise_for_status()
-            history = resp.json()
+            try:
+                resp = requests.get(
+                    f"{self.server_url}/history/{prompt_id}",
+                    timeout=POLL_REQUEST_TIMEOUT_SECONDS,
+                )
+                resp.raise_for_status()
+                history = resp.json()
+            except requests.RequestException as exc:
+                # The server is mid-generation and not answering. That is what
+                # `deadline` is for — keep polling instead of killing a job that
+                # is still running. Only give up when the deadline expires.
+                last_transport_error = exc
+                time.sleep(interval)
+                continue
             if prompt_id in history:
                 entry = history[prompt_id]
                 status = entry.get("status", {})
@@ -177,6 +197,11 @@ class ComfyUIClient:
                     raise ComfyUIError(f"Execution error: {msgs}")
                 return entry
             time.sleep(interval)
+        if last_transport_error is not None:
+            raise ComfyUIError(
+                f"Prompt {prompt_id} did not complete within {timeout}s; "
+                f"last transport error: {last_transport_error}"
+            )
         raise ComfyUIError(
             f"Prompt {prompt_id} did not complete within {timeout}s"
         )
