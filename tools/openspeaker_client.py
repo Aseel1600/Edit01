@@ -12,9 +12,11 @@ from __future__ import annotations
 
 import os
 import random
+import tempfile
 import time
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 import requests
 
@@ -196,16 +198,87 @@ def poll_task(
     raise OpenSpeakerError(f"Task {task_id} did not finish within {timeout_seconds}s")
 
 
-def download(url: str, output_path: Path, *, timeout: int = 300) -> Path:
-    """Stream a result URL to disk. Result URLs are pre-signed — no auth header."""
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+# A generated asset that legitimately exceeds this is a bug, not a big render.
+MAX_DOWNLOAD_BYTES = 512 * 1024 * 1024
+
+
+def allowed_roots() -> list[Path]:
+    """Directories these tools may read from and write to.
+
+    The project tree plus the system temp dir. These tools run inside an agent
+    loop that ingests untrusted material (reference videos, web pages), so a
+    path arriving in a tool call is not necessarily one a human chose.
+    """
+    roots = [Path.cwd().resolve(), Path(tempfile.gettempdir()).resolve()]
+    extra = os.environ.get("OPENMONTAGE_EXTRA_MEDIA_ROOTS", "")
+    roots += [Path(p).expanduser().resolve() for p in extra.split(os.pathsep) if p.strip()]
+    return roots
+
+
+def _is_contained(path: Path, roots: list[Path]) -> bool:
+    for root in roots:
+        try:
+            path.relative_to(root)
+            return True
+        except ValueError:
+            continue
+    return False
+
+
+def safe_media_path(candidate: str | Path, *, must_exist: bool = False) -> Path:
+    """Resolve a caller-supplied media path, refusing to escape the workspace.
+
+    Resolution happens BEFORE the containment test so that `../` sequences and
+    symlinks pointing outside the tree are both caught. Set
+    OPENMONTAGE_EXTRA_MEDIA_ROOTS (os.pathsep-separated) to widen the allowlist
+    deliberately rather than by accident.
+    """
+    path = Path(candidate).expanduser()
+    resolved = (Path.cwd() / path).resolve() if not path.is_absolute() else path.resolve()
+
+    if not _is_contained(resolved, allowed_roots()):
+        raise OpenSpeakerError(
+            f"refusing to use path outside the allowed roots: {resolved}. "
+            "Media must live under the project tree or the system temp dir. "
+            "Set OPENMONTAGE_EXTRA_MEDIA_ROOTS to widen this deliberately."
+        )
+    if must_exist and not resolved.is_file():
+        raise OpenSpeakerError(f"file not found: {resolved}")
+    return resolved
+
+
+def download(
+    url: str, output_path: Path, *, timeout: int = 300, max_bytes: int = MAX_DOWNLOAD_BYTES
+) -> Path:
+    """Stream a result URL to disk. Result URLs are pre-signed — no auth header.
+
+    The URL comes back from the API rather than from the caller, so it is
+    treated as untrusted: https only, and the write is capped so a malformed or
+    hostile response cannot fill the disk.
+    """
+    parsed = urlparse(url)
+    if parsed.scheme != "https":
+        raise OpenSpeakerError(f"refusing to download from non-https url: {parsed.scheme}://…")
+
+    target = safe_media_path(output_path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+
+    written = 0
     with requests.get(url, stream=True, timeout=timeout) as response:
         response.raise_for_status()
-        with open(output_path, "wb") as handle:
+        with open(target, "wb") as handle:
             for chunk in response.iter_content(chunk_size=1 << 16):
-                if chunk:
-                    handle.write(chunk)
-    return output_path
+                if not chunk:
+                    continue
+                written += len(chunk)
+                if written > max_bytes:
+                    handle.close()
+                    target.unlink(missing_ok=True)
+                    raise OpenSpeakerError(
+                        f"download exceeded {max_bytes} bytes and was aborted: {target.name}"
+                    )
+                handle.write(chunk)
+    return target
 
 
 def credits_remaining() -> Optional[int]:

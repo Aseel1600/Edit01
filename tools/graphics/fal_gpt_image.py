@@ -15,9 +15,11 @@ import os
 import time
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import urlparse
 
 import requests
 
+from tools.openspeaker_client import safe_media_path
 from tools.base_tool import (
     BaseTool,
     Determinism,
@@ -48,6 +50,9 @@ SIZE_PRESETS: dict[str, dict[str, int]] = {
 MIN_PIXELS = 655_360
 MAX_PIXELS = 8_294_400
 MAX_EDGE = 3840
+
+# A single generated still that exceeds this is a bug, not a big image.
+MAX_IMAGE_BYTES = 128 * 1024 * 1024
 
 
 class FalGPTImage(BaseTool):
@@ -240,7 +245,7 @@ class FalGPTImage(BaseTool):
             raise RuntimeError(f"No images in response: {str(data)[:300]}")
 
         suffix = f".{output_format}"
-        output_path = Path(inputs.get("output_path") or f"fal_gpt_image{suffix}")
+        output_path = safe_media_path(inputs.get("output_path") or f"fal_gpt_image{suffix}")
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
         written: list[str] = []
@@ -253,12 +258,25 @@ class FalGPTImage(BaseTool):
                 if index == 0
                 else output_path.with_name(f"{output_path.stem}_{index + 1}{output_path.suffix}")
             )
+            # The URL is chosen by the API, not the caller: https only, and the
+            # write is capped so a malformed response cannot fill the disk.
+            if urlparse(url).scheme != "https":
+                raise RuntimeError(f"refusing to download image over non-https url: {url[:40]}…")
+            written_bytes = 0
             with requests.get(url, stream=True, timeout=180) as stream:
                 stream.raise_for_status()
                 with open(target, "wb") as handle:
                     for chunk in stream.iter_content(chunk_size=1 << 16):
-                        if chunk:
-                            handle.write(chunk)
+                        if not chunk:
+                            continue
+                        written_bytes += len(chunk)
+                        if written_bytes > MAX_IMAGE_BYTES:
+                            handle.close()
+                            target.unlink(missing_ok=True)
+                            raise RuntimeError(
+                                f"image download exceeded {MAX_IMAGE_BYTES} bytes, aborted"
+                            )
+                        handle.write(chunk)
             written.append(str(target))
 
         if not written:

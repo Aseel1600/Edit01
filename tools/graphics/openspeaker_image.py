@@ -25,9 +25,20 @@ from tools.base_tool import (
     ToolStatus,
     ToolTier,
 )
-from tools.openspeaker_client import OpenSpeakerError, api_key, download, poll_task, request
+from tools.openspeaker_client import (
+    OpenSpeakerError,
+    api_key,
+    download,
+    poll_task,
+    request,
+    safe_media_path,
+)
 
 DEFAULT_MODEL = "gpt-image-2"
+
+# Reference uploads are restricted to real image types so a path that slips
+# through cannot ship arbitrary file contents to the provider.
+ALLOWED_REFERENCE_SUFFIXES = {".png", ".jpg", ".jpeg", ".webp", ".gif", ".bmp"}
 
 # Populated on first use from GET /v1i/models; see OpenSpeakerImage._model_spec.
 _MODEL_CACHE: Optional[dict[str, dict[str, Any]]] = None
@@ -257,11 +268,19 @@ class OpenSpeakerImage(BaseTool):
         if model_parameters:
             form.append(("model_parameters", (None, json.dumps(model_parameters))))
 
+        # Reference images are read off local disk and uploaded to a third-party
+        # API. That makes this the one input in this tool that can exfiltrate
+        # file contents, so it is constrained twice: the path must resolve
+        # inside the workspace, and it must actually be an image. Without both,
+        # a poisoned scene_plan could name ".env" or a private key and ship it.
         references = inputs.get("reference_images") or []
         for ref in references:
-            ref_path = Path(ref)
-            if not ref_path.is_file():
-                raise OpenSpeakerError(f"reference image not found: {ref_path}")
+            ref_path = safe_media_path(ref, must_exist=True)
+            if ref_path.suffix.lower() not in ALLOWED_REFERENCE_SUFFIXES:
+                raise OpenSpeakerError(
+                    f"reference image must be one of "
+                    f"{sorted(ALLOWED_REFERENCE_SUFFIXES)}, got {ref_path.suffix!r}: {ref_path.name}"
+                )
             handle = open(ref_path, "rb")
             open_files.append(handle)
             form.append(("assets", (ref_path.name, handle)))
@@ -278,7 +297,7 @@ class OpenSpeakerImage(BaseTool):
                 f"Task {task_id} finished without image urls: {task.get('metadata')}"
             )
 
-        output_path = Path(inputs.get("output_path") or f"openspeaker_image_{task_id}.png")
+        output_path = safe_media_path(inputs.get("output_path") or f"openspeaker_image_{task_id}.png")
         written: list[str] = []
         for index, url in enumerate(urls[:count]):
             target = (

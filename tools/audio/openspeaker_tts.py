@@ -24,7 +24,14 @@ from tools.base_tool import (
     ToolStatus,
     ToolTier,
 )
-from tools.openspeaker_client import OpenSpeakerError, api_key, download, poll_task, request
+from tools.openspeaker_client import (
+    OpenSpeakerError,
+    api_key,
+    download,
+    poll_task,
+    request,
+    safe_media_path,
+)
 
 VALID_VOICE_PREFIXES = (
     "elevenlabs_",
@@ -230,7 +237,7 @@ class OpenSpeakerTTS(BaseTool):
         if not audio_url:
             raise OpenSpeakerError(f"Task {task_id} finished without an audio_url: {metadata}")
 
-        output_path = Path(inputs.get("output_path") or f"openspeaker_tts_{task_id}.mp3")
+        output_path = safe_media_path(inputs.get("output_path") or f"openspeaker_tts_{task_id}.mp3")
         download(audio_url, output_path)
         audio_duration = probe_duration(output_path)
 

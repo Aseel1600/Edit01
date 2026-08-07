@@ -27,7 +27,14 @@ from tools.base_tool import (
     ToolStatus,
     ToolTier,
 )
-from tools.openspeaker_client import OpenSpeakerError, api_key, download, poll_task, request
+from tools.openspeaker_client import (
+    OpenSpeakerError,
+    api_key,
+    download,
+    poll_task,
+    request,
+    safe_media_path,
+)
 
 
 class OpenSpeakerMusic(BaseTool):
@@ -165,7 +172,7 @@ class OpenSpeakerMusic(BaseTool):
         if not urls:
             raise OpenSpeakerError(f"Task {task_id} finished without audio urls: {list(metadata)}")
 
-        output_path = Path(inputs.get("output_path") or f"openspeaker_music_{task_id}.mp3")
+        output_path = safe_media_path(inputs.get("output_path") or f"openspeaker_music_{task_id}.mp3")
         written: list[str] = []
         for index, url in enumerate(urls):
             target = (
