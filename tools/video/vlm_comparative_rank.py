@@ -26,6 +26,7 @@ Usage (as a tool)::
 from __future__ import annotations
 
 import json
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -88,7 +89,9 @@ class VlmComparativeRank(BaseTool):
     dependencies = ["cmd:ffmpeg", "cmd:ffprobe"]
     install_instructions = (
         "pip install requests\n"
-        "Install Ollama and pull a vision model (see vlm_clip_rating)."
+        "Install Ollama and pull the tested model: `ollama pull gemma4:12b` "
+        "(~8GB VRAM, recommended). Smaller models are untested; see the "
+        "vlm-footage-rating skill for guidance."
     )
     agent_skills = ["vlm-footage-rating"]
 
@@ -129,13 +132,21 @@ class VlmComparativeRank(BaseTool):
             "model": {"type": "string", "default": "gemma4:12b"},
             "ollama_url": {"type": "string", "default": "http://127.0.0.1:11434"},
             "frames_per_clip": {"type": "integer", "default": 5},
+            "frame_scale": {
+                "type": "integer",
+                "default": 480,
+                "minimum": 320,
+                "maximum": 1280,
+                "description": "Frame width for the VLM. Smaller (384) is faster "
+                               "and uses less VRAM; best for 4b models.",
+            },
             "temperature": {"type": "number", "default": 0.1},
             "num_predict": {"type": "integer", "default": 800},
         },
     }
 
     resource_profile = ResourceProfile(
-        cpu_cores=2, ram_mb=1024, vram_mb=6144, disk_mb=200,
+        cpu_cores=2, ram_mb=1024, vram_mb=3584, disk_mb=200,
         network_required=False,
     )
     side_effects = ["writes JSONL output", "writes temporary frame jpgs"]
@@ -180,9 +191,10 @@ class VlmComparativeRank(BaseTool):
             model = inputs.get("model", "gemma4:12b")
             ollama_url = inputs.get("ollama_url", "http://127.0.0.1:11434")
             frames_per_clip = int(inputs.get("frames_per_clip", 5))
+            frame_scale = int(inputs.get("frame_scale", 480))
             temperature = float(inputs.get("temperature", 0.1))
             num_predict = int(inputs.get("num_predict", 800))
-            tmp_dir = Path(inputs.get("tmp_dir", "/tmp")) / "vlm_cmp_frames"
+            tmp_dir = Path(inputs.get("tmp_dir") or tempfile.gettempdir()) / "vlm_cmp_frames"
 
             candidates = _candidate_paths(rankings_path, purpose, max_candidates)
             if not candidates:
@@ -201,7 +213,9 @@ class VlmComparativeRank(BaseTool):
             prompt = _build_prompt(frames_per_clip, purpose)
             results = []
             for batch in batches:
-                labels, images, clip_map = _load_batch(batch, tmp_dir, frames_per_clip)
+                labels, images, clip_map = _load_batch(
+                    batch, tmp_dir, frames_per_clip, frame_scale
+                )
                 if not clip_map:
                     continue
                 used = list(clip_map)
@@ -274,7 +288,10 @@ def _candidate_paths(
 
 
 def _load_batch(
-    clips: list[str], tmp_dir: Path, frames_per_clip: int
+    clips: list[str],
+    tmp_dir: Path,
+    frames_per_clip: int,
+    frame_scale: int = 480,
 ) -> tuple[list[str], list[str], dict[str, str]]:
     """Extract frames for a batch; returns (labels, images, clip_map)."""
     labels: list[str] = []
@@ -284,7 +301,8 @@ def _load_batch(
         letter = "ABCDEFGH"[i]
         try:
             paths, _map, _dur = extract_frames(
-                video, str(tmp_dir / letter), n_frames=frames_per_clip, scale=480
+                video, str(tmp_dir / letter), n_frames=frames_per_clip,
+                scale=frame_scale,
             )
         except Exception:  # noqa: BLE001
             continue

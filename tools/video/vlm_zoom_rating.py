@@ -23,6 +23,7 @@ Usage (as a tool)::
 from __future__ import annotations
 
 import json
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -63,7 +64,9 @@ class VlmZoomRating(BaseTool):
     dependencies = ["cmd:ffmpeg", "cmd:ffprobe"]
     install_instructions = (
         "pip install requests\n"
-        "Install Ollama and pull a vision model (see vlm_clip_rating)."
+        "Install Ollama and pull the tested model: `ollama pull gemma4:12b` "
+        "(~8GB VRAM, recommended). Smaller models are untested; see the "
+        "vlm-footage-rating skill for guidance."
     )
     agent_skills = ["vlm-footage-rating"]
 
@@ -103,13 +106,21 @@ class VlmZoomRating(BaseTool):
             "max_windows_per_clip": {"type": "integer", "default": 4, "minimum": 1},
             "zoom_fps": {"type": "number", "default": 4.0},
             "max_frames_per_window": {"type": "integer", "default": 12},
+            "frame_scale": {
+                "type": "integer",
+                "default": 640,
+                "minimum": 320,
+                "maximum": 1280,
+                "description": "Frame width for the VLM. Smaller (384-480) is faster "
+                               "and uses less VRAM; best for 4b models.",
+            },
             "temperature": {"type": "number", "default": 0.1},
             "num_predict": {"type": "integer", "default": 900},
         },
     }
 
     resource_profile = ResourceProfile(
-        cpu_cores=2, ram_mb=1024, vram_mb=6144, disk_mb=200,
+        cpu_cores=2, ram_mb=1024, vram_mb=3584, disk_mb=200,
         network_required=False,
     )
     side_effects = ["writes JSONL output", "writes temporary frame jpgs"]
@@ -167,9 +178,10 @@ class VlmZoomRating(BaseTool):
             max_windows = int(inputs.get("max_windows_per_clip", 4))
             zoom_fps = float(inputs.get("zoom_fps", 4.0))
             max_frames = int(inputs.get("max_frames_per_window", 12))
+            frame_scale = int(inputs.get("frame_scale", 640))
             temperature = float(inputs.get("temperature", 0.1))
             num_predict = int(inputs.get("num_predict", 900))
-            tmp_dir = Path(inputs.get("tmp_dir", "/tmp")) / "vlm_zoom_frames"
+            tmp_dir = Path(inputs.get("tmp_dir") or tempfile.gettempdir()) / "vlm_zoom_frames"
 
             clips = self._load_coarse(ratings_path)
             done = load_rated_ids(output_path)
@@ -198,6 +210,7 @@ class VlmZoomRating(BaseTool):
                         paths, frame_map, win_dur = extract_window(
                             video, t0, t1, str(tmp_dir),
                             zoom_fps=zoom_fps, max_frames=max_frames,
+                            scale=frame_scale,
                         )
                         if len(paths) < 2:
                             continue

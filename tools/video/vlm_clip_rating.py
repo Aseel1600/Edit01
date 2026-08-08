@@ -26,6 +26,7 @@ Usage (as a tool)::
 from __future__ import annotations
 
 import json
+import tempfile
 import time
 from pathlib import Path
 from typing import Any
@@ -67,8 +68,10 @@ class VlmClipRating(BaseTool):
     dependencies = ["cmd:ffmpeg", "cmd:ffprobe"]
     install_instructions = (
         "pip install requests\n"
-        "Install Ollama (ollama.com) and pull a vision model, e.g. "
-        "`ollama pull gemma4:12b` (or gemma3n:4b for smaller GPUs)."
+        "Install Ollama (ollama.com) and pull the tested model: "
+        "`ollama pull gemma4:12b` (~8GB VRAM, recommended).\n"
+        "Smaller models (gemma3n:e4b ~3.5GB, qwen2.5vl:3b ~3GB) are "
+        "untested; pass frame_scale 384 with them for faster inference."
     )
     agent_skills = ["vlm-footage-rating"]
 
@@ -122,7 +125,8 @@ class VlmClipRating(BaseTool):
             "model": {
                 "type": "string",
                 "default": "gemma4:12b",
-                "description": "Ollama model name with vision support.",
+                "description": "Ollama model name with vision support. "
+                               "Default gemma4:12b is the tested/recommended model.",
             },
             "ollama_url": {
                 "type": "string",
@@ -134,13 +138,21 @@ class VlmClipRating(BaseTool):
                 "minimum": 3,
                 "maximum": 24,
             },
+            "frame_scale": {
+                "type": "integer",
+                "default": 640,
+                "minimum": 320,
+                "maximum": 1280,
+                "description": "Frame width for the VLM. Smaller (384-480) is faster "
+                               "and uses less VRAM; best for 4b models.",
+            },
             "temperature": {"type": "number", "default": 0.1},
             "num_predict": {"type": "integer", "default": 1500},
         },
     }
 
     resource_profile = ResourceProfile(
-        cpu_cores=2, ram_mb=1024, vram_mb=6144, disk_mb=200,
+        cpu_cores=2, ram_mb=1024, vram_mb=3584, disk_mb=200,
         network_required=False,
     )
     side_effects = ["writes JSONL output", "writes temporary frame jpgs"]
@@ -189,6 +201,7 @@ class VlmClipRating(BaseTool):
             model = inputs.get("model", "gemma4:12b")
             ollama_url = inputs.get("ollama_url", "http://127.0.0.1:11434")
             frames_per_clip = int(inputs.get("frames_per_clip", 8))
+            frame_scale = int(inputs.get("frame_scale", 640))
             temperature = float(inputs.get("temperature", 0.1))
             num_predict = int(inputs.get("num_predict", 1500))
             focus = str(inputs.get("focus_prompt", "")).strip()
@@ -210,7 +223,7 @@ class VlmClipRating(BaseTool):
             done = 0
             skipped = 0
             failed = 0
-            tmp_dir = Path(inputs.get("tmp_dir", "/tmp")) / "vlm_clip_frames"
+            tmp_dir = Path(inputs.get("tmp_dir") or tempfile.gettempdir()) / "vlm_clip_frames"
             for video in videos:
                 clip = Path(video).name
                 if clip in rated:
@@ -218,7 +231,8 @@ class VlmClipRating(BaseTool):
                     continue
                 try:
                     paths, frame_map, dur = extract_frames(
-                        video, str(tmp_dir), n_frames=frames_per_clip
+                        video, str(tmp_dir), n_frames=frames_per_clip,
+                        scale=frame_scale,
                     )
                     if len(paths) < 3:
                         failed += 1

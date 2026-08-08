@@ -31,8 +31,30 @@ adding footage only processes the new clips.
 ## Prerequisites
 
 - ffmpeg/ffprobe on PATH
-- Ollama running with a vision model: `ollama pull gemma4:12b` (12B, ~8GB
-  VRAM) or `gemma3n:4b` for smaller GPUs
+- Ollama running with a vision model.
+
+**Recommended and tested: `gemma4:12b`** (this is the model the tools were
+built and validated against: ~8GB VRAM, best quality for behavior nuance).
+The behavior taxonomy, JSON schema, and prompts were tuned on it.
+
+```bash
+ollama pull gemma4:12b
+```
+
+Other vision models may work (the tools are model-agnostic over Ollama's
+API), but they are NOT tested:
+
+| Model | VRAM (approx) | Fits | Status |
+|---|---|---|---|
+| `gemma3n:e4b` | ~3.5GB | 4GB GPUs | Untested, smaller/faster |
+| `gemma3n:e2b` | ~1.5GB | any GPU | Untested, fastest/lightest |
+| `qwen2.5vl:3b` | ~3GB | 4GB GPUs | Untested |
+| `qwen2.5vl:7b` | ~6GB | 8GB GPUs | Untested |
+| `gemma4:12b` | ~8GB | 12GB+ GPUs | **TESTED, recommended** |
+
+If you try a smaller model, expect possible differences in JSON
+conformance and rating quality; the defensive parsing handles most drift.
+For 4b-class models, passing `frame_scale: 384` speeds up inference.
 
 ## Usage
 
