@@ -110,6 +110,14 @@ class MiniMaxVideo(BaseTool):
                     "data URI (data:image/...;base64,<payload>)."
                 ),
             },
+            "image_url": {
+                "type": "string",
+                "description": "Selector-compatible alias for first_frame_image.",
+            },
+            "reference_image_url": {
+                "type": "string",
+                "description": "Alias for first_frame_image.",
+            },
             "prompt_optimizer": {"type": "boolean", "default": True},
             "fast_pretreatment": {"type": "boolean"},
             "duration": {"type": "integer", "description": "Clip length in seconds."},
@@ -128,6 +136,8 @@ class MiniMaxVideo(BaseTool):
         "model",
         "operation",
         "first_frame_image",
+        "image_url",
+        "reference_image_url",
         "prompt_optimizer",
         "fast_pretreatment",
         "duration",
@@ -190,7 +200,11 @@ class MiniMaxVideo(BaseTool):
 
         payload: dict[str, Any] = {"model": model}
         if operation == "image_to_video":
-            first_frame = inputs.get("first_frame_image")
+            first_frame = (
+                inputs.get("first_frame_image")
+                or inputs.get("reference_image_url")
+                or inputs.get("image_url")
+            )
             if not first_frame:
                 return ToolResult(
                     success=False,

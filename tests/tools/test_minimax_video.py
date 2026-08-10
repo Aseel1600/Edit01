@@ -130,6 +130,62 @@ def test_minimax_video_image_to_video_requires_first_frame(monkeypatch):
     assert "first_frame_image" in result.error
 
 
+def test_video_selector_routes_reference_image_to_minimax(monkeypatch, tmp_path):
+    from tools.video import _shared
+    from tools.video.minimax_video import MiniMaxVideo
+    from tools.video.video_selector import VideoSelector
+
+    monkeypatch.setenv("MINIMAX_API_KEY", "test-minimax-key")
+    monkeypatch.setattr("time.sleep", lambda _s: None)
+    monkeypatch.setattr(
+        _shared,
+        "upload_image_fal",
+        lambda _path: "https://cdn.example/reference.png",
+    )
+
+    calls = {}
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        calls["post_payload"] = json
+        return _FakeResponse(json_data={"task_id": "task-123", "base_resp": {"status_code": 0}})
+
+    def fake_get(url, headers=None, params=None, timeout=None):
+        if url.endswith("/v1/query/video_generation"):
+            return _FakeResponse(
+                json_data={"status": "Success", "file_id": "file-9", "base_resp": {"status_code": 0}}
+            )
+        if url.endswith("/v1/files/retrieve"):
+            return _FakeResponse(
+                json_data={"file": {"download_url": "https://cdn.example/out.mp4"}, "base_resp": {"status_code": 0}}
+            )
+        return _FakeResponse(content=b"fake mp4 bytes")
+
+    monkeypatch.setattr(requests, "post", fake_post)
+    monkeypatch.setattr(requests, "get", fake_get)
+
+    tool = MiniMaxVideo()
+    selector = VideoSelector()
+    monkeypatch.setattr(selector, "_providers", lambda: [tool])
+    monkeypatch.setattr(
+        selector,
+        "_select_best_tool",
+        lambda _inputs, _candidates, _context: (tool, None),
+    )
+
+    result = selector.execute(
+        {
+            "prompt": "A calm product shot",
+            "operation": "image_to_video",
+            "reference_image_path": str(tmp_path / "reference.png"),
+            "output_path": str(tmp_path / "clip.mp4"),
+        }
+    )
+
+    assert result.success, result.error
+    assert calls["post_payload"]["first_frame_image"] == "https://cdn.example/reference.png"
+    assert result.data["selected_tool"] == "minimax_video"
+
+
 def test_minimax_video_surfaces_base_resp_error(monkeypatch):
     from tools.video.minimax_video import MiniMaxVideo
 
