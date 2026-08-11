@@ -174,20 +174,26 @@ class ComfyUIClient:
         """Block until *prompt_id* finishes.  Returns the history entry."""
         deadline = time.time() + timeout
         last_transport_error: Exception | None = None
-        while time.time() < deadline:
+        while True:
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                break
             try:
                 resp = requests.get(
                     f"{self.server_url}/history/{prompt_id}",
-                    timeout=POLL_REQUEST_TIMEOUT_SECONDS,
+                    timeout=min(POLL_REQUEST_TIMEOUT_SECONDS, remaining),
                 )
                 resp.raise_for_status()
                 history = resp.json()
-            except requests.RequestException as exc:
+            except (requests.Timeout, requests.ConnectionError) as exc:
                 # The server is mid-generation and not answering. That is what
                 # `deadline` is for — keep polling instead of killing a job that
                 # is still running. Only give up when the deadline expires.
                 last_transport_error = exc
-                time.sleep(interval)
+                remaining = deadline - time.time()
+                if remaining <= 0:
+                    break
+                time.sleep(min(interval, remaining))
                 continue
             if prompt_id in history:
                 entry = history[prompt_id]
@@ -196,7 +202,10 @@ class ComfyUIClient:
                     msgs = status.get("messages", [])
                     raise ComfyUIError(f"Execution error: {msgs}")
                 return entry
-            time.sleep(interval)
+            remaining = deadline - time.time()
+            if remaining <= 0:
+                break
+            time.sleep(min(interval, remaining))
         if last_transport_error is not None:
             raise ComfyUIError(
                 f"Prompt {prompt_id} did not complete within {timeout}s; "
