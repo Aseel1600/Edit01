@@ -253,13 +253,15 @@ No subscription — pure pay-as-you-go, no minimum spend.
 
 #### What It Is Best For
 
-- Text-to-video and image-to-video with the Hailuo 2.3 model family (`MiniMax-Hailuo-2.3`, `MiniMax-Hailuo-2.3-Fast`, `MiniMax-Hailuo-02`, and the `T2V-01`/`I2V-01` families)
+- 2K text-to-video, image-to-video, first/last-frame, and reference-conditioned generation with the default `MiniMax-H3` model
+- Legacy v1 generation with `MiniMax-Hailuo-2.3`, `MiniMax-Hailuo-2.3-Fast`, `MiniMax-Hailuo-02`, and the `T2V-01`/`I2V-01` families
 - Prompt-following with camera directions and high-texture footage
 - Direct first-party provenance with regional (global / CN) endpoint selection
 
 #### Flow
 
-`POST /v1/video_generation` → poll `GET /v1/query/video_generation` → `GET /v1/files/retrieve` → download the returned URL.
+- MiniMax-H3: `POST /v2/video_generation` → poll `GET /v2/query/video_generation/{task_id}` → download `task.content.url`.
+- Hailuo v1 models: `POST /v1/video_generation` → poll `GET /v1/query/video_generation` → `GET /v1/files/retrieve` → download the returned URL.
 
 ---
 
