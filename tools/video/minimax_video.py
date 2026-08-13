@@ -192,6 +192,23 @@ class MiniMaxVideo(BaseTool):
                 "type": "boolean",
                 "description": "Mainland China MiniMax-H3 watermark option.",
             },
+            "poll_interval_seconds": {
+                "type": "number",
+                "minimum": 0.1,
+                "maximum": 60,
+                "default": 5,
+                "description": "Seconds between task-status requests.",
+            },
+            "timeout_seconds": {
+                "type": "number",
+                "minimum": 1,
+                "maximum": 3600,
+                "default": 900,
+                "description": (
+                    "Maximum time to wait for remote generation. Timeout errors "
+                    "include task_id so the job can be recovered manually."
+                ),
+            },
             "output_path": {"type": "string"},
         },
     }
@@ -475,6 +492,28 @@ class MiniMaxVideo(BaseTool):
         task_id: str | None = None
         file_id: str | None = None
         task_data: dict[str, Any] = {}
+        poll_interval = max(float(inputs.get("poll_interval_seconds", 5)), 0.1)
+        timeout_seconds = max(float(inputs.get("timeout_seconds", 900)), 1.0)
+        poll_deadline = time.monotonic() + timeout_seconds
+
+        def _timeout_result() -> ToolResult:
+            return ToolResult(
+                success=False,
+                error=(
+                    f"MiniMax video generation timed out after {timeout_seconds:g}s; "
+                    f"the remote task may still complete. Resume or inspect task_id "
+                    f"'{task_id}'."
+                ),
+                data={
+                    "provider": "minimax",
+                    "model": model,
+                    "api_version": api_version,
+                    "task_id": task_id,
+                    "status": "timed_out",
+                },
+                model=model,
+            )
+
         try:
             submit_resp = requests.post(
                 f"{base_url}/{api_version}/video_generation",
@@ -497,7 +536,11 @@ class MiniMaxVideo(BaseTool):
             download_url: str | None = None
             if api_version == "v2":
                 while True:
-                    time.sleep(5)
+                    if time.monotonic() >= poll_deadline:
+                        return _timeout_result()
+                    time.sleep(min(poll_interval, max(poll_deadline - time.monotonic(), 0)))
+                    if time.monotonic() >= poll_deadline:
+                        return _timeout_result()
                     status_resp = requests.get(
                         f"{base_url}/v2/query/video_generation/{task_id}",
                         headers=headers,
@@ -524,7 +567,11 @@ class MiniMaxVideo(BaseTool):
                         )
             else:
                 while True:
-                    time.sleep(5)
+                    if time.monotonic() >= poll_deadline:
+                        return _timeout_result()
+                    time.sleep(min(poll_interval, max(poll_deadline - time.monotonic(), 0)))
+                    if time.monotonic() >= poll_deadline:
+                        return _timeout_result()
                     status_resp = requests.get(
                         f"{base_url}/v1/query/video_generation",
                         headers=headers,
@@ -577,6 +624,13 @@ class MiniMaxVideo(BaseTool):
             return ToolResult(
                 success=False,
                 error=f"MiniMax video generation failed: {_redact(str(e))}",
+                data={
+                    "provider": "minimax",
+                    "model": model,
+                    "api_version": api_version,
+                    "task_id": task_id,
+                } if task_id else {},
+                model=model,
             )
 
         data: dict[str, Any] = {

@@ -458,3 +458,48 @@ def test_minimax_video_surfaces_v1_base_resp_error(monkeypatch):
     result = MiniMaxVideo().execute({"prompt": "hi", "model": "MiniMax-Hailuo-2.3"})
     assert not result.success
     assert "1004" in result.error
+
+
+@pytest.mark.parametrize("model", ["MiniMax-H3", "MiniMax-Hailuo-2.3"])
+def test_polling_timeout_is_bounded_and_preserves_task_id(monkeypatch, model):
+    import tools.video.minimax_video as minimax_module
+    from tools.video.minimax_video import MiniMaxVideo
+
+    monkeypatch.setenv("MINIMAX_API_KEY", "test-minimax-key")
+    monkeypatch.setattr(
+        requests,
+        "post",
+        lambda *args, **kwargs: _FakeResponse(
+            json_data={"task_id": "recoverable-task", "base_resp": {"status_code": 0}}
+        ),
+    )
+    monkeypatch.setattr(
+        requests,
+        "get",
+        lambda *args, **kwargs: pytest.fail("deadline must stop polling"),
+    )
+    class _ExpiredClock:
+        def __init__(self):
+            self._ticks = iter([0.0, 2.0])
+
+        @staticmethod
+        def time():
+            return 0.0
+
+        def monotonic(self):
+            return next(self._ticks)
+
+        @staticmethod
+        def sleep(_seconds):
+            return None
+
+    monkeypatch.setattr(minimax_module, "time", _ExpiredClock())
+
+    result = MiniMaxVideo().execute(
+        {"prompt": "A camera move", "model": model, "timeout_seconds": 1}
+    )
+
+    assert not result.success
+    assert "timed out" in (result.error or "")
+    assert result.data["task_id"] == "recoverable-task"
+    assert result.data["status"] == "timed_out"
