@@ -33,6 +33,10 @@ adding footage only processes the new clips.
 - ffmpeg/ffprobe on PATH
 - Ollama running with a vision model.
 
+The tools accept only `localhost` or loopback-IP Ollama URLs. Video frames
+are base64-encoded in requests, so remote endpoints are rejected to preserve
+the advertised local-only privacy boundary.
+
 **Recommended and tested: `gemma4:12b`** (this is the model the tools were
 built and validated against: ~8GB VRAM, best quality for behavior nuance).
 The behavior taxonomy, JSON schema, and prompts were tuned on it.

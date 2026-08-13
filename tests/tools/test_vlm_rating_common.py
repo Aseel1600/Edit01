@@ -10,6 +10,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
@@ -19,8 +20,10 @@ from tools.video.vlm_rating_common import (  # noqa: E402
     build_behavior_taxonomy,
     load_rated_ids,
     normalize_drift,
+    ollama_model_available,
     parse_vlm_json,
     safe_float,
+    validate_local_ollama_url,
 )
 
 
@@ -100,6 +103,46 @@ class JsonlIOTests(unittest.TestCase):
             path = Path(td) / "out.jsonl"
             path.write_text('{"clip": "a.mp4"}\nnot-json\n{"clip": "b.mp4"}\n')
             self.assertEqual(load_rated_ids(str(path)), {"a.mp4", "b.mp4"})
+
+    def test_load_does_not_mark_error_records_complete(self) -> None:
+        with tempfile.TemporaryDirectory() as td:
+            path = Path(td) / "out.jsonl"
+            path.write_text(
+                '{"clip": "retry.mp4", "error": "ollama down"}\n'
+                '{"clip": "done.mp4", "quality": {"overall_score": 0.8}}\n'
+            )
+            self.assertEqual(load_rated_ids(str(path)), {"done.mp4"})
+
+
+class OllamaRuntimeTests(unittest.TestCase):
+    def test_local_url_validation_accepts_loopback(self) -> None:
+        self.assertEqual(
+            validate_local_ollama_url("http://localhost:11434/"),
+            "http://localhost:11434",
+        )
+        self.assertEqual(
+            validate_local_ollama_url("http://[::1]:11434"),
+            "http://[::1]:11434",
+        )
+
+    def test_local_url_validation_rejects_remote_hosts(self) -> None:
+        with self.assertRaisesRegex(ValueError, "loopback"):
+            validate_local_ollama_url("https://ollama.example.com")
+
+    def test_model_status_checks_installed_tags(self) -> None:
+        class Response:
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *args):
+                return False
+
+            def read(self):
+                return b'{"models": [{"name": "gemma4:12b"}]}'
+
+        with patch("urllib.request.urlopen", return_value=Response()):
+            self.assertTrue(ollama_model_available(model="gemma4:12b"))
+            self.assertFalse(ollama_model_available(model="missing:1b"))
 
 
 class BehaviorTaxonomyTests(unittest.TestCase):

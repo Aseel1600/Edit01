@@ -19,16 +19,63 @@ Design notes
 from __future__ import annotations
 
 import base64
+import ipaddress
 import json
 import re
 import time
 from pathlib import Path
 from typing import Any, Callable, Iterable, Optional
+from urllib.parse import urlparse
 
 
 # ---------------------------------------------------------------------------
 # Ollama HTTP transport
 # ---------------------------------------------------------------------------
+
+
+def validate_local_ollama_url(ollama_url: str) -> str:
+    """Validate that an Ollama endpoint is HTTP(S) on the local machine."""
+    parsed = urlparse(ollama_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        raise ValueError("ollama_url must be an http(s) URL on localhost")
+    if parsed.username or parsed.password:
+        raise ValueError("ollama_url must not include credentials")
+    host = parsed.hostname.lower()
+    if host != "localhost":
+        try:
+            if not ipaddress.ip_address(host).is_loopback:
+                raise ValueError
+        except ValueError as exc:
+            raise ValueError(
+                "ollama_url must use localhost or a loopback IP; VLM frames "
+                "must not be sent to a remote endpoint"
+            ) from exc
+    return ollama_url.rstrip("/")
+
+
+def ollama_model_available(
+    ollama_url: str = "http://127.0.0.1:11434",
+    model: str = "gemma4:12b",
+    *,
+    timeout: float = 2.0,
+) -> bool:
+    """Return whether the local Ollama service has *model* installed."""
+    import urllib.request
+
+    try:
+        base_url = validate_local_ollama_url(ollama_url)
+        with urllib.request.urlopen(f"{base_url}/api/tags", timeout=timeout) as resp:
+            payload = json.loads(resp.read().decode("utf-8"))
+        installed = {
+            str(item.get("name") or item.get("model") or "")
+            for item in payload.get("models", [])
+        }
+        candidates = {model}
+        if ":" not in model:
+            candidates.add(f"{model}:latest")
+        return bool(candidates & installed)
+    except Exception:
+        return False
 
 
 def ollama_generate(
@@ -52,6 +99,8 @@ def ollama_generate(
     """
     import urllib.request
 
+    ollama_url = validate_local_ollama_url(ollama_url)
+
     payload: dict[str, Any] = {
         "model": model,
         "prompt": prompt,
@@ -67,7 +116,7 @@ def ollama_generate(
     for attempt in range(max_retries):
         try:
             req = urllib.request.Request(
-                ollama_url.rstrip("/") + "/api/generate",
+                ollama_url + "/api/generate",
                 data=data,
                 headers={"Content-Type": "application/json"},
             )
@@ -286,7 +335,11 @@ def images_b64(paths: Iterable[str]) -> list[str]:
 
 
 def load_rated_ids(jsonl_path: str) -> set[str]:
-    """Return the set of clip ids already present in a JSONL corpus."""
+    """Return successfully processed clip ids from a JSONL corpus.
+
+    Error records are intentionally excluded so transient ffmpeg/Ollama
+    failures remain retryable on the next invocation.
+    """
     rated: set[str] = set()
     p = Path(jsonl_path)
     if not p.exists():
@@ -300,7 +353,7 @@ def load_rated_ids(jsonl_path: str) -> set[str]:
                 record = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            clip = record.get("clip") or record.get("id")
+            clip = None if record.get("error") else (record.get("clip") or record.get("id"))
             if clip:
                 rated.add(clip)
     return rated

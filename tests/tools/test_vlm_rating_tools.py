@@ -21,7 +21,8 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
-from tools.base_tool import ToolResult  # noqa: E402
+from tools.base_tool import ToolResult, ToolStatus  # noqa: E402
+from tools.tool_registry import ToolRegistry  # noqa: E402
 from tools.video.vlm_clip_rating import VlmClipRating  # noqa: E402
 from tools.video.vlm_comparative_rank import VlmComparativeRank  # noqa: E402
 from tools.video.vlm_editorial_ranking import VlmEditorialRanking  # noqa: E402
@@ -133,14 +134,50 @@ class VlmClipRatingTests(unittest.TestCase):
         records = [json.loads(l) for l in out.read_text().splitlines()]
         self.assertIn("error", records[0])
 
-    def test_dependency_check_requires_ffmpeg(self) -> None:
+    def test_failed_clip_is_retried_on_next_run(self) -> None:
+        out = self.td / "tags.jsonl"
         tool = VlmClipRating()
-        import shutil
+        with patch(
+            "tools.video.vlm_clip_rating.ollama_generate",
+            side_effect=RuntimeError("temporary outage"),
+        ):
+            first = tool.execute({
+                "input_dir": str(self.clips),
+                "output_path": str(out),
+            })
 
-        self.assertEqual(
-            tool.get_status().value,
-            "available" if shutil.which("ffmpeg") else "unavailable",
-        )
+        with mock_generate(json.dumps({"quality": {"overall_score": 0.8}})):
+            second = tool.execute({
+                "input_dir": str(self.clips),
+                "output_path": str(out),
+            })
+
+        self.assertEqual(first.data["failed"], 1)
+        self.assertEqual(second.data["rated"], 1)
+        self.assertEqual(second.data["skipped_existing"], 0)
+        records = [json.loads(line) for line in out.read_text().splitlines()]
+        self.assertIn("error", records[0])
+        self.assertNotIn("error", records[1])
+
+    def test_dependency_check_requires_ffmpeg_and_ollama_model(self) -> None:
+        tool = VlmClipRating()
+        with patch("shutil.which", return_value="/usr/bin/tool"), patch(
+            "tools.video.vlm_clip_rating.ollama_model_available", return_value=True
+        ):
+            self.assertEqual(tool.get_status(), ToolStatus.AVAILABLE)
+        with patch("shutil.which", return_value="/usr/bin/tool"), patch(
+            "tools.video.vlm_clip_rating.ollama_model_available", return_value=False
+        ):
+            self.assertEqual(tool.get_status(), ToolStatus.UNAVAILABLE)
+
+    def test_rejects_remote_ollama_endpoint(self) -> None:
+        result = VlmClipRating().execute({
+            "input_dir": str(self.clips),
+            "output_path": str(self.td / "tags.jsonl"),
+            "ollama_url": "https://remote.example.com",
+        })
+        self.assertFalse(result.success)
+        self.assertIn("loopback", result.error or "")
 
 
 class VlmZoomRatingTests(unittest.TestCase):
@@ -198,6 +235,59 @@ class VlmZoomRatingTests(unittest.TestCase):
             "output_path": "/tmp/x.jsonl",
         })
         self.assertFalse(result.success)
+
+    def test_all_failed_windows_are_retried(self) -> None:
+        out = self.td / "zooms.jsonl"
+        tool = VlmZoomRating()
+        with patch(
+            "tools.video.vlm_zoom_rating.ollama_generate",
+            side_effect=RuntimeError("temporary outage"),
+        ):
+            first = tool.execute({
+                "ratings_path": str(self.ratings),
+                "output_path": str(out),
+            })
+
+        with patch(
+            "tools.video.vlm_zoom_rating.ollama_generate",
+            return_value=json.dumps({"sub_beats": [], "notes": "recovered"}),
+        ):
+            second = tool.execute({
+                "ratings_path": str(self.ratings),
+                "output_path": str(out),
+            })
+
+        self.assertEqual(first.data["failed"], 1)
+        self.assertEqual(second.data["zoomed"], 1)
+        records = [json.loads(line) for line in out.read_text().splitlines()]
+        self.assertEqual(records[0]["error"], "all_windows_failed")
+        self.assertNotIn("error", records[1])
+
+
+class VlmRegistryTests(unittest.TestCase):
+    def test_all_tools_are_discoverable_with_honest_status(self) -> None:
+        registry = ToolRegistry()
+        registry.discover("tools")
+        names = {
+            "vlm_clip_rating",
+            "vlm_zoom_rating",
+            "vlm_editorial_ranking",
+            "vlm_comparative_rank",
+        }
+        self.assertTrue(names <= set(registry.list_all()))
+        self.assertEqual(
+            registry.get("vlm_editorial_ranking").get_status(),
+            ToolStatus.AVAILABLE,
+        )
+        with patch("shutil.which", return_value="/usr/bin/tool"), patch(
+            "tools.video.vlm_clip_rating.ollama_model_available", return_value=False
+        ), patch(
+            "tools.video.vlm_zoom_rating.ollama_model_available", return_value=False
+        ), patch(
+            "tools.video.vlm_comparative_rank.ollama_model_available", return_value=False
+        ):
+            for name in names - {"vlm_editorial_ranking"}:
+                self.assertEqual(registry.get(name).get_status(), ToolStatus.UNAVAILABLE)
 
 
 class VlmEditorialRankingTests(unittest.TestCase):

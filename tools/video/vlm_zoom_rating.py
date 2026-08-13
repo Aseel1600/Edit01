@@ -45,8 +45,10 @@ from tools.video.vlm_rating_common import (
     images_b64,
     load_rated_ids,
     ollama_generate,
+    ollama_model_available,
     parse_vlm_json,
     safe_float,
+    validate_local_ollama_url,
 )
 
 
@@ -63,7 +65,6 @@ class VlmZoomRating(BaseTool):
 
     dependencies = ["cmd:ffmpeg", "cmd:ffprobe"]
     install_instructions = (
-        "pip install requests\n"
         "Install Ollama and pull the tested model: `ollama pull gemma4:12b` "
         "(~8GB VRAM, recommended). Smaller models are untested; see the "
         "vlm-footage-rating skill for guidance."
@@ -102,7 +103,11 @@ class VlmZoomRating(BaseTool):
                 "description": "JSONL output. Re-running skips done clips.",
             },
             "model": {"type": "string", "default": "gemma4:12b"},
-            "ollama_url": {"type": "string", "default": "http://127.0.0.1:11434"},
+            "ollama_url": {
+                "type": "string",
+                "default": "http://127.0.0.1:11434",
+                "description": "Local Ollama endpoint. Only localhost/loopback URLs are accepted.",
+            },
             "max_windows_per_clip": {"type": "integer", "default": 4, "minimum": 1},
             "zoom_fps": {"type": "number", "default": 4.0},
             "max_frames_per_window": {"type": "integer", "default": 12},
@@ -133,7 +138,11 @@ class VlmZoomRating(BaseTool):
 
         if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
             return ToolStatus.UNAVAILABLE
-        return ToolStatus.AVAILABLE
+        return (
+            ToolStatus.AVAILABLE
+            if ollama_model_available(model="gemma4:12b")
+            else ToolStatus.UNAVAILABLE
+        )
 
     def estimate_cost(self, inputs: dict[str, Any]) -> float:
         return 0.0
@@ -174,7 +183,9 @@ class VlmZoomRating(BaseTool):
                 )
 
             model = inputs.get("model", "gemma4:12b")
-            ollama_url = inputs.get("ollama_url", "http://127.0.0.1:11434")
+            ollama_url = validate_local_ollama_url(
+                inputs.get("ollama_url", "http://127.0.0.1:11434")
+            )
             max_windows = int(inputs.get("max_windows_per_clip", 4))
             zoom_fps = float(inputs.get("zoom_fps", 4.0))
             max_frames = int(inputs.get("max_frames_per_window", 12))
@@ -233,9 +244,16 @@ class VlmZoomRating(BaseTool):
                             "window_start_s": round(t0, 2),
                             "window_end_s": round(t1, 2),
                         })
-                if clip_result["zooms"]:
+                successful_zooms = [
+                    zoom for zoom in clip_result["zooms"] if not zoom.get("error")
+                ]
+                if successful_zooms:
                     append_record(output_path, clip_result)
                     zoomed += 1
+                elif clip_result["zooms"]:
+                    clip_result["error"] = "all_windows_failed"
+                    append_record(output_path, clip_result)
+                    failed += 1
 
             return ToolResult(
                 success=True,

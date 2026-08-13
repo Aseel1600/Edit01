@@ -50,7 +50,9 @@ from tools.video.vlm_rating_common import (
     load_rated_ids,
     normalize_drift,
     ollama_generate,
+    ollama_model_available,
     parse_vlm_json,
+    validate_local_ollama_url,
 )
 
 
@@ -67,7 +69,6 @@ class VlmClipRating(BaseTool):
 
     dependencies = ["cmd:ffmpeg", "cmd:ffprobe"]
     install_instructions = (
-        "pip install requests\n"
         "Install Ollama (ollama.com) and pull the tested model: "
         "`ollama pull gemma4:12b` (~8GB VRAM, recommended).\n"
         "Smaller models (gemma3n:e4b ~3.5GB, qwen2.5vl:3b ~3GB) are "
@@ -131,6 +132,7 @@ class VlmClipRating(BaseTool):
             "ollama_url": {
                 "type": "string",
                 "default": "http://127.0.0.1:11434",
+                "description": "Local Ollama endpoint. Only localhost/loopback URLs are accepted.",
             },
             "frames_per_clip": {
                 "type": "integer",
@@ -165,7 +167,11 @@ class VlmClipRating(BaseTool):
 
         if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
             return ToolStatus.UNAVAILABLE
-        return ToolStatus.AVAILABLE
+        return (
+            ToolStatus.AVAILABLE
+            if ollama_model_available(model="gemma4:12b")
+            else ToolStatus.UNAVAILABLE
+        )
 
     def estimate_cost(self, inputs: dict[str, Any]) -> float:
         return 0.0
@@ -199,7 +205,9 @@ class VlmClipRating(BaseTool):
                 )
 
             model = inputs.get("model", "gemma4:12b")
-            ollama_url = inputs.get("ollama_url", "http://127.0.0.1:11434")
+            ollama_url = validate_local_ollama_url(
+                inputs.get("ollama_url", "http://127.0.0.1:11434")
+            )
             frames_per_clip = int(inputs.get("frames_per_clip", 8))
             frame_scale = int(inputs.get("frame_scale", 640))
             temperature = float(inputs.get("temperature", 0.1))
