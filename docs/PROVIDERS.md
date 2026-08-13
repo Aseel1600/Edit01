@@ -227,6 +227,35 @@ No subscription — pure pay-as-you-go, no minimum spend.
 
 ---
 
+### Agnes AI (Sapiens AI) — Image + Video
+
+> **Cost-sensitive image and video generation.** Text-to-image, image-to-image, multi-image composition, text-to-video, image-to-video, multi-image video, and keyframe animation through a single API. Provider name `agnes`. During the launch promo the API is free to use — **verify current pricing and any fair-use limits at [agnes-ai.com](https://www.agnes-ai.com) before relying on it for production work.**
+
+**Tools unlocked:** `agnes_image`, `agnes_video`
+**Env vars:** `AGNES_API_KEY`
+
+#### Setup
+
+1. Create an account at [agnes-ai.com](https://www.agnes-ai.com)
+2. Generate an API key
+3. Add to `.env`:
+   ```
+   AGNES_API_KEY=your-api-key
+   ```
+
+#### Capabilities
+
+| Tool | Image | Video |
+|------|-------|-------|
+| `agnes_image` | T2I, I2I, multi-image composition (2.0-flash / 2.1-flash) | — |
+| `agnes_video` | — | T2V, I2V, multi-image video, keyframe animation (video-v2.0) |
+
+#### Pricing
+
+Free during the launch promo. Confirm current per-image / per-second pricing and quota limits on the official site before committing budget.
+
+---
+
 ### Kling Official — Direct API
 
 > **Official Kling path.** This is separate from `kling_video` via fal.ai: it uses Kling's official `Authorization: Bearer <KLING_API_KEY>` API, provider name `kling_official`, and direct Classic/Turbo/Omni task protocols.
@@ -934,6 +963,7 @@ These tools require only FFmpeg or Python packages — no GPU, no API key.
 | **xAI** | `XAI_API_KEY` | `grok_image`, `grok_video` | Paid only |
 | **Runway** | `RUNWAY_API_KEY` | `runway_video` | Free trial + paid |
 | **Higgsfield** | `HIGGSFIELD_API_KEY` + `HIGGSFIELD_API_SECRET` | `higgsfield_video` | Subscription ($15-84/mo) |
+| **Agnes AI** | `AGNES_API_KEY` | `agnes_image`, `agnes_video` | Free during launch promo |
 | **HeyGen** | `HEYGEN_API_KEY` | `heygen_video` | Pay-as-you-go |
 | **Suno** | `SUNO_API_KEY` | `suno_music` | Pay-as-you-go |
 | **Local GPU** | `VIDEO_GEN_LOCAL_ENABLED` | `wan_video`, `hunyuan_video`, `cogvideo_video`, `ltx_video_local` | Free (GPU required) |
@@ -948,8 +978,8 @@ How many providers cover each capability:
 
 | Capability | Cloud Providers | Local Providers | Free Options |
 |-----------|----------------|-----------------|--------------|
-| **Image Generation** | FLUX, Kling Official, Grok, Google Imagen, GPT Image 2, Recraft | Local Diffusion | Pexels, Pixabay (stock) |
-| **Video Generation** | Grok, Kling Official, Kling via fal.ai, Runway, Veo, Gemini Omni, Higgsfield, MiniMax, HeyGen | WAN, Hunyuan, CogVideo, LTX | Pexels, Pixabay (stock) |
+| **Image Generation** | FLUX, Kling Official, Grok, Google Imagen, GPT Image 2, Recraft, Agnes AI | Local Diffusion | Pexels, Pixabay (stock) |
+| **Video Generation** | Grok, Kling Official, Kling via fal.ai, Runway, Veo, Gemini Omni, Higgsfield, MiniMax, HeyGen, Agnes AI | WAN, Hunyuan, CogVideo, LTX | Pexels, Pixabay (stock) |
 | **Text-to-Speech** | ElevenLabs, Google TTS, Kling Official, OpenAI | Piper | Piper, Google free tier, ElevenLabs free tier |
 | **Music Generation** | ElevenLabs, Suno, Google Lyria | — | ElevenLabs free tier |
 | **Post-Production** | — | FFmpeg (compose, stitch, trim, mix, enhance, grade) | All free |

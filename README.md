@@ -483,7 +483,7 @@ Each tool declares which Layer 3 skills it relies on. The agent reads Layer 1 to
 > **Full setup guide with pricing and free tiers:** [`docs/PROVIDERS.md`](docs/PROVIDERS.md)
 
 <details>
-<summary><strong>Video Generation — 15 providers</strong></summary>
+<summary><strong>Video Generation — 16 providers</strong></summary>
 
 | Provider | Type | Notes |
 |----------|------|-------|
@@ -495,6 +495,7 @@ Each tool declares which Layer 3 skills it relies on. The agent reads Layer 1 to
 | **Higgsfield** | Cloud API | Multi-model orchestrator with Soul ID for character consistency |
 | **MiniMax** | Cloud API | Cost-effective |
 | **HeyGen** | Cloud API | Multi-model gateway |
+| **Agnes AI** | Cloud API | Image + video generation (free during launch promo) |
 | **WAN 2.1** | Local GPU | Free, 1.3B and 14B variants |
 | **Hunyuan** | Local GPU | Free, high quality |
 | **CogVideo** | Local GPU | Free, 2B and 5B variants |
@@ -506,7 +507,7 @@ Each tool declares which Layer 3 skills it relies on. The agent reads Layer 1 to
 </details>
 
 <details>
-<summary><strong>Image Generation — 11 tools/providers</strong></summary>
+<summary><strong>Image Generation — 12 tools/providers</strong></summary>
 
 | Provider | Type | Notes |
 |----------|------|-------|
@@ -516,6 +517,7 @@ Each tool declares which Layer 3 skills it relies on. The agent reads Layer 1 to
 | **GPT Image 2** | Cloud API | OpenAI's image model |
 | **Recraft** | Cloud API | Design-focused generation |
 | **Kling Official** | Cloud API | Official direct API for Kling image generation and reference workflows |
+| **Agnes AI** | Cloud API | Image + video generation (free during launch promo) |
 | **Local Diffusion** | Local GPU | Stable Diffusion, free |
 | **Pexels** | Stock | Free stock images |
 | **Pixabay** | Stock | Free stock images |
