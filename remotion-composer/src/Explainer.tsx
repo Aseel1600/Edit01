@@ -300,6 +300,17 @@ interface AudioConfig {
     /** Loop the music if it's shorter than the video duration. */
     loop?: boolean;
   };
+  /** One-shot sound effects (whoosh on chart grow, pop on stat reveal).
+   *  Each cue fires once at `atSeconds`. Keep volumes low (0.3-0.5). */
+  sfx?: Array<AudioLayer & { atSeconds: number }>;
+}
+
+/** Small always-on brand chip (client name/logo text) pinned to a corner. */
+interface BrandWatermark {
+  text: string;
+  accentColor?: string;
+  /** Corner placement. Default: top-right. */
+  position?: "top-left" | "top-right";
 }
 
 export interface ExplainerProps {
@@ -308,6 +319,14 @@ export interface ExplainerProps {
   overlays?: Overlay[];
   captions?: WordCaption[];
   audio?: AudioConfig;
+  brandWatermark?: BrandWatermark;
+  /**
+   * Fonte e mês dos dados, ex. "IDEALISTA · ABR 2026". Opcional, e por isso
+   * nada do que já foi renderizado muda. Toda a peça que mostre estatísticas
+   * deve passá-lo: sem data no ecrã, um número de abril é lido em agosto como
+   * se fosse de hoje. O MarketLedger já o faz via `sourceNote`.
+   */
+  sourceNote?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -589,12 +608,15 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
         leftLabel={cut.leftLabel} rightLabel={cut.rightLabel}
         leftValue={cut.leftValue} rightValue={cut.rightValue}
         title={cut.title} backgroundColor={bgColor} textColor={textColor}
+        cardBackgroundColor={(cut as Record<string, unknown>).cardBackgroundColor as string ?? theme.surfaceColor}
+        leftColor={(cut as Record<string, unknown>).leftColor as string ?? theme.accentColor}
+        rightColor={(cut as Record<string, unknown>).rightColor as string ?? theme.primaryColor}
       />
     );
   }
   if (cut.type === "hero_title" && cut.text) {
     return maybeWrapWithBg(
-      <HeroTitle title={cut.text} subtitle={cut.heroSubtitle || cut.subtitle} />
+      <HeroTitle title={cut.text} subtitle={cut.heroSubtitle || cut.subtitle} subtitleColor={accent} />
     );
   }
   if (cut.type === "terminal_scene" && cut.steps) {
@@ -627,6 +649,7 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
         data={cut.chartData} title={cut.title} colors={cut.chartColors || theme.chartColors}
         animationStyle={(cut.chartAnimation as any) || "grow-up"}
         showGrid={cut.showGrid} showValues={cut.showValues} backgroundColor={bgColor}
+        textColor={textColor} gridColor="rgba(148,163,184,0.35)"
       />
     );
   }
@@ -637,6 +660,7 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
         animationStyle={(cut.chartAnimation as any) || "draw"}
         showGrid={cut.showGrid} showMarkers={cut.showMarkers} showLegend={cut.showLegend}
         xLabel={cut.xLabel} yLabel={cut.yLabel} backgroundColor={bgColor}
+        textColor={textColor} gridColor="rgba(148,163,184,0.35)"
       />
     );
   }
@@ -646,7 +670,7 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
         data={cut.chartData} title={cut.title} colors={cut.chartColors || theme.chartColors}
         animationStyle={(cut.chartAnimation as any) || "expand"}
         donut={cut.donut} centerLabel={cut.centerLabel} centerValue={cut.centerValue}
-        showLegend={cut.showLegend} backgroundColor={bgColor}
+        showLegend={cut.showLegend} backgroundColor={bgColor} textColor={textColor}
       />
     );
   }
@@ -655,7 +679,7 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
       <KPIGrid
         metrics={cut.chartData} title={cut.title} columns={cut.columns}
         colors={cut.chartColors || theme.chartColors} animationStyle={(cut.chartAnimation as any) || "count-up"}
-        backgroundColor={bgColor}
+        backgroundColor={bgColor} textColor={textColor}
       />
     );
   }
@@ -751,7 +775,7 @@ const OverlayRenderer: React.FC<{ overlay: Overlay }> = ({ overlay }) => {
     );
   }
   if (overlay.type === "hero_title") {
-    return <HeroTitle title={overlay.text} subtitle={overlay.subtitle} />;
+    return <HeroTitle title={overlay.text} subtitle={overlay.subtitle} subtitleColor={overlay.accentColor} />;
   }
   if (overlay.type === "provider_chip" && overlay.providers) {
     return (
@@ -815,8 +839,10 @@ export const Explainer: React.FC<ExplainerProps> = (props) => {
           words={captions}
           wordsPerPage={6}
           fontSize={42}
+          color={theme.textColor}
           highlightColor={theme.captionHighlightColor}
           backgroundColor={theme.captionBackgroundColor}
+          bottomOffset={((props as Record<string, unknown>).captionBottomOffset as number | undefined) ?? 80}
         />
       )}
 
@@ -854,6 +880,108 @@ export const Explainer: React.FC<ExplainerProps> = (props) => {
           }}
         />
       )}
+
+      {/* Layer 4: Audio — one-shot SFX cues */}
+      {audio?.sfx?.map((cue, i) => (
+        <Sequence key={`sfx-${i}`} from={Math.round(cue.atSeconds * fps)}>
+          <Audio src={resolveAsset(cue.src)} volume={cue.volume ?? 0.4} />
+        </Sequence>
+      ))}
+
+      {/* Layer 5: Brand watermark chip — pinned above scenes, below captions */}
+      {props.brandWatermark?.text && (
+        <BrandWatermarkChip watermark={props.brandWatermark} theme={theme} />
+      )}
+
+      {/* Layer 6: Source + month footer. Discreet on purpose: it has to be
+          readable if you look for it, and invisible if you don't. */}
+      {props.sourceNote && <SourceNote text={props.sourceNote} theme={theme} />}
     </AbsoluteFill>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Source note — bottom-left, always on, sits under the captions
+// ---------------------------------------------------------------------------
+const SourceNote: React.FC<{ text: string; theme: ThemeConfig }> = ({ text, theme }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const enter = interpolate(frame, [Math.round(0.6 * fps), Math.round(1.2 * fps)], [0, 1], {
+    extrapolateLeft: "clamp",
+    extrapolateRight: "clamp",
+  });
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        left: 44,
+        bottom: 30,
+        fontFamily: theme.monoFont,
+        fontSize: 20,
+        letterSpacing: 2.4,
+        textTransform: "uppercase",
+        color: "rgba(255, 255, 255, 0.46)",
+        textShadow: "0 1px 6px rgba(0, 0, 0, 0.65)",
+        opacity: enter,
+      }}
+    >
+      {text}
+    </div>
+  );
+};
+
+// ---------------------------------------------------------------------------
+// Brand watermark chip — small uppercase pill in a top corner, always visible
+// ---------------------------------------------------------------------------
+const BrandWatermarkChip: React.FC<{
+  watermark: BrandWatermark;
+  theme: ThemeConfig;
+}> = ({ watermark, theme }) => {
+  const frame = useCurrentFrame();
+  const { fps } = useVideoConfig();
+  const accent = watermark.accentColor ?? theme.accentColor;
+  const isLeft = watermark.position === "top-left";
+
+  const enter = spring({ frame: frame - Math.round(0.4 * fps), fps, config: { damping: 20 } });
+
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: 44,
+        ...(isLeft ? { left: 44 } : { right: 44 }),
+        display: "flex",
+        alignItems: "center",
+        gap: 14,
+        padding: "14px 26px",
+        borderRadius: 999,
+        background: "rgba(8, 26, 25, 0.55)",
+        border: `1px solid ${accent}44`,
+        opacity: enter * 0.92,
+        transform: `translateY(${(1 - enter) * -16}px)`,
+      }}
+    >
+      <div
+        style={{
+          width: 12,
+          height: 12,
+          borderRadius: "50%",
+          background: accent,
+        }}
+      />
+      <span
+        style={{
+          fontSize: 26,
+          fontWeight: 600,
+          letterSpacing: "0.14em",
+          textTransform: "uppercase",
+          color: theme.textColor,
+          fontFamily: "Space Grotesk, Inter, system-ui, sans-serif",
+        }}
+      >
+        {watermark.text}
+      </span>
+    </div>
   );
 };

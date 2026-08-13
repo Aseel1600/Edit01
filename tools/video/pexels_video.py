@@ -165,15 +165,18 @@ class PexelsVideo(BaseTool):
             video = videos[0]
             preferred_quality = inputs.get("preferred_quality", "hd")
 
-            # Pick the best matching video file
+            # Pick the best matching video file. Prefer the requested quality
+            # label, but never fall back to an arbitrary (often tiny) file:
+            # fall back to the highest-resolution rendition instead.
             video_files = video.get("video_files", [])
+            by_width = sorted(video_files, key=lambda x: x.get("width") or 0, reverse=True)
             selected_file = None
-            for vf in sorted(video_files, key=lambda x: x.get("width", 0), reverse=True):
+            for vf in by_width:
                 if vf.get("quality") == preferred_quality:
                     selected_file = vf
                     break
-            if not selected_file and video_files:
-                selected_file = video_files[0]
+            if not selected_file and by_width:
+                selected_file = by_width[0]
 
             if not selected_file:
                 return ToolResult(success=False, error="No downloadable video file found.")

@@ -65,7 +65,7 @@ export const SectionTitle: React.FC<SectionTitleProps> = ({
         />
         <div
           style={{
-            fontSize: 28,
+            fontSize: 52,
             fontWeight: 700,
             color: "#F8FAFC",
             fontFamily: "Space Grotesk, Inter, system-ui, sans-serif",
@@ -79,7 +79,7 @@ export const SectionTitle: React.FC<SectionTitleProps> = ({
         {subtitle && (
           <div
             style={{
-              fontSize: 18,
+              fontSize: 34,
               fontWeight: 400,
               color: accentColor,
               fontFamily: "Space Grotesk, Inter, system-ui, sans-serif",

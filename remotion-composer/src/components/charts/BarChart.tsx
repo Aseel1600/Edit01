@@ -48,24 +48,22 @@ export const BarChart: React.FC<BarChartProps> = ({
   // Chart layout constants (within 1920x1080 canvas)
   const chartLeft = 140;
   const chartRight = 1780;
-  const chartTop = title ? 160 : 80;
-  const chartBottom = 920;
+  const chartTop = title ? 340 : 96;
+  const chartBottom = 900;
   const chartWidth = chartRight - chartLeft;
   const chartHeight = chartBottom - chartTop;
 
   const barCount = data.length;
-  const totalGap = barGap * (barCount + 1);
-  const barWidth = Math.min(
-    (chartWidth - totalGap) / barCount,
-    120
-  );
-  const actualTotalWidth = barCount * barWidth + (barCount + 1) * barGap;
-  const offsetX = chartLeft + (chartWidth - actualTotalWidth) / 2;
+  // Slot-based layout: give every bar an equal slice of the chart width and
+  // center the bar (and its labels) within that slot. This spreads bars out
+  // for small counts so wide axis labels don't collide.
+  const slotWidth = chartWidth / barCount;
+  const barWidth = Math.min(slotWidth - barGap * 2, 160);
 
   // Grid lines
   const gridLineCount = 5;
   const gridLines = Array.from({ length: gridLineCount + 1 }, (_, i) => {
-    const value = (maxValue / gridLineCount) * i;
+    const value = Math.round((maxValue / gridLineCount) * i);
     const y = chartBottom - (i / gridLineCount) * chartHeight;
     return { value, y };
   });
@@ -87,12 +85,12 @@ export const BarChart: React.FC<BarChartProps> = ({
         {title && (
           <text
             x={960}
-            y={80}
+            y={112}
             textAnchor="middle"
             fill={textColor}
             fontFamily={fontFamily}
             fontWeight={700}
-            fontSize={48}
+            fontSize={120}
             opacity={spring({ frame, fps, config: { damping: 20 } })}
           >
             {title}
@@ -126,7 +124,7 @@ export const BarChart: React.FC<BarChartProps> = ({
                   fill={textColor}
                   fontFamily={fontFamily}
                   fontWeight={400}
-                  fontSize={20}
+                  fontSize={64}
                   opacity={gridOpacity}
                 >
                   {formatNumber(line.value)}
@@ -162,7 +160,8 @@ export const BarChart: React.FC<BarChartProps> = ({
         {/* Bars */}
         {data.map((datum, i) => {
           const color = colors[i % colors.length];
-          const barX = offsetX + barGap + i * (barWidth + barGap);
+          const slotCenter = chartLeft + slotWidth * (i + 0.5);
+          const barX = slotCenter - barWidth / 2;
           const barHeightFull = (datum.value / maxValue) * chartHeight;
           const staggerDelay = i * 4;
 
@@ -238,12 +237,12 @@ export const BarChart: React.FC<BarChartProps> = ({
               {showValues && (
                 <text
                   x={barX + barWidth / 2}
-                  y={barY - 12}
+                  y={barY - 24}
                   textAnchor="middle"
                   fill={textColor}
                   fontFamily={fontFamily}
                   fontWeight={600}
-                  fontSize={22}
+                  fontSize={96}
                   opacity={interpolate(
                     barProgress,
                     [0.7, 1],
@@ -258,12 +257,12 @@ export const BarChart: React.FC<BarChartProps> = ({
               {/* Label */}
               <text
                 x={barX + barWidth / 2}
-                y={chartBottom + 40}
+                y={chartBottom + 72}
                 textAnchor="middle"
                 fill={textColor}
                 fontFamily={fontFamily}
                 fontWeight={500}
-                fontSize={20}
+                fontSize={80}
                 opacity={barOpacity}
               >
                 {datum.label}

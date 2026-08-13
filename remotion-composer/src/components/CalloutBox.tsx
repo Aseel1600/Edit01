@@ -41,7 +41,7 @@ export const CalloutBox: React.FC<CalloutBoxProps> = ({
   backgroundColor,
   textColor = "#1F2937",
   fontFamily = "Inter, system-ui, sans-serif",
-  fontSize = 32,
+  fontSize = 46,
   titleFontSize = 38,
   containerBackgroundColor = "#FFFFFF",
 }) => {
@@ -155,7 +155,7 @@ export const CalloutBox: React.FC<CalloutBoxProps> = ({
           {/* Icon */}
           <div
             style={{
-              fontSize: isQuote ? 72 : 48,
+              fontSize: isQuote ? 84 : 56,
               lineHeight: 1,
               marginRight: 28,
               flexShrink: 0,

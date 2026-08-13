@@ -1,0 +1,7 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "showingreel-pt", "runtimeExecutable": "node", "runtimeArgs": ["projects/video-service-business/site-pt/scripts/dev-server.mjs", "4322"], "port": 4322 },
+    { "name": "showingreel-us", "runtimeExecutable": "node", "runtimeArgs": ["projects/video-service-business/site/scripts/dev-server.mjs", "4323"], "port": 4323 }
+  ]
+}

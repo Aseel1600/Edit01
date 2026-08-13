@@ -194,6 +194,12 @@ Infrastructure files:
 - `tools/cost_tracker.py` — budget governance
 - `lib/pipeline_loader.py` — manifest loading and helpers
 
+## Finishing and mastering
+
+When the deliverable is **assembled in an NLE or AE** (not only `video_compose` render) — e.g. real-estate tours from I2V stills, speed ramps, kinetic captions, Resolve/Premiere/AE export — read **[`MASTERING.md`](MASTERING.md)** before retime, colour, audio loudness, or final export.
+
+That guide covers: per-clip optical flow / Pixel Motion (never a global master pass), ramp pacing, montage rhythm, QA checklist. Client-specific cut lists stay in project files (e.g. `PLANO-VIDEO-*.md`, `DADOS-IMOVEL.md`).
+
 ## Project Directory Convention
 
 Every production run creates a project workspace under `projects/`. This directory is gitignored — all generated assets are regenerable.
@@ -658,6 +664,7 @@ The `.agents/skills/` directory is large. When you're not coming in through a to
 | **Capture** | `playwright-recording` (browser flows), `ffmpeg` (post) |
 | **Visualization** | `beautiful-mermaid`, `d3-viz`, `manim-composer`, `manimce-best-practices`, `manimgl-best-practices` |
 | **Media editing** | `video-edit`, `video-download`, `video-understand`, `video-toolkit`, `visual-style` |
+| **NLE / AE finish (I2V, ramps, export)** | [`MASTERING.md`](MASTERING.md) at repo root |
 
 **When in doubt, read the category's meta routing file first:**
 - Picking an animation runtime? → `skills/meta/animation-runtime-selector.md` routes between Remotion primitives, GSAP plugins, framer-motion, Lottie, Manim, D3.
@@ -673,6 +680,7 @@ The `.agents/skills/` directory is large. When you're not coming in through a to
 | How does a tool actually work? | the tool's `usage_location` from the registry |
 | How should this pipeline stage behave? | `skills/pipelines/<pipeline>/...` |
 | What is the checkpoint/review policy? | `skills/meta/` |
+| How to masterize I2V / NLE / speed-ramp deliverables? | [`MASTERING.md`](MASTERING.md) |
 
 ## What Not To Do
 

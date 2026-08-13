@@ -1,4 +1,7 @@
 import { Composition, CalculateMetadataFunction } from "remotion";
+import { PropertyLabelDemo } from "./PropertyLabelDemo";
+import { ToLiveCascais } from "./ToLiveCascais";
+import { PauloMartinsCinematicoV2, TOTAL_FRAMES as PM_FRAMES } from "./clientes/PauloMartinsCinematicoV2";
 import { Explainer, ExplainerProps } from "./Explainer";
 import {
   CinematicRenderer,
@@ -16,6 +19,14 @@ import { ProductReveal, ProductRevealProps } from "./components/ProductReveal";
 import { CaptionOverlay, WordCaption } from "./components/CaptionOverlay";
 import { CollageBurst, CollageBurstProps } from "./CollageBurst";
 import { LyricOverlay, LyricOverlayProps } from "./LyricOverlay";
+import { MarketLedger, calculateMarketLedgerMetadata } from "./MarketLedger";
+import { FeeEdgeAd } from "./FeeEdgeAd";
+import { FeeEdgeReel } from "./FeeEdgeReel";
+import { ReelFunding } from "./ReelFunding";
+import { ReelSpread } from "./ReelSpread";
+import { ReelWithdraw } from "./ReelWithdraw";
+import { ReelWithdrawV2, S as SW2 } from "./ReelWithdrawV2";
+import { CardWithdrawA, CardWithdrawB } from "./CardWithdraw";
 
 // ---------------------------------------------------------------------------
 // Theme System — prevents every video from looking like dark fintech
@@ -135,6 +146,71 @@ const calculateMetadata: CalculateMetadataFunction<ExplainerProps> = async ({
 export const Root: React.FC = () => {
   return (
     <>
+      <Composition
+        id="FeeEdgeAd"
+        component={FeeEdgeAd}
+        durationInFrames={660}
+        fps={30}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="FeeEdgeReel"
+        component={FeeEdgeReel}
+        durationInFrames={719}
+        fps={30}
+        width={1080}
+        height={1920}
+      />
+      <Composition
+        id="ReelFunding"
+        component={ReelFunding}
+        durationInFrames={683}
+        fps={30}
+        width={1080}
+        height={1920}
+      />
+      <Composition
+        id="ReelSpread"
+        component={ReelSpread}
+        durationInFrames={652}
+        fps={30}
+        width={1080}
+        height={1920}
+      />
+      <Composition
+        id="ReelWithdraw"
+        component={ReelWithdraw}
+        durationInFrames={594}
+        fps={30}
+        width={1080}
+        height={1920}
+      />
+      <Composition
+        id="ReelWithdrawV2"
+        component={ReelWithdrawV2}
+        durationInFrames={SW2.payoff + SW2.mechanism + SW2.agitate + SW2.cta}
+        fps={30}
+        width={1080}
+        height={1920}
+      />
+      {/* Static ad cards, 1:1. Rendered as stills, so 1 frame is enough. */}
+      <Composition
+        id="CardWithdrawA"
+        component={CardWithdrawA}
+        durationInFrames={1}
+        fps={30}
+        width={1200}
+        height={1200}
+      />
+      <Composition
+        id="CardWithdrawB"
+        component={CardWithdrawB}
+        durationInFrames={1}
+        fps={30}
+        width={1200}
+        height={1200}
+      />
       <Composition
         id="Explainer"
         component={Explainer}
@@ -297,6 +373,63 @@ export const Root: React.FC = () => {
         } as LyricOverlayProps}
       />
       <Composition
+        id="MarketLedger"
+        component={MarketLedger}
+        durationInFrames={30 * 34}
+        fps={30}
+        width={1080}
+        height={1920}
+        defaultProps={{
+          data: {
+            accent: "#E8B24C",
+            location: "COLUMBUS, OHIO",
+            period: "JUNE 2026",
+            masthead: "MARKET BRIEF",
+            hookLine1: "The real",
+            hookLine2: "numbers.",
+            hookSub: "Columbus housing — no spin, just the data.",
+            statLabel: "MEDIAN LIST PRICE",
+            statValue: 394500,
+            statPrefix: "$",
+            statSuffix: "",
+            statGroup: ",",
+            yoy: "+1.2%",
+            yoyLabel: "YEAR OVER YEAR",
+            chartTitle: "SPRING CLIMB · MEDIAN LIST ($K)",
+            chart: [
+              { m: "MAR", v: 360 },
+              { m: "APR", v: 372 },
+              { m: "MAY", v: 380 },
+              { m: "JUN", v: 395 },
+            ],
+            insightLabel: "DAYS ON MARKET",
+            insightValue: 39,
+            insightDisplay: null,
+            insightSuffix: "",
+            insightDelta: "+3 vs. last June",
+            insightCaption: "Buyers get a little breathing room.",
+            insightTally: 39,
+            ctaTagline: "Know your market.",
+            brand: "HARBORLINE REALTY",
+            handle: "harborline.example",
+            sourceNote: "REALTOR.COM VIA FRED · JUN 2026",
+          },
+          sections: {
+            hook: [0, 6.68],
+            stat: [6.68, 14.04],
+            chart: [14.04, 20.73],
+            insight: [20.73, 27.9],
+            cta: [27.9, 33.48],
+          },
+          captions: [],
+          audio: {
+            narration: "market-ledger/narration_full.mp3",
+            music: "market-ledger/background_music.mp3",
+          },
+        }}
+        calculateMetadata={calculateMarketLedgerMetadata}
+      />
+      <Composition
         id="EndTag"
         component={EndTag}
         // 5.5s at 30fps = 165 frames. Render CLI can override via --props.
@@ -329,6 +462,32 @@ export const Root: React.FC = () => {
           fadeOutSeconds: 1.5,
           overlay: true,
         } as EndTagProps}
+      />
+      {/* ToLive Cascais: o filme ja montado em ffmpeg, so com a camada de legendas.
+          3223 fotogramas = 134,29 s a 24 fps. */}
+      <Composition
+        id="ToLiveCascais"
+        component={ToLiveCascais}
+        durationInFrames={8058}
+        fps={60}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="PropertyLabelDemo"
+        component={PropertyLabelDemo}
+        durationInFrames={210}
+        fps={24}
+        width={1920}
+        height={1080}
+      />
+      <Composition
+        id="PauloMartinsCinematicoV2"
+        component={PauloMartinsCinematicoV2}
+        durationInFrames={PM_FRAMES}
+        fps={24}
+        width={1920}
+        height={1080}
       />
     </>
   );

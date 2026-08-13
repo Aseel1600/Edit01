@@ -60,6 +60,8 @@ Each tool's `agent_skills[]` field bridges Layer 1 → Layer 3. See `skills/INDE
 
 | File | Purpose |
 |------|---------|
+| `AGENT_GUIDE.md` | Agent routing, pipelines, protocols |
+| `MASTERING.md` | NLE/AE finish — speed ramps, optical flow, colour, export, QA (I2V / real-estate tours) |
 | `config.yaml` | Global configuration |
 | `lib/config_model.py` | Runtime config loader (Pydantic) |
 | `lib/checkpoint.py` | Checkpoint writer/reader |

@@ -14,7 +14,7 @@ export const StatCard: React.FC<StatCardProps> = ({
   stat,
   subtitle,
   statFontSize = 128,
-  subtitleFontSize = 36,
+  subtitleFontSize = 48,
   color = "#FFFFFF",
   accentColor = "#F59E0B",
   backgroundColor = "#1F2937",
@@ -44,7 +44,7 @@ export const StatCard: React.FC<StatCardProps> = ({
         background: backgroundColor,
       }}
     >
-      <div style={{ textAlign: "center" }}>
+      <div style={{ textAlign: "center", maxWidth: "86%" }}>
         <div
           style={{
             transform: `scale(${scale})`,

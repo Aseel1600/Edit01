@@ -43,6 +43,9 @@ music_library/
 .env.local
 *.env
 .youtube-token.json
+# MCP config: pode conter chaves de API. A configuração da máquina vive em
+# %USERPROFILE%\.claude\.mcp.json, nunca aqui.
+.mcp.json
 # Google service-account / Vertex AI keys — never commit
 gcp-*.json
 *-service-account.json
@@ -93,3 +96,29 @@ remotion-composer/public/demo-props/talking-head-*
 remotion-composer/public/demo-props/caption-burn-*
 
 venv/
+# ── Ambientes, caches e material pesado (fechado a 2026-08-13) ──
+# Um `git add -A` distraído estagiava ~12 GB destas pastas. O `venv/` acima
+# não apanhava as `.venv*`, que são as que existem nesta máquina.
+.venv*/
+.runtime-python/
+.runtime-deps/
+.runtime-python-deps/
+.cache/
+.remotion/
+.tmp/
+tmp/
+.codex/
+# Masters entregues do canal (não são workspace, ~4,4 GB)
+videos/
+# Biblioteca de LUTs comprada (~1,3 GB, dos quais 825 MB são ZIPs já extraídos)
+LUTS/
+# Experiência de 12/08: 6 sistemas de legendas gerados em paralelo
+ae-legendas-run/
+# Scratch da raiz
+shot*.mjs
+rt2.mjs
+rendertest.mjs
+proofs.mjs
+_bp.json
+_bp.html
+sale-card-upload-tmp.png

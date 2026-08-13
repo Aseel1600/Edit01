@@ -1,0 +1,154 @@
+{
+  "version": "1.0",
+  "project_id": "mario-garces-property-v1",
+  "pipeline_type": "cinematic",
+  "stage": "compose",
+  "status": "completed",
+  "timestamp": "2026-08-03T13:08:02.645654+00:00",
+  "checkpoint_policy": "guided",
+  "human_approval_required": false,
+  "human_approved": false,
+  "artifacts": {
+    "render_report": {
+      "version": "1.0",
+      "outputs": [
+        {
+          "path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Mario Garces\\GPT\\cinematic-video-v1\\projects\\mario-garces-property-v1\\renders\\mario-garces-16x9-silent-draft-v1-noaudio.mp4",
+          "format": "mp4",
+          "codec": "h264",
+          "resolution": "960x540",
+          "fps": 30.0,
+          "duration_seconds": 58.0,
+          "file_size_bytes": 25736046,
+          "platform_target": "client-review-preview"
+        }
+      ],
+      "render_time_seconds": 39.7,
+      "warnings": [
+        "Preview render at 50% scale; 1920x1080 master should be rendered after picture-lock approval."
+      ],
+      "verification_notes": [
+        "Container and video stream validated with ffprobe.",
+        "Sixteen frames were reviewed across the complete timeline.",
+        "No black frames, missing assets, broken overlays or unreadable captions detected.",
+        "The file contains no audio stream, as requested.",
+        "Remotion runtime and Atelier composition mode were preserved."
+      ],
+      "render_grammar": "cinematic-trailer",
+      "slideshow_risk_score": {
+        "average": 1.2,
+        "verdict": "strong"
+      },
+      "decision_log_ref": "artifacts/decision_log.json",
+      "final_review_ref": "artifacts/final_review.json",
+      "metadata": {
+        "composition_mode": "atelier",
+        "music": "none",
+        "source_listing": "https://www.remax.pt/pt/imoveis/venda-apartamento-t4-lisboa-lumiar/124151148-71"
+      }
+    },
+    "final_review": {
+      "version": "1.0",
+      "output_path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Mario Garces\\GPT\\cinematic-video-v1\\projects\\mario-garces-property-v1\\renders\\mario-garces-16x9-silent-draft-v1-noaudio.mp4",
+      "status": "pass",
+      "checks": {
+        "technical_probe": {
+          "valid_container": true,
+          "duration_seconds": 58.0,
+          "resolution": "960x540",
+          "fps": 30.0,
+          "has_audio": false,
+          "codec": "h264",
+          "file_size_bytes": 25736046,
+          "issues": []
+        },
+        "visual_spotcheck": {
+          "frames_sampled": 16,
+          "frame_paths": [
+            "renders/qa-frames/frame_0000.png",
+            "renders/qa-frames/frame_0001.png",
+            "renders/qa-frames/frame_0002.png",
+            "renders/qa-frames/frame_0003.png",
+            "renders/qa-frames/frame_0004.png",
+            "renders/qa-frames/frame_0005.png",
+            "renders/qa-frames/frame_0006.png",
+            "renders/qa-frames/frame_0007.png",
+            "renders/qa-frames/frame_0008.png",
+            "renders/qa-frames/frame_0009.png",
+            "renders/qa-frames/frame_0010.png",
+            "renders/qa-frames/frame_0011.png",
+            "renders/qa-frames/frame_0012.png",
+            "renders/qa-frames/frame_0013.png",
+            "renders/qa-frames/frame_0014.png",
+            "renders/qa-frames/frame_0015.png"
+          ],
+          "black_frames_detected": false,
+          "broken_overlays": false,
+          "missing_assets": false,
+          "unreadable_text": false,
+          "issues": []
+        },
+        "audio_spotcheck": {
+          "narration_present": false,
+          "music_present": false,
+          "unexpected_silence": false,
+          "clipping_detected": false,
+          "mix_intelligible": true,
+          "issues": []
+        },
+        "promise_preservation": {
+          "delivery_promise_honored": true,
+          "renderer_family_used": "cinematic-trailer",
+          "render_runtime_used": "remotion",
+          "runtime_swap_detected": false,
+          "runtime_swap_check": "ok \u2014 Remotion corresponde ao runtime aprovado",
+          "motion_ratio_actual": 0.913,
+          "silent_downgrade_detected": false,
+          "issues": []
+        },
+        "subtitle_check": {
+          "subtitles_expected": false,
+          "subtitles_present": false,
+          "coverage_ratio": 0,
+          "timing_drift_detected": false,
+          "issues": []
+        },
+        "atelier": {
+          "stock_reuse_detected": false,
+          "offending_imports": [],
+          "art_direction_declared": true,
+          "art_direction": "art-direction.md",
+          "scene_distinctness_recorded": true,
+          "each_scene_has_distinct_primary_subject": true,
+          "signature_device_present": true,
+          "signature_device_used_sparingly": true,
+          "caption_text_deduplicated": true,
+          "could_be_any_other_property_video": false,
+          "reuses_prior_visual_language": false,
+          "issues": []
+        }
+      },
+      "issues_found": [],
+      "recommended_action": "present_to_user",
+      "metadata": {
+        "review_note": "A faixa de \u00e1udio silenciosa criada pelo render foi removida; o ficheiro final de teste n\u00e3o cont\u00e9m qualquer stream de \u00e1udio, conforme pedido.",
+        "caption_source": "Ficha oficial RE/MAX ID 124151148-71",
+        "human_visual_review": "16 frames distribu\u00eddos por todas as cenas e card final"
+      }
+    }
+  },
+  "review": {
+    "decision": "PASS",
+    "critical": 0,
+    "suggestions": 0,
+    "success_criteria_met": "2/2"
+  },
+  "cost_snapshot": {
+    "spent_usd": 0.0,
+    "note": "No paid generation or music"
+  },
+  "metadata": {
+    "project_root": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Mario Garces\\GPT\\cinematic-video-v1\\projects\\mario-garces-property-v1",
+    "preview": true
+  }
+}

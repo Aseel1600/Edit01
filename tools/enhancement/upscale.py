@@ -97,6 +97,15 @@ class Upscale(BaseTool):
                 "default": 0.5,
                 "description": "Denoising strength (0 = no denoise, 1 = full)",
             },
+            "tile": {
+                "type": "integer",
+                "minimum": 0,
+                "default": 0,
+                "description": (
+                    "Tile size for tiled inference (0 = whole frame). Set to e.g. "
+                    "512 on limited VRAM to avoid CUDA OOM on large 4x upscales."
+                ),
+            },
         },
     }
 
@@ -138,6 +147,7 @@ class Upscale(BaseTool):
         model_name = inputs.get("model", "RealESRGAN_x4plus")
         face_enhance = inputs.get("face_enhance", False)
         denoise_strength = inputs.get("denoise_strength", 0.5)
+        tile = inputs.get("tile", 0)
 
         start = time.time()
 
@@ -145,12 +155,12 @@ class Upscale(BaseTool):
             if is_video:
                 result = self._upscale_video(
                     input_path, output_path, scale, model_name,
-                    face_enhance, denoise_strength,
+                    face_enhance, denoise_strength, tile,
                 )
             else:
                 result = self._upscale_image(
                     input_path, output_path, scale, model_name,
-                    face_enhance, denoise_strength,
+                    face_enhance, denoise_strength, tile,
                 )
         except Exception as e:
             return ToolResult(success=False, error=f"Upscale failed: {e}")
@@ -184,10 +194,11 @@ class Upscale(BaseTool):
         model_name: str,
         face_enhance: bool,
         denoise_strength: float,
+        tile: int = 0,
     ) -> dict[str, Any]:
         import cv2
 
-        upsampler = self._build_upsampler(scale, model_name, denoise_strength, face_enhance)
+        upsampler = self._build_upsampler(scale, model_name, denoise_strength, face_enhance, tile)
 
         img = cv2.imread(str(input_path), cv2.IMREAD_UNCHANGED)
         if img is None:
@@ -211,10 +222,11 @@ class Upscale(BaseTool):
         model_name: str,
         face_enhance: bool,
         denoise_strength: float,
+        tile: int = 0,
     ) -> dict[str, Any]:
         import cv2
 
-        upsampler = self._build_upsampler(scale, model_name, denoise_strength, face_enhance)
+        upsampler = self._build_upsampler(scale, model_name, denoise_strength, face_enhance, tile)
 
         # Get source frame rate
         fps = self._get_video_fps(input_path)
@@ -268,6 +280,7 @@ class Upscale(BaseTool):
         model_name: str,
         denoise_strength: float,
         face_enhance: bool,
+        tile: int = 0,
     ):
         """Build and return a RealESRGANer instance."""
         import inspect
@@ -297,6 +310,8 @@ class Upscale(BaseTool):
             "model": model,
             "dni_weight": denoise_strength,
             "half": half,
+            "tile": tile,          # 0 = whole frame; >0 tiles to bound VRAM
+            "tile_pad": 10,
         }
         # Guard: only pass device= if the installed version accepts it
         if "device" in inspect.signature(RealESRGANer.__init__).parameters:

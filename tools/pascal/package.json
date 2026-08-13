@@ -1,0 +1,10 @@
+{
+  "name": "pascal-bridge",
+  "private": true,
+  "type": "module",
+  "description": "Ponte entre a nossa geometria (planta marcada -> JSON) e o Pascal Editor / Blender",
+  "dependencies": {
+    "@pascal-app/core": "^0.9.2",
+    "@pascal-app/mcp": "^0.3.2"
+  }
+}

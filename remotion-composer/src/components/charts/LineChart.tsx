@@ -58,7 +58,7 @@ export const LineChart: React.FC<LineChartProps> = ({
   // Chart layout
   const chartLeft = 160;
   const chartRight = 1760;
-  const chartTop = title ? 160 : 100;
+  const chartTop = title ? 300 : 100;
   const chartBottom = showLegend ? 880 : 940;
   const chartWidth = chartRight - chartLeft;
   const chartHeight = chartBottom - chartTop;
@@ -115,12 +115,12 @@ export const LineChart: React.FC<LineChartProps> = ({
         {title && (
           <text
             x={960}
-            y={80}
+            y={112}
             textAnchor="middle"
             fill={textColor}
             fontFamily={fontFamily}
             fontWeight={700}
-            fontSize={48}
+            fontSize={120}
             opacity={spring({ frame, fps, config: { damping: 20 } })}
           >
             {title}
@@ -151,7 +151,7 @@ export const LineChart: React.FC<LineChartProps> = ({
                   textAnchor="end"
                   fill={textColor}
                   fontFamily={fontFamily}
-                  fontSize={18}
+                  fontSize={64}
                   fontWeight={400}
                 >
                   {formatNumber(line.value)}
@@ -175,7 +175,7 @@ export const LineChart: React.FC<LineChartProps> = ({
                   textAnchor="middle"
                   fill={textColor}
                   fontFamily={fontFamily}
-                  fontSize={18}
+                  fontSize={64}
                   fontWeight={400}
                 >
                   {formatNumber(line.value)}
@@ -217,7 +217,7 @@ export const LineChart: React.FC<LineChartProps> = ({
             textAnchor="middle"
             fill={textColor}
             fontFamily={fontFamily}
-            fontSize={22}
+            fontSize={68}
             fontWeight={500}
             opacity={interpolate(frame, [5, 15], [0, 1], {
               extrapolateLeft: "clamp",
@@ -234,7 +234,7 @@ export const LineChart: React.FC<LineChartProps> = ({
             textAnchor="middle"
             fill={textColor}
             fontFamily={fontFamily}
-            fontSize={22}
+            fontSize={68}
             fontWeight={500}
             transform={`rotate(-90, 40, ${chartTop + chartHeight / 2})`}
             opacity={interpolate(frame, [5, 15], [0, 1], {
@@ -364,7 +364,7 @@ export const LineChart: React.FC<LineChartProps> = ({
                     y={966}
                     fill={textColor}
                     fontFamily={fontFamily}
-                    fontSize={20}
+                    fontSize={64}
                     fontWeight={500}
                   >
                     {s.label}

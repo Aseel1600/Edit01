@@ -1,0 +1,524 @@
+{
+  "version": "1.0",
+  "project_id": "vitor-rocha-tetris",
+  "pipeline_type": "cinematic",
+  "stage": "research",
+  "status": "completed",
+  "timestamp": "2026-07-29T09:04:56.600879+00:00",
+  "checkpoint_policy": "guided",
+  "human_approval_required": false,
+  "human_approved": true,
+  "artifacts": {
+    "research_brief": {
+      "version": "1.0",
+      "topic": "Filme imobili\u00e1rio premium do T1+1 no Edif\u00edcio T\u00e9tris, em Vila Nova de Gaia, para a Property Stories",
+      "research_date": "2026-07-29",
+      "landscape": {
+        "existing_content": [
+          {
+            "title": "Cinematic Real Estate Film, Editing and Color Grading Showcase",
+            "url": "https://vimeo.com/1153402208",
+            "source": "Vimeo",
+            "angle": "Percurso arquitet\u00f3nico com cortes limpos e grada\u00e7\u00e3o equilibrada",
+            "what_it_covers": "Espa\u00e7o, luz, fluxo arquitet\u00f3nico, transi\u00e7\u00f5es suaves e ritmo natural",
+            "what_it_misses": "N\u00e3o apresenta uma identidade de marca pr\u00f3pria nem uma proposta espec\u00edfica para imagens fixas",
+            "engagement_signal": "Refer\u00eancia recente apresentada como mostra de p\u00f3s-produ\u00e7\u00e3o imobili\u00e1ria"
+          },
+          {
+            "title": "Luxury Villa Cinematic Tour",
+            "url": "https://vimeo.com/1173970605",
+            "source": "Vimeo",
+            "angle": "Atmosfera premium, luz natural e movimentos de c\u00e2mara calmos",
+            "what_it_covers": "Composi\u00e7\u00e3o arquitet\u00f3nica, revela\u00e7\u00f5es exteriores e interiores com ritmo contido",
+            "what_it_misses": "A abordagem depende de filmagem real e de uma propriedade de escala superior",
+            "engagement_signal": "Refer\u00eancia recente de tour imobili\u00e1rio premium"
+          },
+          {
+            "title": "Golden Hour Modern Home Tour, Seedance 2.0 Example",
+            "url": "https://www.hedra.com/examples/golden-hour-modern-home-tour-seedance-2-0",
+            "source": "Hedra",
+            "angle": "Quiet luxury com movimentos lentos, luz quente e m\u00fasica minimalista",
+            "what_it_covers": "Estrutura por beats, dire\u00e7\u00e3o de c\u00e2mara, paleta e desenho sonoro para v\u00eddeo imobili\u00e1rio gerado",
+            "what_it_misses": "A est\u00e9tica de golden hour n\u00e3o corresponde \u00e0 luz real e neutra das imagens do T\u00e9tris",
+            "engagement_signal": "Exemplo atual de produ\u00e7\u00e3o imobili\u00e1ria com Seedance 2.0"
+          }
+        ],
+        "saturated_angles": [
+          "Montagem r\u00e1pida de divis\u00f5es sem continuidade espacial",
+          "Grada\u00e7\u00e3o excessivamente dourada que altera materiais e brancos",
+          "Texto promocional constante por cima da arquitetura",
+          "Transi\u00e7\u00f5es chamativas sem l\u00f3gica arquitet\u00f3nica"
+        ],
+        "underserved_gaps": [
+          "Um filme curto que transforme renders est\u00e1ticos numa experi\u00eancia espacial cred\u00edvel sem inventar geometria",
+          "Uma liga\u00e7\u00e3o clara entre o conceito modular do T\u00e9tris, a localiza\u00e7\u00e3o central e a marca Property Stories",
+          "Uma apresenta\u00e7\u00e3o premium contida, com cor natural e movimento que deixe o im\u00f3vel respirar"
+        ]
+      },
+      "trending": {
+        "recent_developments": [
+          {
+            "headline": "Premium real estate reels in 2026 depend on pacing, light, sound and storytelling",
+            "url": "https://alturaprivateestates.com/en/blog/reels-inmobiliarios-lujo-2026/",
+            "date": "2026-07-10",
+            "relevance": "Confirma que o Reel deve ser tratado como uma pe\u00e7a pr\u00f3pria e n\u00e3o como simples recorte da vers\u00e3o horizontal"
+          }
+        ],
+        "active_discussions": [
+          {
+            "platform": "Reddit",
+            "topic_or_url": "https://www.reddit.com/r/videography/comments/1q7gsk4/is_this_pacing_too_aggressive_for_a_luxury_listing/",
+            "sentiment": "H\u00e1 resist\u00eancia a montagens demasiado agressivas quando o p\u00fablico precisa de compreender e sentir o espa\u00e7o",
+            "key_quotes": []
+          }
+        ],
+        "timeliness_window": "evergreen"
+      },
+      "data_points": [
+        {
+          "claim": "Em conte\u00fado imobili\u00e1rio premium, os brancos devem permanecer brancos, os tons de madeira cred\u00edveis e a luz natural suave; uma grada\u00e7\u00e3o dram\u00e1tica reduz a confian\u00e7a no que \u00e9 mostrado.",
+          "source_url": "https://fotober.com/luxury-real-estate-video",
+          "source_name": "Fotober",
+          "credibility": "secondary_source",
+          "surprise_factor": "notable",
+          "usable_as": "regra de dire\u00e7\u00e3o visual e controlo de qualidade"
+        },
+        {
+          "claim": "Num Reel imobili\u00e1rio, o primeiro impacto deve acontecer no primeiro ou segundo segundo e deve mostrar a divis\u00e3o, vista ou detalhe mais forte.",
+          "source_url": "https://agence-webimmo.com/en/instagram-reels-comment-to-present-your-real-estate-properties/",
+          "source_name": "Agence Webimmo",
+          "credibility": "secondary_source",
+          "surprise_factor": "expected",
+          "usable_as": "regra de abertura para a vers\u00e3o vertical"
+        },
+        {
+          "claim": "A m\u00fasica para im\u00f3veis premium tende a funcionar melhor quando \u00e9 instrumental, contida e situada aproximadamente entre 70 e 90 BPM.",
+          "source_url": "https://artyfile.com/music-for-real-estate-videos",
+          "source_name": "Artyfile",
+          "credibility": "secondary_source",
+          "surprise_factor": "notable",
+          "usable_as": "dire\u00e7\u00e3o musical e mapa de ritmo"
+        },
+        {
+          "claim": "A perce\u00e7\u00e3o de qualidade premium depende da consist\u00eancia de cor entre todas as divis\u00f5es, mesmo quando o espectador n\u00e3o consegue identificar conscientemente a diferen\u00e7a.",
+          "source_url": "https://lumatrixmedia.com/2026/06/16/what-makes-real-estate-videos-feel-premium-key-elements-explained/",
+          "source_name": "Lumatrix Media",
+          "credibility": "secondary_source",
+          "surprise_factor": "notable",
+          "usable_as": "crit\u00e9rio de uniformiza\u00e7\u00e3o do lote fotogr\u00e1fico"
+        }
+      ],
+      "audience_insights": {
+        "common_questions": [
+          "O v\u00eddeo permite perceber a distribui\u00e7\u00e3o e a sensa\u00e7\u00e3o de espa\u00e7o do apartamento?",
+          "As imagens representam com fidelidade os materiais, a luz e as vistas?",
+          "Quais s\u00e3o os atributos que distinguem este im\u00f3vel nos primeiros segundos?"
+        ],
+        "misconceptions": [
+          {
+            "myth": "Para parecer premium \u00e9 necess\u00e1rio aumentar muito o contraste, a satura\u00e7\u00e3o e a temperatura de cor.",
+            "reality": "No imobili\u00e1rio premium, a grada\u00e7\u00e3o mais convincente \u00e9 natural, coerente e preserva brancos e materiais.",
+            "source": "https://fotober.com/luxury-real-estate-video"
+          },
+          {
+            "myth": "Mais planos e mais transi\u00e7\u00f5es tornam automaticamente o filme mais valioso.",
+            "reality": "A sele\u00e7\u00e3o rigorosa, os planos fortes e o ritmo que permite ler o espa\u00e7o comunicam mais qualidade.",
+            "source": "https://www.flylisted.com/blog/luxury-real-estate-video-cinematic"
+          }
+        ],
+        "knowledge_level": "O p\u00fablico reconhece imediatamente um v\u00eddeo imobili\u00e1rio gen\u00e9rico, mas avalia a qualidade sobretudo pela credibilidade da luz, estabilidade do movimento, clareza espacial e conten\u00e7\u00e3o da marca.",
+        "pain_points": [
+          "Imagens de IA que deformam arquitetura ou mobili\u00e1rio",
+          "V\u00eddeos com aspeto de apresenta\u00e7\u00e3o de diapositivos",
+          "Cor inconsistente entre exteriores e interiores",
+          "Texto e log\u00f3tipos que competem com o im\u00f3vel"
+        ]
+      },
+      "angles_discovered": [
+        {
+          "name": "Gaia aos seus p\u00e9s",
+          "hook": "Abrir com a cidade e revelar gradualmente um ref\u00fagio elevado no centro de Gaia.",
+          "type": "narrative",
+          "why_now": "As imagens incluem vistas amplas, terra\u00e7o e localiza\u00e7\u00e3o central, permitindo construir desejo antes de apresentar os interiores.",
+          "grounded_in": [
+            "Primeiro impacto visual nos primeiros dois segundos",
+            "Ritmo premium que deixa o espa\u00e7o respirar",
+            "M\u00fasica instrumental contida"
+          ]
+        },
+        {
+          "name": "Luz que desenha os espa\u00e7os",
+          "hook": "Fazer da luz natural a linha narrativa que liga sala, quarto, terra\u00e7o e jardim.",
+          "type": "evergreen",
+          "why_now": "O lote tem interiores claros, janelas amplas e materiais neutros que beneficiam de corre\u00e7\u00e3o natural e movimento suave.",
+          "grounded_in": [
+            "Brancos e materiais devem permanecer cred\u00edveis",
+            "Consist\u00eancia de cor \u00e9 um sinal silencioso de produ\u00e7\u00e3o premium",
+            "Movimento calmo favorece a leitura arquitet\u00f3nica"
+          ]
+        },
+        {
+          "name": "Tudo encaixa no T\u00e9tris",
+          "hook": "Transformar o conceito modular do edif\u00edcio numa hist\u00f3ria de cidade, conforto e vida quotidiana que se encaixam.",
+          "type": "narrative",
+          "why_now": "A brochura usa a ideia de encaixe e o nome Property Stories permite fechar o filme como uma hist\u00f3ria pr\u00f3pria, sem recorrer a copy gen\u00e9rica.",
+          "grounded_in": [
+            "Diferencia\u00e7\u00e3o de marca",
+            "Evitar texto promocional constante",
+            "Usar a arquitetura como l\u00f3gica de montagem"
+          ]
+        }
+      ],
+      "visual_references": [
+        {
+          "description": "Ritmo natural, cortes limpos e grada\u00e7\u00e3o equilibrada para destacar espa\u00e7o e luz",
+          "url": "https://vimeo.com/1153402208",
+          "what_works": "A p\u00f3s-produ\u00e7\u00e3o \u00e9 discreta e deixa a arquitetura ser o assunto principal"
+        },
+        {
+          "description": "Movimentos calmos e atmosfera premium orientada para luz e materiais",
+          "url": "https://vimeo.com/1173970605",
+          "what_works": "Os planos respiram e a revela\u00e7\u00e3o do espa\u00e7o tem mais peso do que as transi\u00e7\u00f5es"
+        },
+        {
+          "description": "Estrutura por beats para uma pe\u00e7a curta de quiet luxury",
+          "url": "https://www.hedra.com/examples/golden-hour-modern-home-tour-seedance-2-0",
+          "what_works": "A dire\u00e7\u00e3o combina movimento, paleta, ritmo e m\u00fasica numa \u00fanica promessa est\u00e9tica"
+        }
+      ],
+      "sources": [
+        {
+          "url": "https://vimeo.com/1153402208",
+          "title": "Cinematic Real Estate Film, Editing and Color Grading Showcase",
+          "used_for": "Refer\u00eancia visual e de ritmo",
+          "reliability": "primary"
+        },
+        {
+          "url": "https://vimeo.com/1173970605",
+          "title": "Luxury Villa Cinematic Tour",
+          "used_for": "Refer\u00eancia visual, luz e composi\u00e7\u00e3o arquitet\u00f3nica",
+          "reliability": "primary"
+        },
+        {
+          "url": "https://www.hedra.com/examples/golden-hour-modern-home-tour-seedance-2-0",
+          "title": "Golden Hour Modern Home Tour, Seedance 2.0 Example",
+          "used_for": "Refer\u00eancia de dire\u00e7\u00e3o por beats e movimento gerado",
+          "reliability": "primary"
+        },
+        {
+          "url": "https://fotober.com/luxury-real-estate-video",
+          "title": "Luxury Real Estate Video: What Makes a Property Look Truly High-End",
+          "used_for": "Crit\u00e9rios de grada\u00e7\u00e3o natural, ritmo e sele\u00e7\u00e3o",
+          "reliability": "secondary"
+        },
+        {
+          "url": "https://lumatrixmedia.com/2026/06/16/what-makes-real-estate-videos-feel-premium-key-elements-explained/",
+          "title": "What Makes Real Estate Videos Feel Premium?",
+          "used_for": "Consist\u00eancia de cor e perce\u00e7\u00e3o de qualidade",
+          "reliability": "secondary"
+        },
+        {
+          "url": "https://agence-webimmo.com/en/instagram-reels-comment-to-present-your-real-estate-properties/",
+          "title": "Instagram Reels: how to showcase your real estate properties",
+          "used_for": "Estrutura e hook da vers\u00e3o vertical",
+          "reliability": "secondary"
+        },
+        {
+          "url": "https://artyfile.com/music-for-real-estate-videos",
+          "title": "Music for Real Estate Videos",
+          "used_for": "Dire\u00e7\u00e3o musical e andamento",
+          "reliability": "secondary"
+        },
+        {
+          "url": "https://alturaprivateestates.com/en/blog/reels-inmobiliarios-lujo-2026/",
+          "title": "Real estate reels in 2026 for luxury properties",
+          "used_for": "Contexto atual de conte\u00fado premium vertical",
+          "reliability": "secondary"
+        }
+      ],
+      "research_summary": "A melhor dire\u00e7\u00e3o para este material n\u00e3o \u00e9 tentar disfar\u00e7ar os renders com uma grada\u00e7\u00e3o pesada ou movimentos excessivos. A fasquia premium vem de preservar a credibilidade da arquitetura, uniformizar luz e cor, escolher menos imagens mas mais fortes, e criar movimento lento com l\u00f3gica espacial. O material permite tr\u00eas territ\u00f3rios distintos, com uma recomenda\u00e7\u00e3o preliminar para combinar a luz natural como fio visual com o conceito de encaixe do T\u00e9tris, mantendo a marca discreta.",
+      "metadata": {
+        "source_media_review_ref": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\artifacts\\source_media_review.json",
+        "searches_executed": 8,
+        "source_mode": "supplied_stills_and_brochure_images"
+      }
+    },
+    "source_media_review": {
+      "version": "1.0",
+      "files": [
+        {
+          "path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\2.png",
+          "media_type": "image",
+          "reviewed": true,
+          "technical_probe": {
+            "resolution": "476x470",
+            "codec": "PNG",
+            "file_size_bytes": 26106
+          },
+          "content_summary": "Cart\u00e3o de especifica\u00e7\u00f5es do T1+1 no 7.\u00ba andar, com \u00e1reas, terra\u00e7o, arrumos e garagem.",
+          "representative_frames": [
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\2.png"
+          ],
+          "quality_risks": [
+            "Resolu\u00e7\u00e3o baixa para v\u00eddeo Full HD."
+          ],
+          "usable_for": [
+            "refer\u00eancia de conte\u00fado",
+            "fonte de especifica\u00e7\u00f5es"
+          ]
+        },
+        {
+          "path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\3.png",
+          "media_type": "image",
+          "reviewed": true,
+          "technical_probe": {
+            "resolution": "1080x1440",
+            "codec": "PNG",
+            "file_size_bytes": 2105171
+          },
+          "content_summary": "Colagem vertical com duas vistas renderizadas da sala e cozinha.",
+          "representative_frames": [
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\3.png"
+          ],
+          "quality_risks": [
+            "Texto e composi\u00e7\u00e3o j\u00e1 incorporados, inadequados como fotografia limpa."
+          ],
+          "usable_for": [
+            "refer\u00eancia de conte\u00fado"
+          ]
+        },
+        {
+          "path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\4.png",
+          "media_type": "image",
+          "reviewed": true,
+          "technical_probe": {
+            "resolution": "1080x1440",
+            "codec": "PNG",
+            "file_size_bytes": 1449915
+          },
+          "content_summary": "Colagem vertical com quarto e zona de trabalho, acompanhada por texto promocional.",
+          "representative_frames": [
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\4.png"
+          ],
+          "quality_risks": [
+            "Texto e composi\u00e7\u00e3o j\u00e1 incorporados, inadequados como fotografia limpa."
+          ],
+          "usable_for": [
+            "refer\u00eancia de conte\u00fado"
+          ]
+        },
+        {
+          "path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\6.png",
+          "media_type": "image",
+          "reviewed": true,
+          "technical_probe": {
+            "resolution": "1080x1440",
+            "codec": "PNG",
+            "file_size_bytes": 1982579
+          },
+          "content_summary": "Colagem vertical com gin\u00e1sio e jardim do condom\u00ednio, acompanhada por texto promocional.",
+          "representative_frames": [
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\6.png"
+          ],
+          "quality_risks": [
+            "Texto e composi\u00e7\u00e3o j\u00e1 incorporados, inadequados como fotografia limpa."
+          ],
+          "usable_for": [
+            "refer\u00eancia de conte\u00fado"
+          ]
+        },
+        {
+          "path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\7.png",
+          "media_type": "image",
+          "reviewed": true,
+          "technical_probe": {
+            "resolution": "1080x1440",
+            "codec": "PNG",
+            "file_size_bytes": 130745
+          },
+          "content_summary": "Cart\u00e3o final vertical da Property Stories com retrato e contactos de V\u00edtor Rocha.",
+          "representative_frames": [
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\7.png"
+          ],
+          "quality_risks": [
+            "Texto e composi\u00e7\u00e3o j\u00e1 incorporados, inadequados como fotografia limpa."
+          ],
+          "usable_for": [
+            "refer\u00eancia de conte\u00fado",
+            "refer\u00eancia de contactos e marca"
+          ]
+        },
+        {
+          "path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\8.png",
+          "media_type": "image",
+          "reviewed": true,
+          "technical_probe": {
+            "resolution": "1080x1440",
+            "codec": "PNG",
+            "file_size_bytes": 9413
+          },
+          "content_summary": "Imagem completamente branca, sem conte\u00fado visual utiliz\u00e1vel.",
+          "representative_frames": [
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\8.png"
+          ],
+          "quality_risks": [
+            "Ficheiro vazio, sem conte\u00fado visual."
+          ],
+          "usable_for": [
+            "refer\u00eancia de conte\u00fado"
+          ]
+        },
+        {
+          "path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\edificio-tetris (2).png",
+          "media_type": "image",
+          "reviewed": true,
+          "technical_probe": {
+            "resolution": "1080x1440",
+            "codec": "PNG",
+            "file_size_bytes": 2980873
+          },
+          "content_summary": "Render vertical limpo do exterior do Edif\u00edcio T\u00e9tris.",
+          "representative_frames": [
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\edificio-tetris (2).png"
+          ],
+          "quality_risks": [],
+          "usable_for": [
+            "refer\u00eancia de conte\u00fado",
+            "imagem exterior de reserva"
+          ]
+        },
+        {
+          "path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\edificio-tetris (3).png",
+          "media_type": "image",
+          "reviewed": true,
+          "technical_probe": {
+            "resolution": "1080x1440",
+            "codec": "PNG",
+            "file_size_bytes": 2060565
+          },
+          "content_summary": "Colagem vertical com terra\u00e7o, sala e vistas sobre a cidade.",
+          "representative_frames": [
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\edificio-tetris (3).png"
+          ],
+          "quality_risks": [
+            "Texto e composi\u00e7\u00e3o j\u00e1 incorporados, inadequados como fotografia limpa."
+          ],
+          "usable_for": [
+            "refer\u00eancia de conte\u00fado"
+          ]
+        },
+        {
+          "path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\edificio-tetris.png",
+          "media_type": "image",
+          "reviewed": true,
+          "technical_probe": {
+            "resolution": "1080x1440",
+            "codec": "PNG",
+            "file_size_bytes": 2187508
+          },
+          "content_summary": "Cart\u00e3o de capa vertical com exterior do edif\u00edcio e texto T1+1, Avenida da Rep\u00fablica, Gaia.",
+          "representative_frames": [
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\edificio-tetris.png"
+          ],
+          "quality_risks": [
+            "Texto e composi\u00e7\u00e3o j\u00e1 incorporados, inadequados como fotografia limpa."
+          ],
+          "usable_for": [
+            "refer\u00eancia de conte\u00fado"
+          ]
+        },
+        {
+          "path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\Brochura tetris.pdf",
+          "media_type": "image",
+          "reviewed": true,
+          "technical_probe": {
+            "resolution": "11 pages at 595.276x595.276 pt",
+            "codec": "PDF 1.5",
+            "file_size_bytes": 9275762
+          },
+          "content_summary": "Brochura oficial do Edif\u00edcio T\u00e9tris com localiza\u00e7\u00e3o, acabamentos, comodidades e onze imagens limpas incorporadas, incluindo exteriores, terra\u00e7o, sala, quarto, escrit\u00f3rio, gin\u00e1sio e jardim.",
+          "representative_frames": [
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\pdf-pages\\page-01.png",
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\pdf-pages\\page-02.png",
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\pdf-pages\\page-03.png",
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\pdf-pages\\page-04.png",
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\pdf-pages\\page-05.png",
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\pdf-pages\\page-06.png",
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\pdf-pages\\page-07.png",
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\pdf-pages\\page-08.png",
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\pdf-pages\\page-09.png",
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\pdf-pages\\page-10.png",
+            "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\pdf-pages\\page-11.png"
+          ],
+          "quality_risks": [
+            "As imagens incorporadas variam entre 0,47 e 3,33 MP, exceto o mapa de 8,21 MP.",
+            "Algumas imagens s\u00e3o recortes panor\u00e2micos ou quadrados e exigem enquadramento espec\u00edfico por formato."
+          ],
+          "usable_for": [
+            "fonte principal de imagens limpas",
+            "fonte oficial de caracter\u00edsticas e acabamentos",
+            "refer\u00eancia de localiza\u00e7\u00e3o"
+          ]
+        },
+        {
+          "path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\Log\u00f3tipo Original Property Stories.svg",
+          "media_type": "image",
+          "reviewed": true,
+          "technical_probe": {
+            "resolution": "vetorial",
+            "codec": "SVG",
+            "file_size_bytes": 13811
+          },
+          "content_summary": "Log\u00f3tipo vetorial original da Property Stories.",
+          "representative_frames": [],
+          "quality_risks": [],
+          "usable_for": [
+            "marca no v\u00eddeo",
+            "cart\u00e3o final",
+            "sobreposi\u00e7\u00e3o vetorial"
+          ]
+        }
+      ],
+      "summary": "O material cont\u00e9m nove PNG, uma brochura PDF de 11 p\u00e1ginas e o log\u00f3tipo vetorial. Os PNG s\u00e3o sobretudo cart\u00f5es e colagens j\u00e1 compostos. A brochura \u00e9 a melhor fonte visual porque cont\u00e9m onze imagens limpas incorporadas. N\u00e3o existe v\u00eddeo original.",
+      "planning_implications": [
+        "Usar as imagens limpas extra\u00eddas da brochura como base principal e conservar os PNG apenas como refer\u00eancia.",
+        "Excluir 8.png por estar vazio e excluir \u00edcones e log\u00f3tipos de promotores do lote fotogr\u00e1fico.",
+        "Aplicar corre\u00e7\u00e3o de cor e upscale conservadores, sem gera\u00e7\u00e3o que altere geometria, mobili\u00e1rio, vistas ou materiais.",
+        "Criar masters de alta resolu\u00e7\u00e3o antes de qualquer anima\u00e7\u00e3o e derivar depois os recortes 16:9 e 9:16.",
+        "Como s\u00f3 existem imagens fixas, o movimento final ter\u00e1 de vir de i2v controlado e de composi\u00e7\u00e3o, nunca de falsas fotografias recriadas."
+      ],
+      "metadata": {
+        "audit_report": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\image-analysis.json",
+        "pdf_extraction_report": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Vitor Rocha\\_source-audit\\pdf-extraction-report.json"
+      }
+    }
+  },
+  "style_playbook": "custom-premium-real-estate",
+  "review": {
+    "decision": "PASS",
+    "round": 1,
+    "findings": [
+      {
+        "severity": "suggestion",
+        "title": "Fontes maioritariamente secundarias",
+        "description": "As melhores praticas de mercado sao suportadas sobretudo por estudios e publicacoes do setor.",
+        "proposed_change": "Usar as referencias como direcao estetica, nunca como prova factual sobre o imovel.",
+        "status": "accepted"
+      }
+    ],
+    "summary": {
+      "critical": 0,
+      "suggestions": 1,
+      "nitpicks": 0,
+      "success_criteria_met": "4/4"
+    }
+  },
+  "cost_snapshot": {
+    "spent_usd": 0.0,
+    "budget_usd": 2.0,
+    "paid_calls": 0
+  },
+  "metadata": {
+    "source_audit_complete": true
+  }
+}

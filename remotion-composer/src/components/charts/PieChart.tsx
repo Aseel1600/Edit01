@@ -48,7 +48,7 @@ export const PieChart: React.FC<PieChartProps> = ({
 
   // Layout
   const cx = showLegend ? 760 : 960;
-  const cy = title ? 540 : 500;
+  const cy = title ? 580 : 500;
   const outerRadius = 300;
   const innerRadius = donut ? outerRadius * 0.55 : 0;
 
@@ -105,12 +105,12 @@ export const PieChart: React.FC<PieChartProps> = ({
         {title && (
           <text
             x={960}
-            y={80}
+            y={112}
             textAnchor="middle"
             fill={textColor}
             fontFamily={fontFamily}
             fontWeight={700}
-            fontSize={48}
+            fontSize={120}
             opacity={spring({ frame, fps, config: { damping: 20 } })}
           >
             {title}
@@ -217,13 +217,13 @@ export const PieChart: React.FC<PieChartProps> = ({
               {centerValue && (
                 <text
                   x={cx}
-                  y={centerLabel ? cy - 10 : cy + 10}
+                  y={centerLabel ? cy - 24 : cy + 10}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill={textColor}
                   fontFamily={fontFamily}
                   fontWeight={800}
-                  fontSize={56}
+                  fontSize={110}
                 >
                   {centerValue}
                 </text>
@@ -231,13 +231,13 @@ export const PieChart: React.FC<PieChartProps> = ({
               {centerLabel && (
                 <text
                   x={cx}
-                  y={centerValue ? cy + 36 : cy + 10}
+                  y={centerValue ? cy + 64 : cy + 10}
                   textAnchor="middle"
                   dominantBaseline="middle"
                   fill={textColor}
                   fontFamily={fontFamily}
                   fontWeight={400}
-                  fontSize={24}
+                  fontSize={64}
                   opacity={0.7}
                 >
                   {centerLabel}
@@ -273,7 +273,7 @@ export const PieChart: React.FC<PieChartProps> = ({
                     y={legendY + 6}
                     fill={textColor}
                     fontFamily={fontFamily}
-                    fontSize={22}
+                    fontSize={64}
                     fontWeight={500}
                   >
                     {slice.datum.label}
@@ -283,7 +283,7 @@ export const PieChart: React.FC<PieChartProps> = ({
                     y={legendY + 6}
                     fill={textColor}
                     fontFamily={fontFamily}
-                    fontSize={22}
+                    fontSize={64}
                     fontWeight={400}
                     opacity={0.6}
                     textAnchor="end"

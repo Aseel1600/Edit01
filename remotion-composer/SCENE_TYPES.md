@@ -28,6 +28,13 @@ When you add a new component, append it here and in `src/components/index.ts`.
 
 ---
 
+## Top-level props (beyond `cuts` / `overlays` / `captions` / `audio`)
+
+| Prop | Fields | Purpose |
+|---|---|---|
+| `brandWatermark` | `text` (required), `accentColor`, `position` (top-left / top-right, default top-right) | Small uppercase brand pill pinned to a top corner on every scene — client name stays visible throughout |
+| `audio.sfx` | array of `{ src, atSeconds, volume? }` | One-shot sound effects (whoosh on chart grow-in, pop on stat reveal). Fires once per cue; keep volume 0.3–0.5 |
+
 ## Overlay types (`overlay.type`)
 
 | `type` | Component | Required fields | Common fields | Purpose |

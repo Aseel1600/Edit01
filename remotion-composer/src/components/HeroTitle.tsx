@@ -7,16 +7,26 @@ import {
 } from "remotion";
 
 interface HeroTitleProps {
+  /** Subtitle color — pass the theme accent for brand consistency. */
+  subtitleColor?: string;
   title: string;
   subtitle?: string;
 }
 
-export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle }) => {
+export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle, subtitleColor }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
-  // Staggered letter-by-letter spring
-  const titleChars = title.split("");
+  // Staggered letter-by-letter spring, wrapped by WORD so lines never break
+  // mid-word and the accent color always covers whole words.
+  const titleWords = title.split(" ").filter((w) => w.length > 0);
+  // Character index offsets per word (for the stagger delay across the title)
+  const charOffsets: number[] = [];
+  let charCount = 0;
+  for (const w of titleWords) {
+    charOffsets.push(charCount);
+    charCount += w.length + 1;
+  }
 
   return (
     <AbsoluteFill
@@ -31,40 +41,43 @@ export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle }) => {
         {/* Main title with per-character spring */}
         <div
           style={{
-            fontSize: 72,
+            fontSize: 92,
             fontWeight: 800,
             fontFamily: "Space Grotesk, Inter, system-ui, sans-serif",
             lineHeight: 1.2,
             display: "flex",
             justifyContent: "center",
             flexWrap: "wrap",
-            gap: 0,
+            columnGap: "0.28em",
+            rowGap: 4,
           }}
         >
-          {titleChars.map((char, i) => {
-            const delay = i * 1.2;
-            const charSpring = spring({
-              frame: frame - delay,
-              fps,
-              config: { damping: 12, stiffness: 150 },
-            });
+          {titleWords.map((word, wi) => (
+            <span key={wi} style={{ display: "inline-flex", whiteSpace: "nowrap" }}>
+              {word.split("").map((char, ci) => {
+                const delay = (charOffsets[wi] + ci) * 1.2;
+                const charSpring = spring({
+                  frame: frame - delay,
+                  fps,
+                  config: { damping: 12, stiffness: 150 },
+                });
 
-            return (
-              <span
-                key={i}
-                style={{
-                  display: "inline-block",
-                  opacity: charSpring,
-                  transform: `translateY(${interpolate(charSpring, [0, 1], [30, 0])}px)`,
-                  color: i < 8 ? "#22D3EE" : "#F8FAFC", // Accent first word
-                  whiteSpace: char === " " ? "pre" : undefined,
-                  minWidth: char === " " ? "0.3em" : undefined,
-                }}
-              >
-                {char}
-              </span>
-            );
-          })}
+                return (
+                  <span
+                    key={ci}
+                    style={{
+                      display: "inline-block",
+                      opacity: charSpring,
+                      transform: `translateY(${interpolate(charSpring, [0, 1], [30, 0])}px)`,
+                      color: wi === 0 ? "#22D3EE" : "#F8FAFC", // Accent the first WORD
+                    }}
+                  >
+                    {char}
+                  </span>
+                );
+              })}
+            </span>
+          ))}
         </div>
 
         {/* Subtitle */}
@@ -73,13 +86,13 @@ export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle }) => {
             style={{
               marginTop: 20,
               opacity: spring({
-                frame: frame - titleChars.length * 1.2 - 5,
+                frame: frame - charCount * 1.2 - 5,
                 fps,
                 config: { damping: 20 },
               }),
-              fontSize: 28,
+              fontSize: 38,
               fontWeight: 400,
-              color: "#A78BFA",
+              color: subtitleColor ?? "#A78BFA",
               fontFamily: "Space Grotesk, Inter, system-ui, sans-serif",
               letterSpacing: "0.1em",
               textTransform: "uppercase",

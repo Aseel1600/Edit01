@@ -1,0 +1,12 @@
+categories: 272 tagged {'fire': 17, 'static': 159, 'sky': 67, 'water': 29}
+Queue: 4 clips to render (0 vertical + 8 horizontal pending; interleaved)
+[00:03:38] POD: start chunk of 4: hb0068.png, hb0069.png, hb0070.png, hb0071.png
+MODEL_LOADED 112.3s
+CLIP_DONE /workspace/out/queue/hb0068_w22.mp4 793.0s
+CLIP_DONE /workspace/out/queue/hb0069_w22.mp4 793.0s
+CLIP_DONE /workspace/out/queue/hb0070_w22.mp4 793.9s
+CLIP_DONE /workspace/out/queue/hb0071_w22.mp4 794.3s
+BATCH_DONE 4/4
+[00:59:07] POD: chunk done 4/4 in 55.5min (13.9min/clip)  [4/4 total]
+
+DONE. 4 rendered, 0 failed, 0 left unclaimed.

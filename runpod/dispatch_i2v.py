@@ -69,8 +69,8 @@ def prompt_for(stem: str) -> str:
     return PROMPTS.get(_CATEGORIES.get(stem, "static"), PROMPTS["static"])
 
 # --- pod connection (see memory: runpod-gpu-rental) ---
-POD_HOST = "root@69.30.85.134"
-POD_PORT = "22075"
+POD_HOST = "root@213.173.111.164"
+POD_PORT = "24126"
 POD_KEY = str(Path.home() / ".ssh" / "id_ed25519")
 POD_REPO = "/workspace/OpenMontage"
 POD_TMP = "/workspace/out/queue"
@@ -164,7 +164,7 @@ def render_pod_batch(chunk: list) -> list:
         log("POD", "scp manifest FAILED")
         return []
     remote_cmd = (
-        f"cd {POD_REPO} && export HF_HOME=/workspace/hf_cache HF_HUB_DISABLE_XET=1 "
+        f"cd {POD_REPO} && export HF_HOME=/hf_cache HF_HUB_DISABLE_XET=1 "
         f"VIDEO_GEN_LOCAL_ENABLED=true && python3 {BATCH_RENDER} {rmani} --no-offload"
     )
     subprocess.run(SSH + [POD_HOST, remote_cmd])

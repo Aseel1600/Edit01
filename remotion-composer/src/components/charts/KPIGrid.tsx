@@ -39,28 +39,28 @@ export const KPIGrid: React.FC<KPIGridProps> = ({
   fontFamily = "Inter, system-ui, sans-serif",
   textColor = "#1F2937",
   backgroundColor = "#FFFFFF",
-  cardBackgroundColor = "#F9FAFB",
+  cardBackgroundColor = "rgba(255,255,255,0.07)",
   positiveColor = "#10B981",
   negativeColor = "#EF4444",
   animationStyle = "count-up",
 }) => {
   const frame = useCurrentFrame();
-  const { fps, durationInFrames } = useVideoConfig();
+  const { fps, durationInFrames, width: frameW, height: frameH } = useVideoConfig();
 
   const cols = Math.min(columns, metrics.length);
   const rows = Math.ceil(metrics.length / cols);
 
   // Grid layout constants (within 1920x1080)
-  const gridPadding = 100;
+  const gridPadding = Math.round(frameW * 0.055);
   const cardGap = 28;
   const titleHeight = title ? 120 : 0;
   const gridTop = 80 + titleHeight;
-  const gridWidth = 1920 - gridPadding * 2;
-  const gridHeight = 1080 - gridTop - 80;
+  const gridWidth = frameW - gridPadding * 2;
+  const gridHeight = frameH - gridTop - 80;
   const cardWidth = (gridWidth - cardGap * (cols - 1)) / cols;
   const cardHeight = Math.min(
     (gridHeight - cardGap * (rows - 1)) / rows,
-    320
+    frameH > frameW ? 380 : 320
   );
 
   // Center grid vertically
@@ -93,7 +93,7 @@ export const KPIGrid: React.FC<KPIGridProps> = ({
             left: 0,
             right: 0,
             textAlign: "center",
-            fontSize: 48,
+            fontSize: 72,
             fontWeight: 700,
             color: textColor,
             fontFamily,
@@ -292,7 +292,7 @@ const KPICardContent: React.FC<KPICardContentProps> = ({
       {metric.icon && (
         <div
           style={{
-            fontSize: 36,
+            fontSize: 40,
             marginBottom: 8,
           }}
         >
@@ -303,7 +303,7 @@ const KPICardContent: React.FC<KPICardContentProps> = ({
       {/* Value */}
       <div
         style={{
-          fontSize: 56,
+          fontSize: 84,
           fontWeight: 800,
           color: accentColor,
           fontFamily,
@@ -318,7 +318,7 @@ const KPICardContent: React.FC<KPICardContentProps> = ({
       {/* Label */}
       <div
         style={{
-          fontSize: 22,
+          fontSize: 44,
           fontWeight: 500,
           color: textColor,
           fontFamily,
@@ -337,14 +337,14 @@ const KPICardContent: React.FC<KPICardContentProps> = ({
             alignItems: "center",
             gap: 4,
             marginTop: 10,
-            fontSize: 20,
+            fontSize: 40,
             fontWeight: 600,
             fontFamily,
             color: metric.change > 0 ? positiveColor : negativeColor,
             opacity: changeOpacity,
           }}
         >
-          <span style={{ fontSize: 18 }}>
+          <span style={{ fontSize: 38 }}>
             {metric.change > 0 ? "\u25B2" : "\u25BC"}
           </span>
           {Math.abs(metric.change).toFixed(1)}%

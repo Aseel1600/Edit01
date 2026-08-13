@@ -41,9 +41,9 @@ export const ComparisonCard: React.FC<ComparisonCardProps> = ({
   cardBackgroundColor = "#F3F4F6",
   textColor = "#1F2937",
   fontFamily = "Inter, system-ui, sans-serif",
-  titleFontSize = 44,
-  labelFontSize = 28,
-  valueFontSize = 72,
+  titleFontSize = 56,
+  labelFontSize = 40,
+  valueFontSize = 88,
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -282,7 +282,7 @@ export const ComparisonCard: React.FC<ComparisonCardProps> = ({
                     style={{
                       fontFamily,
                       fontWeight: 700,
-                      fontSize: 24,
+                      fontSize: 34,
                       color: directionColor,
                     }}
                   >
@@ -293,7 +293,7 @@ export const ComparisonCard: React.FC<ComparisonCardProps> = ({
                   style={{
                     fontFamily,
                     fontWeight: 700,
-                    fontSize: 18,
+                    fontSize: 28,
                     color: directionColor,
                     whiteSpace: "nowrap" as const,
                   }}

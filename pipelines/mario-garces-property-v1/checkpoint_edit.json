@@ -1,0 +1,220 @@
+{
+  "version": "1.0",
+  "project_id": "mario-garces-property-v1",
+  "pipeline_type": "cinematic",
+  "stage": "edit",
+  "status": "completed",
+  "timestamp": "2026-08-03T13:08:02.592650+00:00",
+  "checkpoint_policy": "guided",
+  "human_approval_required": false,
+  "human_approved": false,
+  "artifacts": {
+    "edit_decisions": {
+      "version": "1.0",
+      "cuts": [],
+      "renderer_family": "cinematic-trailer",
+      "render_runtime": "remotion",
+      "composition_mode": "atelier",
+      "bespoke": {
+        "entry": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Mario Garces\\GPT\\cinematic-video-v1\\projects\\mario-garces-property-v1\\index.tsx",
+        "composition_id": "MarioGarcesProperty16x9",
+        "art_direction": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Mario Garces\\GPT\\cinematic-video-v1\\projects\\mario-garces-property-v1\\art-direction.md",
+        "props_path": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Mario Garces\\GPT\\cinematic-video-v1\\projects\\mario-garces-property-v1\\artifacts\\props.json",
+        "public_dir": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Mario Garces\\GPT\\cinematic-video-v1\\projects\\mario-garces-property-v1\\public",
+        "scale": 0.5,
+        "crf": 20,
+        "concurrency": 6
+      },
+      "subtitles": {
+        "enabled": false
+      },
+      "transitions": [
+        {
+          "type": "directional-veil",
+          "at_seconds": 8,
+          "duration_seconds": 0.6
+        },
+        {
+          "type": "directional-veil",
+          "at_seconds": 26,
+          "duration_seconds": 0.6
+        },
+        {
+          "type": "crossfade-to-card",
+          "at_seconds": 53,
+          "duration_seconds": 0.5
+        }
+      ],
+      "slideshow_risk_score": {
+        "average": 1.2,
+        "verdict": "strong"
+      },
+      "metadata": {
+        "music_decision": "no-music-first-cut",
+        "captions_role": "property-facts-only",
+        "source_listing": "https://www.remax.pt/pt/imoveis/venda-apartamento-t4-lisboa-lumiar/124151148-71",
+        "decision_log_ref": "artifacts/decision_log.json",
+        "motion_ratio": 0.91
+      }
+    },
+    "decision_log": {
+      "version": "1.0",
+      "project_id": "mario-garces-property-v1",
+      "decisions": [
+        {
+          "decision_id": "d-001",
+          "stage": "proposal",
+          "category": "pipeline_selection",
+          "subject": "Pipeline para a montagem do im\u00f3vel",
+          "options_considered": [
+            {
+              "option_id": "cinematic",
+              "label": "Cinematic",
+              "score": 0.96,
+              "reason": "Adequado a uma visita emocional baseada em clips com movimento."
+            },
+            {
+              "option_id": "hybrid",
+              "label": "Hybrid",
+              "score": 0.58,
+              "reason": "\u00datil se existisse narra\u00e7\u00e3o ou apoio visual adicional, mas desnecess\u00e1rio neste teste."
+            }
+          ],
+          "selected": "cinematic",
+          "reason": "O objetivo \u00e9 uma montagem premium orientada por ritmo, profundidade e arquitetura.",
+          "user_visible": true,
+          "user_approved": true,
+          "confidence": 0.96
+        },
+        {
+          "decision_id": "d-002",
+          "stage": "proposal",
+          "category": "renderer_family_selection",
+          "subject": "Gram\u00e1tica visual da pe\u00e7a",
+          "options_considered": [
+            {
+              "option_id": "cinematic-trailer",
+              "label": "Cinematic trailer",
+              "score": 0.95,
+              "reason": "Valoriza os movimentos de c\u00e2mara e a progress\u00e3o exterior-social-privado."
+            },
+            {
+              "option_id": "documentary-montage",
+              "label": "Documentary montage",
+              "score": 0.52,
+              "reason": "Mais informativa, mas menos adequada ao posicionamento premium."
+            }
+          ],
+          "selected": "cinematic-trailer",
+          "reason": "Mant\u00e9m o im\u00f3vel como protagonista e d\u00e1 \u00e0 informa\u00e7\u00e3o comercial um papel secund\u00e1rio.",
+          "user_visible": true,
+          "user_approved": true,
+          "confidence": 0.93
+        },
+        {
+          "decision_id": "d-003",
+          "stage": "proposal",
+          "category": "render_runtime_selection",
+          "subject": "Motor de composi\u00e7\u00e3o",
+          "options_considered": [
+            {
+              "option_id": "remotion",
+              "label": "Remotion",
+              "score": 0.94,
+              "reason": "Controlo preciso de clips, legendas, lockup e card final."
+            },
+            {
+              "option_id": "hyperframes",
+              "label": "HyperFrames",
+              "score": 0.7,
+              "reason": "Excelente para tipografia cin\u00e9tica, mas excessivo para esta linguagem contida.",
+              "rejected_because": "A pe\u00e7a \u00e9 clip-led e n\u00e3o depende de anima\u00e7\u00e3o HTML/GSAP complexa."
+            },
+            {
+              "option_id": "ffmpeg",
+              "label": "FFmpeg",
+              "score": 0.58,
+              "reason": "R\u00e1pido para concatena\u00e7\u00e3o, mas limitado para o acabamento de marca.",
+              "rejected_because": "N\u00e3o oferece o mesmo controlo editorial sobre placas e card final."
+            }
+          ],
+          "selected": "remotion",
+          "reason": "\u00c9 o melhor equil\u00edbrio entre montagem cinematogr\u00e1fica e acabamento gr\u00e1fico preciso.",
+          "user_visible": true,
+          "user_approved": true,
+          "confidence": 0.94
+        },
+        {
+          "decision_id": "d-004",
+          "stage": "proposal",
+          "category": "composition_mode",
+          "subject": "Modo de autoria da composi\u00e7\u00e3o",
+          "options_considered": [
+            {
+              "option_id": "atelier",
+              "label": "Atelier",
+              "score": 0.95,
+              "reason": "Permite uma linguagem feita especificamente para M\u00e1rio Garc\u00eas e RE/MAX Collection."
+            },
+            {
+              "option_id": "templated",
+              "label": "Templated",
+              "score": 0.54,
+              "reason": "Mais r\u00e1pido, mas demasiado gen\u00e9rico para uma pe\u00e7a de angaria\u00e7\u00e3o premium.",
+              "rejected_because": "O cliente exige um resultado diferenciador e de apresenta\u00e7\u00e3o."
+            }
+          ],
+          "selected": "atelier",
+          "reason": "A pe\u00e7a \u00e9 hero work e deve parecer desenhada para este im\u00f3vel, n\u00e3o montada a partir de cart\u00f5es reutilizados.",
+          "user_visible": true,
+          "user_approved": true,
+          "confidence": 0.95
+        },
+        {
+          "decision_id": "d-005",
+          "stage": "proposal",
+          "category": "music_source",
+          "subject": "\u00c1udio da primeira montagem",
+          "options_considered": [
+            {
+              "option_id": "no-music",
+              "label": "Sem m\u00fasica",
+              "score": 0.91,
+              "reason": "Permite avaliar primeiro ritmo, cortes, legendas e marca."
+            },
+            {
+              "option_id": "pixabay",
+              "label": "Faixa royalty-free",
+              "score": 0.78,
+              "reason": "Boa op\u00e7\u00e3o para a vers\u00e3o final, depois de o picture lock estar aprovado."
+            },
+            {
+              "option_id": "elevenlabs",
+              "label": "M\u00fasica gerada",
+              "score": 0.62,
+              "reason": "Poss\u00edvel, mas implica custo e decis\u00e3o criativa prematura."
+            }
+          ],
+          "selected": "no-music",
+          "reason": "O utilizador pediu explicitamente uma primeira mistura sem m\u00fasica.",
+          "user_visible": true,
+          "user_approved": true,
+          "confidence": 0.99
+        }
+      ]
+    }
+  },
+  "review": {
+    "decision": "PASS",
+    "critical": 0,
+    "suggestions": 0,
+    "success_criteria_met": "2/2"
+  },
+  "cost_snapshot": {
+    "spent_usd": 0.0,
+    "note": "Local composition only"
+  },
+  "metadata": {
+    "project_root": "C:\\OpenMontage\\projects\\video-service-business\\clients\\Mario Garces\\GPT\\cinematic-video-v1\\projects\\mario-garces-property-v1"
+  }
+}

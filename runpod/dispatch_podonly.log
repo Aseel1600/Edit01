@@ -1,0 +1,11 @@
+categories: 272 tagged {'fire': 17, 'static': 159, 'sky': 67, 'water': 29}
+Queue: 3 clips to render (3 vertical + 0 horizontal pending; interleaved)
+[09:45:49] POD: start chunk of 3: vb0156.png, vb0157.png, vb0158.png
+MODEL_LOADED 119.9s
+CLIP_DONE /workspace/out/queue/vb0156_w22.mp4 798.7s
+CLIP_DONE /workspace/out/queue/vb0157_w22.mp4 800.9s
+CLIP_DONE /workspace/out/queue/vb0158_w22.mp4 800.1s
+BATCH_DONE 3/3
+[10:28:23] POD: chunk done 3/3 in 42.6min (14.2min/clip)  [3/3 total]
+
+DONE. 3 rendered, 0 failed, 0 left unclaimed.
