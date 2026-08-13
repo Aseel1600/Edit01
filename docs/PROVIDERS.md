@@ -14,7 +14,7 @@ Everything you need to know about every provider in OpenMontage — setup instru
 | 2 | **$0** | Google API key | TTS with 700+ voices (1M chars/month free) + $300 new account credit |
 | 3 | **$0** | ElevenLabs | Premium TTS + music + SFX (10K chars/month free) |
 | 4 | **$0** | Piper (local install) | Fully offline TTS — no API key, no cost, no network |
-| 5 | **~$0.03/image** | fal.ai | FLUX images + Kling/Veo/MiniMax video + Recraft — broad single-key image + video coverage |
+| 5 | **~$0.03/image** | fal.ai | FLUX images + Kling/Veo video + Recraft — broad single-key image + video coverage |
 | 6 | **~$0.05/image** | OpenAI | GPT Image 2 images + OpenAI TTS |
 | 7 | **~$0.04/image** | Google Imagen | Imagen 4 images (shares the Google API key) |
 | 8 | **pay-as-you-go** | Kling Official | Official direct Kling video, image, TTS, avatar, and lip-sync API, separate from fal.ai Kling |
@@ -51,8 +51,12 @@ AZURE_SPEECH_KEY=            # Azure AI Speech — azure_stt (Fast Transcription
 AZURE_SPEECH_REGION=         # Speech resource region, e.g. eastus
 
 # MULTI-MODEL GATEWAY (one key, 6+ tools)
-FAL_KEY=                     # FLUX, Recraft, Kling, Veo, MiniMax video
-MINIMAX_API_KEY=             # MiniMax first-party image generation
+FAL_KEY=                     # FLUX, Recraft, Seedream, Kling, Veo
+
+# MINIMAX DIRECT API
+MINIMAX_API_KEY=             # Official MiniMax image and video generation
+MINIMAX_REGION=              # Optional; "global" (default) or "cn"
+MINIMAX_BASE_URL=            # Optional endpoint override
 
 # KLING OFFICIAL DIRECT API
 KLING_API_KEY=               # Official Kling video, image, TTS, avatar, lip sync
@@ -277,7 +281,7 @@ reference-image inputs are normalized to the provider's `images` array.
 
 > **Broad single-key coverage.** One API key unlocks image and video providers across multiple models.
 
-**Tools unlocked:** `flux_image`, `recraft_image`, `seedream_image`, `kling_video`, `veo_video`, `minimax_video`, `fal_elevenlabs_tts`, `fal_elevenlabs_music`
+**Tools unlocked:** `flux_image`, `recraft_image`, `seedream_image`, `kling_video`, `veo_video`, `fal_elevenlabs_tts`, `fal_elevenlabs_music`
 **Env var:** `FAL_KEY`
 
 #### Setup
@@ -306,7 +310,6 @@ No subscription — pure pay-as-you-go, no minimum spend.
 | Model | Price | Per $1 |
 |-------|-------|--------|
 | Kling 2.5 Turbo Pro | $0.07/sec | 14 seconds |
-| MiniMax | ~$0.05/sec | 20 seconds |
 | Veo 3 | $0.40/sec | 2.5 seconds |
 | WAN 2.5 | $0.05/sec | 20 seconds |
 
@@ -315,6 +318,40 @@ No subscription — pure pay-as-you-go, no minimum spend.
 The same key can also access ElevenLabs speech and music through fal.ai. Use
 `fal_elevenlabs_tts` when direct ElevenLabs credentials are unavailable, or
 select it through `tts_selector` with `preferred_provider: "fal.ai"`.
+
+---
+
+### MiniMax — Direct API
+
+> **Official MiniMax path.** `minimax_video` calls the first-party MiniMax video API directly with `Authorization: Bearer <MINIMAX_API_KEY>` and provider name `minimax`, so you consume your own MiniMax quota instead of gateway credits.
+
+**Tools unlocked:** `minimax_video`
+**Env vars:** `MINIMAX_API_KEY`, optional `MINIMAX_REGION`, optional `MINIMAX_BASE_URL`
+
+#### Setup
+
+1. Create a MiniMax account on the global ([platform.minimax.io](https://platform.minimax.io/)) or CN ([platform.minimaxi.com](https://platform.minimaxi.com/)) console.
+2. Generate an API key in the MiniMax console.
+3. Add to `.env`:
+   ```bash
+   MINIMAX_API_KEY=your-key-here
+   # Optional, defaults to the global host (api.minimax.io):
+   MINIMAX_REGION=global   # or "cn" for api.minimaxi.com
+   # Optional explicit override (takes precedence over MINIMAX_REGION):
+   MINIMAX_BASE_URL=https://api.minimax.io
+   ```
+
+#### What It Is Best For
+
+- 2K text-to-video, image-to-video, first/last-frame, and reference-conditioned generation with the default `MiniMax-H3` model
+- Legacy v1 generation with `MiniMax-Hailuo-2.3`, `MiniMax-Hailuo-2.3-Fast`, `MiniMax-Hailuo-02`, and the `T2V-01`/`I2V-01` families
+- Prompt-following with camera directions and high-texture footage
+- Direct first-party provenance with regional (global / CN) endpoint selection
+
+#### Flow
+
+- MiniMax-H3: `POST /v2/video_generation` → poll `GET /v2/query/video_generation/{task_id}` → download `task.content.url`.
+- Hailuo v1 models: `POST /v1/video_generation` → poll `GET /v1/query/video_generation` → `GET /v1/files/retrieve` → download the returned URL.
 
 ---
 
@@ -1191,7 +1228,8 @@ These tools require only FFmpeg or Python packages — no GPU, no API key.
 | **Azure AI Speech** | `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION` | `azure_stt`, `azure_tts` | Free tier + paid |
 | **Google** | `GOOGLE_API_KEY` (or `GEMINI_API_KEY`) | `google_tts`, `google_imagen`, `google_music`, `gemini_omni_video`, `veo_video` | Free tier (TTS) + paid |
 | **ElevenLabs** | `ELEVENLABS_API_KEY` | `elevenlabs_tts`, `music_gen` | Free tier + paid |
-| **fal.ai** | `FAL_KEY` | `flux_image`, `recraft_image`, `kling_video`, `veo_video`, `minimax_video` | Pay-as-you-go |
+| **fal.ai** | `FAL_KEY` | `flux_image`, `recraft_image`, `kling_video`, `veo_video` | Pay-as-you-go |
+| **MiniMax** | `MINIMAX_API_KEY` | `minimax_video` | Pay-as-you-go |
 | **Kling Official** | `KLING_API_KEY` | `kling_official_video`, `kling_official_image`, `kling_tts`, `kling_avatar`, `kling_lip_sync` | Pay-as-you-go |
 | **Volcengine Ark** | `ARK_API_KEY` | `seedance_ark` | Pay-as-you-go |
 | **OpenAI** | `OPENAI_API_KEY` | `openai_tts`, `openai_image` | Paid only |
