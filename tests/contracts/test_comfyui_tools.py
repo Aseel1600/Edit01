@@ -9,6 +9,7 @@ import json
 from pathlib import Path
 
 import pytest
+import requests
 
 from tools.base_tool import (
     BaseTool,
@@ -26,6 +27,106 @@ from tools.video.comfyui_video import ComfyUIVideo
 TOOLS = [ComfyUIImage, ComfyUIVideo]
 WORKFLOW_DIR = Path(__file__).resolve().parent.parent.parent / "tools" / "_comfyui" / "workflows"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+# ------------------------------------------------------------------
+# ComfyUI polling transport contract
+# ------------------------------------------------------------------
+
+class TestComfyUIPolling:
+
+    def test_poll_recovers_from_transient_timeout_and_connection_failures_with_deadline_bounds(self, monkeypatch):
+        from tools._comfyui.client import ComfyUIClient
+        import tools._comfyui.client as client_module
+
+        clock = _AdvancingClock()
+        request_timeouts: list[float] = []
+        responses = iter([
+            requests.ReadTimeout("loading model"),
+            requests.ConnectionError("restarting worker"),
+            _HistoryResponse({"prompt-1": {"status": {"status_str": "success"}}}),
+        ])
+
+        def fake_get(url, *, timeout):
+            request_timeouts.append(timeout)
+            result = next(responses)
+            if isinstance(result, Exception):
+                raise result
+            return result
+
+        monkeypatch.setattr(client_module.time, "time", clock.time)
+        monkeypatch.setattr(client_module.time, "sleep", clock.sleep)
+        monkeypatch.setattr(client_module.requests, "get", fake_get)
+
+        result = ComfyUIClient("http://comfy.test").poll("prompt-1", timeout=10, interval=1)
+
+        assert result == {"status": {"status_str": "success"}}
+        assert request_timeouts == [10.0, 9.0, 8.0]
+        assert clock.sleeps == [1, 1]
+
+    def test_poll_stops_at_deadline_without_oversized_request_or_sleep(self, monkeypatch):
+        from tools._comfyui.client import ComfyUIClient, ComfyUIError
+        import tools._comfyui.client as client_module
+
+        clock = _AdvancingClock()
+        request_timeouts: list[float] = []
+
+        def fake_get(url, *, timeout):
+            request_timeouts.append(timeout)
+            raise requests.ReadTimeout("still loading")
+
+        monkeypatch.setattr(client_module.time, "time", clock.time)
+        monkeypatch.setattr(client_module.time, "sleep", clock.sleep)
+        monkeypatch.setattr(client_module.requests, "get", fake_get)
+
+        with pytest.raises(ComfyUIError, match="did not complete within 2s"):
+            ComfyUIClient("http://comfy.test").poll("prompt-1", timeout=2, interval=5)
+
+        assert request_timeouts == [2.0]
+        assert clock.sleeps == [2.0]
+
+    def test_poll_immediately_propagates_http_status_errors(self, monkeypatch):
+        from tools._comfyui.client import ComfyUIClient
+        import tools._comfyui.client as client_module
+
+        clock = _AdvancingClock()
+
+        class HttpErrorResponse:
+            def raise_for_status(self) -> None:
+                raise requests.HTTPError("500 Server Error")
+
+        monkeypatch.setattr(client_module.time, "time", clock.time)
+        monkeypatch.setattr(client_module.time, "sleep", clock.sleep)
+        monkeypatch.setattr(client_module.requests, "get", lambda url, *, timeout: HttpErrorResponse())
+
+        with pytest.raises(requests.HTTPError, match="500 Server Error"):
+            ComfyUIClient("http://comfy.test").poll("prompt-1", timeout=2, interval=1)
+
+        assert clock.sleeps == []
+
+
+class _AdvancingClock:
+    def __init__(self) -> None:
+        self.now = 0.0
+        self.sleeps: list[float] = []
+
+    def time(self) -> float:
+        return self.now
+
+    def sleep(self, seconds: float) -> None:
+        self.sleeps.append(seconds)
+        self.now += seconds
+
+
+class _HistoryResponse:
+    def __init__(self, history: dict) -> None:
+        self.history = history
+
+    def raise_for_status(self) -> None:
+        return None
+
+    def json(self) -> dict:
+        return self.history
 
 
 # ------------------------------------------------------------------
