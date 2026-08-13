@@ -1,0 +1,315 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "balamonis/creator/workspace",
+  "title": "Balamonis Creator Workspace",
+  "description": "Rights-aware, human-approved workspace contract for a story, campaign, or original production.",
+  "type": "object",
+  "required": [
+    "version",
+    "workspace_id",
+    "title",
+    "business_layer",
+    "status",
+    "brief",
+    "story_bible",
+    "scenes",
+    "assets",
+    "approvals",
+    "rights_records",
+    "authorship_journal",
+    "deliveries",
+    "metrics"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "workspace_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "title": {
+      "type": "string",
+      "minLength": 1
+    },
+    "business_layer": {
+      "type": "string",
+      "enum": ["originals", "studio", "creator"]
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "brief",
+        "proposal",
+        "script",
+        "scene_plan",
+        "assets",
+        "edit",
+        "compose",
+        "publish",
+        "released",
+        "archived"
+      ]
+    },
+    "brief": {
+      "type": "object",
+      "required": ["goal", "audience", "master_format", "rights_goal"],
+      "properties": {
+        "goal": { "type": "string" },
+        "audience": { "type": "string" },
+        "master_format": { "type": "string" },
+        "derivative_formats": {
+          "type": "array",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "rights_goal": { "type": "string" },
+        "motion_required": { "type": "boolean" },
+        "budget_cap_usd": { "type": ["number", "null"], "minimum": 0 }
+      },
+      "additionalProperties": false
+    },
+    "story_bible": {
+      "type": "object",
+      "required": ["logline", "theme", "characters", "locations", "continuity_rules"],
+      "properties": {
+        "logline": { "type": "string" },
+        "theme": { "type": "string" },
+        "cultural_anchor": { "type": ["string", "null"] },
+        "primary_language": { "type": ["string", "null"] },
+        "characters": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/bible_entity" }
+        },
+        "locations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/bible_entity" }
+        },
+        "props": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/bible_entity" }
+        },
+        "continuity_rules": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "scenes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["scene_id", "summary", "dramatic_purpose", "status", "shot_ids"],
+        "properties": {
+          "scene_id": { "type": "string" },
+          "summary": { "type": "string" },
+          "dramatic_purpose": { "type": "string" },
+          "status": {
+            "type": "string",
+            "enum": ["planned", "approved", "in_production", "review", "locked"]
+          },
+          "shot_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "continuity_dependencies": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "asset_id",
+          "asset_type",
+          "source_type",
+          "status",
+          "rights_record_ids",
+          "provenance"
+        ],
+        "properties": {
+          "asset_id": { "type": "string" },
+          "asset_type": {
+            "type": "string",
+            "enum": ["image", "video", "audio", "music", "subtitle", "document", "other"]
+          },
+          "source_type": {
+            "type": "string",
+            "enum": ["captured", "commissioned", "licensed", "generated", "user_supplied"]
+          },
+          "uri": { "type": ["string", "null"] },
+          "status": {
+            "type": "string",
+            "enum": ["planned", "created", "review", "approved", "rejected", "retired"]
+          },
+          "provider": { "type": ["string", "null"] },
+          "model": { "type": ["string", "null"] },
+          "seed": { "type": ["integer", "null"] },
+          "prompt_record": { "type": ["string", "null"] },
+          "rights_record_ids": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "provenance": {
+            "type": "object",
+            "required": ["created_at", "creator_or_operator", "content_credentials_status"],
+            "properties": {
+              "created_at": { "type": "string", "format": "date-time" },
+              "creator_or_operator": { "type": "string" },
+              "content_credentials_status": {
+                "type": "string",
+                "enum": ["not_applicable", "planned", "embedded", "verified", "failed"]
+              },
+              "source_hash": { "type": ["string", "null"] }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "approvals": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["approval_id", "gate", "status", "requested_at"],
+        "properties": {
+          "approval_id": { "type": "string" },
+          "gate": {
+            "type": "string",
+            "enum": ["proposal", "script", "scene_plan", "assets", "sample_spend", "batch_spend", "publish"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["pending", "approved", "approved_with_changes", "rejected"]
+          },
+          "requested_at": { "type": "string", "format": "date-time" },
+          "decided_at": { "type": ["string", "null"], "format": "date-time" },
+          "decided_by": { "type": ["string", "null"] },
+          "notes": { "type": ["string", "null"] },
+          "approved_spend_usd": { "type": ["number", "null"], "minimum": 0 }
+        },
+        "additionalProperties": false
+      }
+    },
+    "rights_records": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "rights_record_id",
+          "subject",
+          "rights_type",
+          "status",
+          "territories",
+          "permitted_uses"
+        ],
+        "properties": {
+          "rights_record_id": { "type": "string" },
+          "subject": { "type": "string" },
+          "rights_type": {
+            "type": "string",
+            "enum": ["copyright", "license", "consent", "likeness", "voice", "location", "music", "trademark", "other"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["unreviewed", "pending", "cleared", "restricted", "rejected", "expired"]
+          },
+          "evidence_uri": { "type": ["string", "null"] },
+          "territories": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "term": { "type": ["string", "null"] },
+          "permitted_uses": {
+            "type": "array",
+            "items": { "type": "string" }
+          },
+          "restrictions": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "authorship_journal": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["entry_id", "created_at", "author", "decision", "evidence_uri"],
+        "properties": {
+          "entry_id": { "type": "string" },
+          "created_at": { "type": "string", "format": "date-time" },
+          "author": { "type": "string" },
+          "decision": { "type": "string" },
+          "rationale": { "type": ["string", "null"] },
+          "evidence_uri": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "deliveries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["delivery_id", "delivery_type", "status"],
+        "properties": {
+          "delivery_id": { "type": "string" },
+          "delivery_type": {
+            "type": "string",
+            "enum": ["master", "trailer", "vertical", "caption", "subtitle", "audio_stem", "textless", "poster", "epk", "rights_report", "qc_report", "provenance_report"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["planned", "in_progress", "review", "approved", "delivered"]
+          },
+          "uri": { "type": ["string", "null"] },
+          "technical_spec": { "type": ["string", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "required": ["estimated_spend_usd", "actual_spend_usd", "generated_seconds", "approved_seconds"],
+      "properties": {
+        "estimated_spend_usd": { "type": "number", "minimum": 0 },
+        "actual_spend_usd": { "type": "number", "minimum": 0 },
+        "generated_seconds": { "type": "number", "minimum": 0 },
+        "approved_seconds": { "type": "number", "minimum": 0 },
+        "cost_per_approved_second_usd": { "type": ["number", "null"], "minimum": 0 },
+        "revision_count": { "type": "integer", "minimum": 0 }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "bible_entity": {
+      "type": "object",
+      "required": ["entity_id", "name", "description", "reference_asset_ids"],
+      "properties": {
+        "entity_id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "continuity_notes": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "reference_asset_ids": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
