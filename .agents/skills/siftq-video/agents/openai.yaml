@@ -1,0 +1,6 @@
+interface:
+  display_name: "SiftQ Video"
+  short_description: "Use OpenMontage's lowest-priced H3 route"
+  icon_small: "./assets/siftq-logo-symbol.png"
+  icon_large: "./assets/siftq-logo-symbol.png"
+  default_prompt: "Use $siftq-video to generate MiniMax-H3 video through SiftQ at $0.015/sec for 768P or $0.025/sec for 2K."
