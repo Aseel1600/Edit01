@@ -320,3 +320,10 @@ def test_hunyuan_cloud_3d_payload_mirrors_pro_api_snake_case(monkeypatch, tmp_pa
     assert captured["face_count"] == 100000
     assert captured["generate_type"] == "Normal"
     assert captured["result_format"] == "FBX"
+    # Provenance records source paths, never the inline base64 blobs.
+    provenance = json.loads((tmp_path / "asset.provenance.json").read_text(encoding="utf-8"))
+    assert "base64" not in json.dumps(provenance)
+    assert provenance["parameters"]["image_path"] == str(image)
+    assert provenance["parameters"]["multi_view_images"] == [
+        {"view": "left", "image_path": str(image)},
+    ]

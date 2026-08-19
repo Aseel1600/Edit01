@@ -431,7 +431,7 @@ class HunyuanCloud3D(BaseTool):
             "job_id": job_id,
             "operation": inputs.get("operation"),
             "prompt": inputs.get("prompt"),
-            "parameters": {key: value for key, value in payload.items() if key != "prompt"},
+            "parameters": self._provenance_parameters(inputs, payload),
             "preview_image_urls": preview_urls,
             "packages": packages,
             "source_url": "https://cloud.tencent.com/document/product/1823/130082",
@@ -487,6 +487,32 @@ class HunyuanCloud3D(BaseTool):
         if inputs.get("result_format"):
             payload["result_format"] = inputs["result_format"]
         return payload
+
+    @staticmethod
+    def _provenance_parameters(inputs: dict[str, Any], payload: dict[str, Any]) -> dict[str, Any]:
+        """Payload parameters with base64 image data replaced by source paths.
+
+        The manifest must stay small and readable — inline base64 blobs can
+        reach megabytes. Record the local path or public URL that produced
+        each image instead.
+        """
+        params = {key: value for key, value in payload.items() if key != "prompt"}
+        if "image_base64" in params:
+            params.pop("image_base64")
+            params["image_path"] = inputs.get("image_path")
+        if params.get("multi_view_images"):
+            params["multi_view_images"] = [
+                {
+                    "view": item["view"],
+                    **(
+                        {"image_url": item["image_url"]}
+                        if item.get("image_url")
+                        else {"image_path": item.get("image_path")}
+                    ),
+                }
+                for item in inputs.get("multi_view_images") or []
+            ]
+        return params
 
     @staticmethod
     def _encode_image(path: str) -> str:
