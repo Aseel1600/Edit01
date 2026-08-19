@@ -314,7 +314,9 @@ class HunyuanCloud3D(BaseTool):
         result.duration_seconds = round(time.time() - start, 2)
         return result
 
-    def _validate(self, inputs: dict[str, Any]) -> str | None:
+def _validate(self, inputs: dict[str, Any]) -> str | None:
+        if not inputs.get("output_path"):
+            return "output_path is required for hunyuan_cloud_3d generation"
         operation = str(inputs.get("operation") or "")
         if operation not in {"text_to_3d", "image_to_3d", "multi_view_to_3d"}:
             return f"Unknown operation {operation!r}"
