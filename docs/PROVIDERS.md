@@ -733,6 +733,15 @@ Post-paid price is **1 credit = 0.12 RMB** (settled daily, see
 [TokenHub 计费方式](https://cloud.tencent.com.cn/document/product/1823/130054) and
 [模型价格](https://cloud.tencent.com.cn/document/product/1823/130055)):
 
+> **3D credits are a separate system from other TokenHub models.** The
+> 0.12 RMB credit applies only to the Hunyuan 3D models. HY/YT video models
+> use a different credit unit (1.0 RMB/credit), and image models bill by
+> tokens (10 RMB per million tokens, settled hourly). Per the
+> [模型价格](https://cloud.tencent.com.cn/document/product/1823/130055) doc,
+> credits of different model families are calculated and consumed
+> independently (不互通) — do not reuse the video tool's credit price when
+> estimating 3D costs.
+
 | Feature | Credits | Est. RMB | Est. USD |
 |---------|---------|----------|----------|
 | Normal (textured) generation | 20 | ¥2.40 | ~$0.33 |
