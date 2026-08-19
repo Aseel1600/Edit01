@@ -35,8 +35,10 @@ class OpenAIImage(BaseTool):
 
     dependencies = []  # checked dynamically
     install_instructions = (
-        "Set OPENAI_API_KEY to your OpenAI API key.\n"
-        "  pip install openai"
+        "For GPT Image 2: sign in with the Cursor GPT OAuth connector "
+        "(gpt-media-mcp), or set OPENAI_API_KEY.\n"
+        "  OAuth uses the macOS Keychain item com.cursor.gpt-media-mcp\n"
+        "  Sora and OpenAI TTS still require OPENAI_API_KEY."
     )
     agent_skills = ["flux-best-practices"]  # general image gen knowledge
 
@@ -111,7 +113,9 @@ class OpenAIImage(BaseTool):
         return [base.parent / f"{base.name}_{idx + 1}{suffix}" for idx in range(count)]
 
     def get_status(self) -> ToolStatus:
-        if os.environ.get("OPENAI_API_KEY"):
+        from lib.oauth_connectors import gpt_image_auth_available
+
+        if gpt_image_auth_available():
             return ToolStatus.AVAILABLE
         return ToolStatus.UNAVAILABLE
 
@@ -123,25 +127,50 @@ class OpenAIImage(BaseTool):
         cost_map = {"low": 0.006, "medium": 0.053, "high": 0.211, "auto": 0.053}
         return cost_map.get(quality, 0.053) * n
 
+    @staticmethod
+    def _oauth_aspect(size: str) -> str:
+        if size in {"1536x1024"}:
+            return "landscape"
+        if size in {"1024x1536"}:
+            return "portrait"
+        return "square"
+
+    @staticmethod
+    def _oauth_quality(quality: str) -> str:
+        if quality in {"low", "medium", "high"}:
+            return quality
+        return "medium"
+
     def execute(self, inputs: dict[str, Any]) -> ToolResult:
-        if not os.environ.get("OPENAI_API_KEY"):
-            return ToolResult(
-                success=False,
-                error="OPENAI_API_KEY not set. " + self.install_instructions,
-            )
-
-        from openai import OpenAI
-
         start = time.time()
-        client = OpenAI()
         model = inputs.get("model", "gpt-image-2")
         prompt = inputs["prompt"]
         size = inputs.get("size", "1024x1024")
         n = inputs.get("n", 1)
+        quality = inputs.get("quality", "high")
+        output_format = inputs.get("output_format", "png")
+
+        if os.environ.get("OPENAI_API_KEY"):
+            result = self._execute_api_key(inputs, model, prompt, size, n, quality, output_format)
+        else:
+            result = self._execute_oauth(inputs, model, prompt, size, n, quality, output_format)
+        result.duration_seconds = round(time.time() - start, 2)
+        return result
+
+    def _execute_api_key(
+        self,
+        inputs: dict[str, Any],
+        model: str,
+        prompt: str,
+        size: str,
+        n: int,
+        quality: str,
+        output_format: str,
+    ) -> ToolResult:
+        from openai import OpenAI
 
         try:
-            quality = inputs.get("quality", "high")
-            output_format = inputs.get("output_format", "png")
+            client = OpenAI()
             response = client.images.generate(
                 model=model,
                 prompt=prompt,
@@ -172,12 +201,64 @@ class OpenAIImage(BaseTool):
                 "provider": "openai",
                 "model": model,
                 "prompt": prompt,
+                "auth_source": "api_key",
                 "output": outputs[0],
                 "outputs": outputs,
                 "images_generated": len(outputs),
             },
             artifacts=outputs,
             cost_usd=self.estimate_cost(inputs),
-            duration_seconds=round(time.time() - start, 2),
+            model=model,
+        )
+
+    def _execute_oauth(
+        self,
+        inputs: dict[str, Any],
+        model: str,
+        prompt: str,
+        size: str,
+        n: int,
+        quality: str,
+        output_format: str,
+    ) -> ToolResult:
+        from lib.oauth_connectors import OAuthError, generate_gpt_oauth_image, is_authenticated
+
+        if not is_authenticated("gpt"):
+            return ToolResult(
+                success=False,
+                error="GPT OAuth is not signed in and OPENAI_API_KEY is not set. "
+                + self.install_instructions,
+            )
+
+        try:
+            output_paths = self._output_paths(inputs.get("output_path"), n, output_format)
+            outputs: list[str] = []
+            for out_path in output_paths:
+                raw = generate_gpt_oauth_image(
+                    prompt,
+                    aspect_ratio=self._oauth_aspect(size),
+                    quality=self._oauth_quality(quality),
+                )
+                out_path.parent.mkdir(parents=True, exist_ok=True)
+                out_path.write_bytes(raw)
+                outputs.append(str(out_path))
+        except OAuthError as e:
+            return ToolResult(success=False, error=str(e))
+        except Exception as e:
+            return ToolResult(success=False, error=f"GPT OAuth image generation failed: {e}")
+
+        return ToolResult(
+            success=True,
+            data={
+                "provider": "openai",
+                "model": model,
+                "prompt": prompt,
+                "auth_source": "oauth",
+                "output": outputs[0],
+                "outputs": outputs,
+                "images_generated": len(outputs),
+            },
+            artifacts=outputs,
+            cost_usd=0.0,
             model=model,
         )

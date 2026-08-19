@@ -1,0 +1,14 @@
+---
+description: Implementation constraints for local repository work.
+alwaysApply: true
+---
+
+# Implementation
+
+- Change only files required for the requested slice.
+- Match existing style. Do not introduce a new stack because it is familiar.
+- Do not add Python to a JavaScript-only repository, or the reverse, without a real need.
+- Respect `.node-version`, `.nvmrc`, `packageManager`, lockfiles, and `pyproject.toml`.
+- Use project-local `node_modules` or `.venv`. No global project installs.
+- Do not regenerate lockfiles casually.
+- Canonical human checkout is `~/Developer/<repository>/`.

@@ -1,0 +1,14 @@
+---
+description: Git safety and commit policy for this workstation.
+alwaysApply: true
+---
+
+# Git
+
+- Do not commit unless the user asked.
+- Do not push, force-push, rewrite shared history, or change remote visibility unless explicitly approved.
+- Do not amend a commit you did not create in this session, or a commit already pushed.
+- Do not skip hooks (`--no-verify`) unless the user explicitly requested it.
+- Do not invent `user.name` or `user.email`.
+- Default branch name is `main`.
+- Never put secrets in Git, committed `.env`, handoff, or CI logs.

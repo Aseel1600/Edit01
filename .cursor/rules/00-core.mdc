@@ -1,0 +1,17 @@
+---
+description: Core Agent operating principles. Always apply.
+alwaysApply: true
+---
+
+# Core
+
+Follow `core/constitution.md` and `core/authority.md`.
+
+- Latest explicit user instruction wins.
+- Inspect before modifying.
+- Repository files and Git state outrank chat memory.
+- One Primary Agent owns the active slice. Helpers are bounded.
+- Default is a single Agent. Max two active Agents unless the user approves a third.
+- Complexity must be earned. Do not add frameworks, routers, or extra Agents speculatively.
+- Preserve unrelated user work.
+- Do not invent machine state, licenses, secrets, or remote settings.

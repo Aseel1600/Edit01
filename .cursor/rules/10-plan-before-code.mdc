@@ -1,0 +1,17 @@
+---
+description: Plan from repository evidence before material code changes.
+alwaysApply: true
+---
+
+# Plan before code
+
+Before material edits:
+
+1. Rehydrate if this is a new session or provider switch.
+2. Read the files that will change.
+3. State the smallest change that satisfies the request.
+4. Identify verification that will prove the change.
+
+Do not start a broad rewrite to "clean up" adjacent code.
+
+If requirements are ambiguous and the next step is destructive, privileged, or public, stop and ask. Local reversible work may proceed when the user already authorized implementation.

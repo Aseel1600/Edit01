@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeShellExecution": [
+      {
+        "command": ".cursor/hooks/before-shell.py",
+        "failClosed": false
+      }
+    ],
+    "afterFileEdit": [
+      {
+        "command": ".cursor/hooks/after-edit-secrets.py",
+        "failClosed": false
+      }
+    ],
+    "preCompact": [
+      {
+        "command": ".cursor/hooks/pre-compact.py",
+        "failClosed": false
+      }
+    ]
+  }
+}

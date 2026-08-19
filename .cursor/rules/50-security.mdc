@@ -1,0 +1,23 @@
+---
+description: Security and approval gates for privileged actions.
+alwaysApply: true
+---
+
+# Security
+
+Never store secrets in Git, committed `.env`, browser bundles, localStorage, Docker ARG/layers, handoff files, CI logs, or Agent prompt history stored as project data.
+
+Level 3 actions require explicit human approval:
+
+- production deploy or production database mutation
+- destructive data operations
+- force push / shared history rewrite
+- secret rotation
+- making a repository or package public
+- license change
+- paid provider spend
+- billing
+- account deletion
+- public network exposure
+
+A request to view or locally serve an app is not permission to deploy it publicly.

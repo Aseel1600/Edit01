@@ -56,8 +56,9 @@ class GrokImage(BaseTool):
 
     dependencies = []
     install_instructions = (
-        "Set XAI_API_KEY to your xAI API key.\n"
-        "  Get one from the xAI developer console"
+        "Sign in with the Cursor Grok OAuth connector (grok-media-mcp), "
+        "or set XAI_API_KEY.\n"
+        "  OAuth uses the macOS Keychain item com.cursor.grok-media-mcp"
     )
     agent_skills = ["grok-media"]
 
@@ -136,7 +137,9 @@ class GrokImage(BaseTool):
     user_visible_verification = ["Inspect generated image(s) for composition quality and edit fidelity"]
 
     def get_status(self) -> ToolStatus:
-        if os.environ.get("XAI_API_KEY"):
+        from lib.oauth_connectors import grok_auth_available
+
+        if grok_auth_available():
             return ToolStatus.AVAILABLE
         return ToolStatus.UNAVAILABLE
 
@@ -223,16 +226,23 @@ class GrokImage(BaseTool):
         return [base.parent / f"{base.name}_{idx + 1}{suffix}" for idx in range(count)]
 
     def execute(self, inputs: dict[str, Any]) -> ToolResult:
-        api_key = os.environ.get("XAI_API_KEY")
+        from lib.oauth_connectors import OAuthEntitlementError, grok_bearer_token
+
+        try:
+            api_key = grok_bearer_token()
+        except OAuthEntitlementError as exc:
+            return ToolResult(success=False, error=str(exc))
         if not api_key:
             return ToolResult(
                 success=False,
-                error="XAI_API_KEY not set. " + self.install_instructions,
+                error="Grok OAuth is not signed in and XAI_API_KEY is not set. "
+                + self.install_instructions,
             )
 
         import requests
 
         start = time.time()
+        auth_source = "api_key" if os.environ.get("XAI_API_KEY") else "oauth"
         try:
             endpoint, payload = self._build_payload(inputs)
             response = requests.post(
@@ -244,6 +254,11 @@ class GrokImage(BaseTool):
                 json=payload,
                 timeout=180,
             )
+            if response.status_code == 403:
+                return ToolResult(
+                    success=False,
+                    error="xAI denied this OAuth account access to image generation (HTTP 403).",
+                )
             response.raise_for_status()
             data = response.json()
 
@@ -285,6 +300,7 @@ class GrokImage(BaseTool):
                 "model": payload["model"],
                 "prompt": inputs["prompt"],
                 "generation_mode": inputs.get("generation_mode", "generate"),
+                "auth_source": auth_source,
                 "output": primary_output,
                 "outputs": outputs,
                 "images_generated": len(outputs),

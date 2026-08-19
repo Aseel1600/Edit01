@@ -1,0 +1,36 @@
+---
+description: Automatic Agent-managed workflow on work start and finish. Always apply.
+alwaysApply: true
+---
+
+# Workflow entry
+
+Do not open `~/Developer/agent-rules-kit` just to start or apply kit procedure to another repo. Stay in the current workspace.
+
+Kit CLI if `ark` is missing from PATH:
+
+```text
+~/Developer/agent-rules-kit/bin/ark
+```
+
+Users should not have to name `ark init`, `rehydrate`, `verify`, or `checkpoint`.
+
+Natural-language entry:
+
+- "작업 시작해" / start work / continue this project → treat as managed-session start
+- "이걸 새 프로젝트로 시작해" → new-repo path
+- "이 GitHub repo 가져와서…" with a URL → external-repo path (audit first)
+- "여기까지 마무리해" / wrap up / that's all for today → verify + checkpoint
+
+On material work start:
+
+1. Detect whether the checkout is Agent-managed (AGENTS.md + BRIEF + DECISIONS + HANDOFF).
+2. If managed, rehydrate automatically from those files plus live Git. Do not wait for the user to say `ark rehydrate`.
+3. If unmanaged, run `ark init` dry-run before material edits. Never `--apply` conflicts automatically. If the dry-run is only CREATE, ask once.
+4. If the folder is not a git repository, ask once before `git init` and contract creation.
+5. After contracts exist in this repo, dry-run then ask once to install the Cursor adapter here (`~/Developer/agent-rules-kit/adapters/cursor/install/install.sh . --apply`).
+6. For an external URL, read-only audit (license, scripts, submodules, install) before clone extras, dependency install, or execution. Ask the user to choose Reference / Fork / Derivative.
+7. Skip `ark doctor` and full repo-audit on a normal managed session. Use them on first adoption, workstation/kit change, or a real problem.
+8. Before declaring material work complete, run relevant verification including `ark verify` when this is a kit checkout, update HANDOFF semantics, then `ark checkpoint`.
+
+Automate procedure, not decisions. Still require a human for conflict overwrite, remote creation, push, public visibility, license, paid spend, deploy, and destructive data changes.

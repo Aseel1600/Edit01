@@ -1,0 +1,20 @@
+---
+description: Verification evidence required before claiming completion.
+alwaysApply: true
+---
+
+# Testing
+
+Completion requires verification evidence. "Implemented" is not complete.
+
+Use only relevant layers:
+
+```text
+static → lint/format → typecheck → unit → integration → build → runtime/E2E → acceptance
+```
+
+Report each as `PASS`, `WARN`, `FAIL`, `NOT RUN`, or `NOT APPLICABLE`.
+
+Discover commands from the repository. Do not invent them.
+
+Do not describe skipped checks as passed.
