@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import os
 import logging
 import shutil
 import subprocess
@@ -1361,6 +1362,41 @@ class VideoCompose(BaseTool):
         # overlays, and profile scaling for free.
         return True
 
+    # ---- Slideshow risk contract (E6, Revision 2B) -------------------------
+    # The scorer reads scene_plan fields (shot_intent, narrative_role,
+    # information_role, hero_moment, shot_language). Revision 2B restores it in
+    # REPORT-ONLY mode: the original blocking branch is preserved but only runs
+    # when this env flag is set to "block" (same OPENMONTAGE_* convention as
+    # OPENMONTAGE_PROJECTS_DIR / OPENMONTAGE_ALLOW_NETWORK).
+    SLIDESHOW_RISK_ENFORCEMENT_ENV = "OPENMONTAGE_SLIDESHOW_RISK_ENFORCEMENT"
+    SLIDESHOW_RISK_DEFAULT_ENFORCEMENT = "report_only"
+
+    #: Populated by the last _pre_compose_validation run so callers, tests and
+    #: the report-only sweep can inspect the score without re-rendering.
+    last_slideshow_risk: dict[str, Any] | None = None
+
+    @classmethod
+    def slideshow_risk_enforcement(cls) -> str:
+        """Return "report_only" (default) or "block"."""
+        value = os.environ.get(cls.SLIDESHOW_RISK_ENFORCEMENT_ENV, "")
+        return "block" if value.strip().lower() == "block" else cls.SLIDESHOW_RISK_DEFAULT_ENFORCEMENT
+
+    @staticmethod
+    def _normalize_scene_plan(scene_plan: Any) -> tuple[list[dict], str]:
+        """Normalise a scene_plan argument to (scenes, source_label).
+
+        Accepts the scene_plan artifact dict, a bare list of scenes, or None.
+        Anything else is reported rather than iterated.
+        """
+        if scene_plan is None:
+            return [], "none"
+        if isinstance(scene_plan, dict):
+            scenes = scene_plan.get("scenes", [])
+            return (scenes, "scene_plan") if isinstance(scenes, list) else ([], "invalid")
+        if isinstance(scene_plan, list):
+            return scene_plan, "scene_plan"
+        return [], "invalid"
+
     def _pre_compose_validation(
         self,
         edit_decisions: dict[str, Any],
@@ -1401,10 +1437,27 @@ class VideoCompose(BaseTool):
 
         # --- 2. Slideshow risk check ---
         renderer_family = edit_decisions.get("renderer_family")
-        scenes = scene_plan or []
 
-        # If no scene_plan passed, try to extract scene info from cuts
+        # The compose-director passes the scene_plan ARTIFACT ({version,
+        # style_playbook, scenes[], metadata}); the scorer expects the scenes
+        # LIST. Iterating the artifact yielded its keys (plain strings), so
+        # every dimension raised "'str' object has no attribute 'get'" and the
+        # whole governance check was silently skipped. Normalise here.
+        scenes, scene_source = self._normalize_scene_plan(scene_plan)
+        if scene_source == "invalid":
+            warnings.append(
+                f"scene_plan has unusable type {type(scene_plan).__name__}; "
+                "expected the scene_plan artifact (with a 'scenes' list) or a list of scenes. "
+                "Slideshow risk was scored from cuts instead."
+            )
+
+        # If no usable scene_plan was passed, synthesise scenes from cuts.
+        # NOTE: edit_decisions.cuts cannot legally carry shot_intent,
+        # narrative_role, information_role, hero_moment or shot_language
+        # (additionalProperties: false), so this shape is information-poor and
+        # scores materially higher risk than the scene_plan it stands in for.
         if not scenes and resolved_cuts:
+            scene_source = "cuts"
             scenes = [
                 {
                     "type": c.get("type", ""),
@@ -1419,24 +1472,61 @@ class VideoCompose(BaseTool):
             ]
 
         if scenes:
+            enforcement = self.slideshow_risk_enforcement()
             try:
                 from lib.slideshow_risk import score_slideshow_risk
                 render_runtime = edit_decisions.get("render_runtime")
                 risk = score_slideshow_risk(
                     scenes, edit_decisions, renderer_family, render_runtime
                 )
+                self.last_slideshow_risk = {
+                    "average": risk["average"],
+                    "verdict": risk["verdict"],
+                    "scene_source": scene_source,
+                    "scene_count": len(scenes),
+                    "enforcement": enforcement,
+                    "dimensions": risk.get("dimensions", {}),
+                }
+                summary = (
+                    f"Slideshow risk score {risk['average']:.1f}/5.0 "
+                    f"(verdict: {risk['verdict']}, scored from {scene_source})"
+                )
                 if risk["verdict"] == "fail":
-                    blocks.append(
-                        f"Slideshow risk score {risk['average']:.1f}/5.0 (verdict: fail). "
-                        f"Video plan looks like a slideshow — revise scene plan before rendering."
+                    detail = (
+                        f"{summary}. Video plan looks like a slideshow — "
+                        f"revise scene plan before rendering."
                     )
+                    if enforcement == "block":
+                        blocks.append(detail)
+                    else:
+                        # Report-only: the scorer is restored for analysis but
+                        # does not gate rendering. Set
+                        # OPENMONTAGE_SLIDESHOW_RISK_ENFORCEMENT=block to
+                        # re-enable the (preserved) blocking branch above.
+                        warnings.append(f"[report-only] {detail}")
                 elif risk["verdict"] == "revise":
                     warnings.append(
-                        f"Slideshow risk score {risk['average']:.1f}/5.0 (verdict: revise). "
-                        f"Consider improving scene variety before final render."
+                        f"{summary}. Consider improving scene variety before final render."
                     )
+                else:
+                    log.info("[pre-compose] %s", summary)
             except Exception as e:
-                log.warning("Could not compute slideshow risk: %s", e)
+                # Never silent: a broken governance check must be visible, but
+                # it must not block the render in report-only mode.
+                self.last_slideshow_risk = {
+                    "error": f"{type(e).__name__}: {e}",
+                    "scene_source": scene_source,
+                    "scene_count": len(scenes) if isinstance(scenes, list) else None,
+                    "enforcement": enforcement,
+                }
+                warnings.append(
+                    f"Slideshow risk could not be computed ({type(e).__name__}: {e}); "
+                    f"scored from {scene_source}. The check was skipped — render continues."
+                )
+                log.warning(
+                    "[pre-compose] slideshow risk failed (%s) for scene_source=%s",
+                    type(e).__name__, scene_source, exc_info=log.isEnabledFor(logging.DEBUG),
+                )
 
         # --- 3. Missing renderer_family (BLOCK — must be set at proposal) ---
         if not renderer_family:
