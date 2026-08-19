@@ -14,6 +14,7 @@ produce broken or truncated output.
 from __future__ import annotations
 
 import json
+import math
 import time
 from pathlib import Path
 from typing import Any
@@ -34,7 +35,7 @@ from tools.base_tool import (
 
 class CompositionValidator(BaseTool):
     name = "composition_validator"
-    version = "0.1.0"
+    version = "0.2.0"
     tier = ToolTier.CORE
     capability = "analysis"
     provider = "local"
@@ -240,7 +241,90 @@ class CompositionValidator(BaseTool):
         if not narration_src and not music_src:
             warnings.append("No audio configured (no narration or music)")
 
+        # --- Check 8: Overlay timing contract ---
+        # Remotion's <Sequence> needs finite from/duration values. An overlay
+        # that uses the wrong timing keys yields NaN and fails deep inside the
+        # render ("The 'from' prop of a sequence must be finite, but got NaN"),
+        # after bundling. Catch it here instead.
+        errors.extend(self._validate_overlays(comp.get("overlays", [])))
+
         return self._result(errors, warnings, info, start)
+
+    OVERLAY_TYPES = {"section_title", "stat_reveal", "hero_title", "provider_chip"}
+    OVERLAY_TIMING_ALIASES = {
+        "start_seconds": "in_seconds",
+        "end_seconds": "out_seconds",
+        "start": "in_seconds",
+        "end": "out_seconds",
+        "from_seconds": "in_seconds",
+        "to_seconds": "out_seconds",
+    }
+
+    @classmethod
+    def _validate_overlays(cls, overlays: Any) -> list[str]:
+        """Validate overlay timing/type/content before the composition renders."""
+        errors: list[str] = []
+        if not overlays:
+            return errors
+        if not isinstance(overlays, list):
+            return ["overlays must be a list"]
+
+        for index, overlay in enumerate(overlays):
+            label = f"Overlay {index}"
+            if not isinstance(overlay, dict):
+                errors.append(f"{label}: must be an object")
+                continue
+            label = f"Overlay {index} ({overlay.get('type', 'no type')})"
+
+            overlay_type = overlay.get("type")
+            if not overlay_type:
+                errors.append(f"{label}: missing 'type'")
+            elif overlay_type not in cls.OVERLAY_TYPES:
+                errors.append(
+                    f"{label}: unknown overlay type {overlay_type!r}. "
+                    f"Supported: {', '.join(sorted(cls.OVERLAY_TYPES))}"
+                )
+
+            # Wrong-but-plausible timing keys are the common failure; name the fix.
+            aliases = [k for k in cls.OVERLAY_TIMING_ALIASES if k in overlay]
+            for alias in aliases:
+                errors.append(
+                    f"{label}: unsupported timing key {alias!r} — "
+                    f"use {cls.OVERLAY_TIMING_ALIASES[alias]!r}. "
+                    f"Supported overlay timing keys are 'in_seconds' and 'out_seconds'."
+                )
+
+            times: dict[str, float] = {}
+            for key in ("in_seconds", "out_seconds"):
+                if key not in overlay:
+                    if not aliases:
+                        errors.append(
+                            f"{label}: missing {key!r} "
+                            f"(overlay timing keys are 'in_seconds' and 'out_seconds')"
+                        )
+                    continue
+                value = overlay[key]
+                if isinstance(value, bool) or not isinstance(value, (int, float)):
+                    errors.append(f"{label}: {key} must be a number, got {value!r}")
+                elif not math.isfinite(value):
+                    errors.append(f"{label}: {key} must be finite, got {value!r}")
+                elif value < 0:
+                    errors.append(f"{label}: {key} must be >= 0, got {value!r}")
+                else:
+                    times[key] = float(value)
+
+            if len(times) == 2 and times["out_seconds"] <= times["in_seconds"]:
+                errors.append(
+                    f"{label}: out_seconds ({times['out_seconds']}) must be greater than "
+                    f"in_seconds ({times['in_seconds']})"
+                )
+
+            if overlay_type in {"section_title", "stat_reveal", "hero_title"} and not overlay.get("text"):
+                errors.append(f"{label}: requires 'text'")
+            if overlay_type == "provider_chip" and not overlay.get("providers"):
+                errors.append(f"{label}: requires 'providers'")
+
+        return errors
 
     def _result(
         self,

@@ -11,6 +11,10 @@ interface StatRevealProps {
   label?: string;
   accentColor?: string;
   position?: "center" | "bottom-right" | "right";
+  /** Label colour. Defaults to the original near-white so dark themes are unchanged. */
+  labelColor?: string;
+  /** Label text shadow. Defaults to the original dark glow; pass "none" on light surfaces. */
+  textShadow?: string;
 }
 
 export const StatReveal: React.FC<StatRevealProps> = ({
@@ -18,6 +22,8 @@ export const StatReveal: React.FC<StatRevealProps> = ({
   label,
   accentColor = "#A78BFA",
   position = "bottom-right",
+  labelColor = "#F8FAFC",
+  textShadow = "0 2px 8px rgba(0,0,0,0.6)",
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -79,7 +85,7 @@ export const StatReveal: React.FC<StatRevealProps> = ({
             style={{
               fontSize: 22,
               fontWeight: 500,
-              color: "#F8FAFC",
+              color: labelColor,
               fontFamily: "Space Grotesk, Inter, system-ui, sans-serif",
               marginTop: 8,
               opacity: spring({
@@ -87,7 +93,7 @@ export const StatReveal: React.FC<StatRevealProps> = ({
                 fps,
                 config: { damping: 20 },
               }),
-              textShadow: "0 2px 8px rgba(0,0,0,0.6)",
+              textShadow,
             }}
           >
             {label}
