@@ -656,7 +656,8 @@ class VideoCompose(BaseTool):
 
             if subtitle_path and Path(subtitle_path).exists():
                 style = inputs.get("subtitle_style", {})
-                ass_style = self._build_subtitle_style(style)
+                burn_height = inputs.get("video_height") or self._probe_video_height(final_input)
+                ass_style = self._build_subtitle_style(style, video_height=burn_height)
                 sub_escaped = str(Path(subtitle_path).resolve()).replace("\\", "/").replace(":", "\\:")
                 vfilters.append(f"subtitles='{sub_escaped}':force_style='{ass_style}'")
 
@@ -2649,7 +2650,8 @@ class VideoCompose(BaseTool):
             return ToolResult(success=False, error=f"Subtitle file not found: {subtitle_path}")
 
         style = inputs.get("subtitle_style", {})
-        ass_style = self._build_subtitle_style(style)
+        burn_height = inputs.get("video_height") or self._probe_video_height(input_path)
+        ass_style = self._build_subtitle_style(style, video_height=burn_height)
         sub_escaped = str(subtitle_path.resolve()).replace("\\", "/").replace(":", "\\:")
         codec = inputs.get("codec", "libx264")
         crf = inputs.get("crf", 23)
@@ -2788,8 +2790,9 @@ class VideoCompose(BaseTool):
             artifacts=[str(output_path)],
         )
 
-    @staticmethod
+    @classmethod
     def _resolve_subtitle_style(
+        cls,
         explicit_style: dict | None,
         edit_decisions: dict | None,
         playbook: dict | None,
@@ -2800,14 +2803,18 @@ class VideoCompose(BaseTool):
         This prevents every video from looking identical (Arial bold white).
         """
         # Start with minimal fallback defaults
+        # font size is seeded as a NATIVE ass_font_size so the historical
+        # rendering is unchanged when no canonical font_size is supplied; a
+        # canonical value overrides it via the mapping in _build_subtitle_style.
+        # Size and alignment are deliberately NOT seeded here: seeding a native
+        # value would let a default outrank an explicitly supplied canonical
+        # field. _build_subtitle_style applies the historical fallbacks
+        # (FontSize 28, Alignment 2) only when neither vocabulary supplies one.
         resolved = {
             "font": "Inter",
-            "font_size": 28,
             "bold": True,
             "outline_width": 2,
             "shadow": 0,
-            "margin_v": 40,
-            "alignment": 2,
         }
 
         # Layer 1: Playbook-derived style
@@ -2817,19 +2824,53 @@ class VideoCompose(BaseTool):
             if typo.get("body", {}).get("family"):
                 resolved["font"] = typo["body"]["family"]
             if colors.get("text"):
-                resolved["primary_color"] = colors["text"]
+                # canonical key, not the native one: the playbook is a LOWER
+                # layer than edit_decisions, so it must be overridable by the
+                # canonical `color` field rather than outranking it.
+                resolved["color"] = colors["text"]
             if colors.get("background"):
                 resolved["outline_color"] = colors["background"]
                 # Semi-transparent background for readability
                 bg = colors["background"]
                 resolved["back_color"] = bg
 
-        # Layer 2: edit_decisions subtitle style
+        # Layer 2: canonical edit_decisions.subtitles fields
+        #
+        # `style` is schema-typed as a display-style STRING ("sentence",
+        # "word-by-word", "karaoke") — it is not a style map. Treating it as one
+        # raised AttributeError deep inside compose for every schema-valid
+        # artifact. The canonical styling lives in the sibling fields.
         if edit_decisions:
-            ed_style = edit_decisions.get("subtitles", {}).get("style", {})
-            for k, v in ed_style.items():
-                if v is not None:
-                    resolved[k] = v
+            ed_subs = edit_decisions.get("subtitles") or {}
+            if not isinstance(ed_subs, dict):
+                raise ValueError(
+                    f"edit_decisions.subtitles must be an object, got {type(ed_subs).__name__}"
+                )
+
+            ed_style = ed_subs.get("style")
+            if isinstance(ed_style, str):
+                # Display style: recorded for callers that render captions
+                # themselves; it carries no ASS styling.
+                resolved["display_style"] = ed_style
+            elif isinstance(ed_style, dict):
+                # Undocumented legacy shape: a raw style map. Not part of the
+                # public schema, but tolerated so an in-flight caller keeps
+                # working; explicit overrides still win below.
+                for k, v in ed_style.items():
+                    if v is not None:
+                        resolved[k] = v
+            elif ed_style is not None:
+                raise ValueError(
+                    "edit_decisions.subtitles.style must be a string "
+                    f"(display style) — got {type(ed_style).__name__}. "
+                    "Styling belongs in the sibling fields "
+                    "(font, font_size, color, outline_color, background, position)."
+                )
+
+            for field in cls.CANONICAL_SUBTITLE_FIELDS:
+                value = ed_subs.get(field)
+                if value is not None:
+                    resolved[field] = value
 
         # Layer 3: Explicit override (highest priority)
         if explicit_style:
@@ -2839,25 +2880,150 @@ class VideoCompose(BaseTool):
 
         return resolved
 
+    # ---- Subtitle style contract (E5) -------------------------------------
+    # ffmpeg converts SRT to ASS with a fixed script canvas; verified from the
+    # generated header (Lavc): "PlayResX: 384 / PlayResY: 288". libass scales
+    # that canvas to the video frame, so an ASS FontSize of N renders at
+    # N * video_height / 288 pixels. Canonical schema sizes are therefore
+    # expressed in pixels against a reference frame and converted here.
+    ASS_PLAYRES_X = 384
+    ASS_PLAYRES_Y = 288
+    ASS_REFERENCE_HEIGHT = 1080
+
+    # edit_decisions.subtitles.position -> ASS Alignment (numpad layout)
+    SUBTITLE_POSITION_ALIGNMENT = {
+        "bottom-center": 2,
+        "center": 5,
+        "top-center": 8,
+    }
+
+    # Canonical fields carried on edit_decisions.subtitles that map to ASS.
+    CANONICAL_SUBTITLE_FIELDS = (
+        "font", "font_size", "color", "outline_color", "background",
+        "position", "vertical_margin", "max_words_per_line",
+    )
+
+    @classmethod
+    def canonical_px_to_ass_units(cls, pixels: float, video_height: int | None = None) -> float:
+        """Convert a canonical pixel size to ASS script units.
+
+        Canonical sizes describe how large the caption should look on screen;
+        ASS sizes live in the 384x288 script canvas libass scales to the frame.
+        """
+        height = int(video_height or cls.ASS_REFERENCE_HEIGHT)
+        if height <= 0:
+            height = cls.ASS_REFERENCE_HEIGHT
+        return pixels * cls.ASS_PLAYRES_Y / height
+
     @staticmethod
-    def _build_subtitle_style(style: dict) -> str:
-        """Build ASS force_style string from style dict."""
-        parts = []
-        parts.append(f"FontName={style.get('font', 'Inter')}")
-        parts.append(f"FontSize={style.get('font_size', 28)}")
+    def css_color_to_ass(value: str) -> str:
+        """Convert a CSS colour to ASS &HAABBGGRR.
+
+        ASS orders bytes as alpha-blue-green-red and treats alpha as
+        transparency (00 = opaque, FF = invisible) — the inverse of CSS. Values
+        already in ASS form are passed through untouched.
+        """
+        raw = str(value).strip()
+        if raw.upper().startswith("&H"):
+            return raw
+        hex_part = raw[1:] if raw.startswith("#") else raw
+        if len(hex_part) == 3:
+            hex_part = "".join(ch * 2 for ch in hex_part)
+        if len(hex_part) == 4:
+            hex_part = "".join(ch * 2 for ch in hex_part)
+        if len(hex_part) not in (6, 8) or any(c not in "0123456789abcdefABCDEF" for c in hex_part):
+            raise ValueError(
+                f"Unsupported subtitle colour {value!r}. Use #RGB, #RRGGBB, #RRGGBBAA or an ASS &HAABBGGRR value."
+            )
+        r, g, b = hex_part[0:2], hex_part[2:4], hex_part[4:6]
+        css_alpha = int(hex_part[6:8], 16) if len(hex_part) == 8 else 255
+        ass_alpha = 255 - css_alpha  # CSS opacity -> ASS transparency
+        return f"&H{ass_alpha:02X}{b.upper()}{g.upper()}{r.upper()}"
+
+    @staticmethod
+    def _probe_video_height(path: Path | str) -> int | None:
+        """Best-effort frame height so canonical sizes scale to the real output."""
+        try:
+            proc = subprocess.run(
+                ["ffprobe", "-v", "quiet", "-print_format", "json",
+                 "-show_streams", "-select_streams", "v:0", str(path)],
+                capture_output=True, text=True, timeout=30,
+            )
+            streams = json.loads(proc.stdout or "{}").get("streams", [])
+            if streams and streams[0].get("height"):
+                return int(streams[0]["height"])
+        except Exception as exc:  # pragma: no cover - probing is advisory
+            logging.getLogger(__name__).debug("Could not probe video height for %s: %s", path, exc)
+        return None
+
+    @classmethod
+    def _build_subtitle_style(cls, style: dict, video_height: int | None = None) -> str:
+        """Build an ASS force_style string from a resolved subtitle style.
+
+        Two vocabularies are accepted and both are honoured:
+
+        * canonical (``edit_decisions.subtitles``): ``font``, ``font_size`` (px),
+          ``color``, ``outline_color``, ``background``, ``position``
+        * native ASS overrides: ``ass_font_size``, ``primary_color``,
+          ``outline_color``, ``back_color``, ``alignment``, ``margin_v``,
+          ``border_style``, ``outline_width``, ``shadow``, ``bold``
+
+        Precedence is defaults -> canonical mapping -> explicit native override,
+        so a caller that already speaks ASS is never overwritten by a
+        higher-level field. Colours may be given as CSS hex or ASS; both are
+        normalised to ASS &HAABBGGRR here.
+        """
+        parts = [f"FontName={style.get('font', 'Inter')}"]
+
+        # --- size: canonical pixels scale through the ASS canvas; a native
+        # ass_font_size (or the resolver default) is used verbatim.
+        if style.get("ass_font_size") is not None:
+            font_size: float = float(style["ass_font_size"])
+        elif style.get("font_size") is not None:
+            font_size = cls.canonical_px_to_ass_units(float(style["font_size"]), video_height)
+        else:
+            font_size = 28.0
+        parts.append(f"FontSize={round(font_size, 1):g}")
         parts.append(f"Bold={1 if style.get('bold', True) else 0}")
-        if style.get("primary_color"):
-            parts.append(f"PrimaryColour={style['primary_color']}")
+
+        # --- colours: native key wins; canonical `color`/`background` map across
+        primary = style.get("primary_color") or style.get("color")
+        if primary:
+            parts.append(f"PrimaryColour={cls.css_color_to_ass(primary)}")
         if style.get("outline_color"):
-            parts.append(f"OutlineColour={style['outline_color']}")
-        if style.get("back_color"):
-            parts.append(f"BackColour={style['back_color']}")
-        border_style = style.get("border_style", 1)
-        parts.append(f"BorderStyle={border_style}")
+            parts.append(f"OutlineColour={cls.css_color_to_ass(style['outline_color'])}")
+        back = style.get("back_color") or style.get("background")
+        if back:
+            parts.append(f"BackColour={cls.css_color_to_ass(back)}")
+
+        # A canonical `background` asks for a filled caption box; a playbook or
+        # native back_color alone keeps the historical outline+shadow border.
+        default_border = 3 if style.get("background") and not style.get("back_color") else 1
+        parts.append(f"BorderStyle={style.get('border_style', default_border)}")
         parts.append(f"Outline={style.get('outline_width', 2)}")
         parts.append(f"Shadow={style.get('shadow', 0)}")
-        parts.append(f"MarginV={style.get('margin_v', 40)}")
-        parts.append(f"Alignment={style.get('alignment', 2)}")
+        if style.get("margin_v") is not None:
+            margin_v: float = float(style["margin_v"])
+        elif style.get("vertical_margin") is not None:
+            margin_v = round(cls.canonical_px_to_ass_units(float(style["vertical_margin"]), video_height))
+        else:
+            margin_v = 40
+        parts.append(f"MarginV={margin_v:g}")
+
+        # --- position: native alignment wins over the canonical enum
+        if style.get("alignment") is not None:
+            alignment = style["alignment"]
+        elif style.get("position"):
+            position = str(style["position"])
+            if position not in cls.SUBTITLE_POSITION_ALIGNMENT:
+                raise ValueError(
+                    f"Unsupported subtitle position {position!r}. "
+                    f"Supported: {', '.join(sorted(cls.SUBTITLE_POSITION_ALIGNMENT))}."
+                )
+            alignment = cls.SUBTITLE_POSITION_ALIGNMENT[position]
+        else:
+            alignment = 2
+        parts.append(f"Alignment={alignment}")
         return ",".join(parts)
 
     @staticmethod
