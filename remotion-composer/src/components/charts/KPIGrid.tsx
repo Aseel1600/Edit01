@@ -13,12 +13,26 @@ interface Metric {
   suffix?: string;
   change?: number; // percentage change, positive = up, negative = down
   icon?: string; // emoji or text glyph
+  /**
+   * Fixed decimal places for this metric. Omit for the legacy behaviour
+   * (integer rounding). Set to 1 to render 11.6 rather than 12.
+   */
+  decimals?: number;
+  /**
+   * Abbreviate >=1000 as "31.7K" / >=1e6 as "M". Defaults to true, matching
+   * the original behaviour. Set false to render 31,700 in full.
+   */
+  abbreviate?: boolean;
 }
 
 type KPIAnimationStyle = "count-up" | "pop" | "cascade";
 
 interface KPIGridProps {
   metrics: Metric[];
+  /** Grid-wide default for Metric.decimals. Omit for legacy integer rounding. */
+  decimals?: number;
+  /** Grid-wide default for Metric.abbreviate. Defaults to true (legacy). */
+  abbreviate?: boolean;
   title?: string;
   columns?: 2 | 3 | 4;
   colors?: string[];
@@ -33,6 +47,8 @@ interface KPIGridProps {
 
 export const KPIGrid: React.FC<KPIGridProps> = ({
   metrics,
+  decimals: gridDecimals,
+  abbreviate: gridAbbreviate,
   title,
   columns = 3,
   colors = ["#2563EB", "#F59E0B", "#10B981", "#EC4899"],
@@ -173,6 +189,8 @@ export const KPIGrid: React.FC<KPIGridProps> = ({
             >
               <KPICardContent
                 metric={metric}
+                gridDecimals={gridDecimals}
+                gridAbbreviate={gridAbbreviate}
                 accentColor={accentColor}
                 textColor={textColor}
                 fontFamily={fontFamily}
@@ -219,6 +237,8 @@ export const KPIGrid: React.FC<KPIGridProps> = ({
           >
             <KPICardContent
               metric={metric}
+              gridDecimals={gridDecimals}
+              gridAbbreviate={gridAbbreviate}
               accentColor={accentColor}
               textColor={textColor}
               fontFamily={fontFamily}
@@ -238,6 +258,8 @@ export const KPIGrid: React.FC<KPIGridProps> = ({
 
 interface KPICardContentProps {
   metric: Metric;
+  gridDecimals?: number;
+  gridAbbreviate?: boolean;
   accentColor: string;
   textColor: string;
   fontFamily: string;
@@ -251,6 +273,8 @@ interface KPICardContentProps {
 
 const KPICardContent: React.FC<KPICardContentProps> = ({
   metric,
+  gridDecimals,
+  gridAbbreviate,
   accentColor,
   textColor,
   fontFamily,
@@ -275,8 +299,11 @@ const KPICardContent: React.FC<KPICardContentProps> = ({
           config: { damping: 18, stiffness: 60 },
         });
 
-  const displayValue = Math.round(metric.value * countProgress);
-  const formattedValue = formatDisplayValue(displayValue, metric.value);
+  const decimals = metric.decimals ?? gridDecimals;
+  const abbreviate = metric.abbreviate ?? gridAbbreviate ?? true;
+  const rawValue = metric.value * countProgress;
+  const displayValue = decimals === undefined ? Math.round(rawValue) : rawValue;
+  const formattedValue = formatDisplayValue(displayValue, metric.value, decimals, abbreviate);
 
   // Change indicator animation
   const changeOpacity = interpolate(
@@ -357,12 +384,25 @@ const KPICardContent: React.FC<KPICardContentProps> = ({
 /**
  * Format the animated counter value to match the scale of the target value.
  */
-function formatDisplayValue(current: number, target: number): string {
-  if (target >= 1_000_000) {
-    return `${(current / 1_000_000).toFixed(1)}M`;
+function formatDisplayValue(
+  current: number,
+  target: number,
+  decimals?: number,
+  abbreviate: boolean = true,
+): string {
+  if (abbreviate) {
+    if (target >= 1_000_000) {
+      return `${(current / 1_000_000).toFixed(1)}M`;
+    }
+    if (target >= 1_000) {
+      return `${(current / 1_000).toFixed(1)}K`;
+    }
   }
-  if (target >= 1_000) {
-    return `${(current / 1_000).toFixed(1)}K`;
+  if (decimals === undefined) {
+    return abbreviate ? String(current) : current.toLocaleString("en-US");
   }
-  return String(current);
+  return current.toLocaleString("en-US", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
 }

@@ -53,6 +53,9 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   return { r: (bigint >> 16) & 255, g: (bigint >> 8) & 255, b: bigint & 255 };
 }
 
+// Matches a plain hex colour; guards the light-surface probe against rgba()/transparent.
+const HEX_COLOR = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
 // Detect if a color is "light" (for choosing grid/overlay treatment)
 function isLightColor(hex: string): boolean {
   const { r, g, b } = hexToRgb(hex);
@@ -191,6 +194,8 @@ interface Cut {
   // Defaults to 0 (play from beginning). Use this instead of in_seconds for source trimming.
   source_in_seconds?: number;
   // Comparison props
+  leftColor?: string;
+  rightColor?: string;
   leftLabel?: string;
   rightLabel?: string;
   leftValue?: string;
@@ -290,6 +295,11 @@ interface AudioConfig {
 
 export interface ExplainerProps {
   [key: string]: unknown;
+  /**
+   * Opt in to explicit-themeConfig precedence over a named preset.
+   * Omitted/false keeps the legacy behaviour (named preset wins).
+   */
+  themeConfigWins?: boolean;
   cuts: Cut[];
   overlays?: Overlay[];
   captions?: WordCaption[];
@@ -576,6 +586,15 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
   const textColor = cut.color || theme.textColor;
   const accent = cut.accentColor || theme.accentColor;
 
+  // Several stock components carry dark-theme colour defaults (white/near-white
+  // text). On a light playbook those render unreadable. Forward theme-derived
+  // colours ONLY when the resolved surface is light, so dark themes keep their
+  // existing output byte-for-byte.
+  const surfaceHex = HEX_COLOR.test(String(cut.backgroundColor ?? ""))
+    ? (cut.backgroundColor as string)
+    : theme.backgroundColor;
+  const lightSurface = HEX_COLOR.test(surfaceHex) && isLightColor(surfaceHex);
+
   // Explicit component types — use theme-derived defaults for colors
   if (cut.type === "text_card" && cut.text) {
     return maybeWrapWithBg(
@@ -584,7 +603,13 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
   }
   if (cut.type === "stat_card" && cut.stat) {
     return maybeWrapWithBg(
-      <StatCard stat={cut.stat} subtitle={cut.subtitle} accentColor={accent} backgroundColor={bgColor} />
+      <StatCard
+        stat={cut.stat}
+        subtitle={cut.subtitle}
+        accentColor={accent}
+        backgroundColor={bgColor}
+        {...(lightSurface ? { color: textColor } : {})}
+      />
     );
   }
   if (cut.type === "callout" && cut.text) {
@@ -602,12 +627,25 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
         leftLabel={cut.leftLabel} rightLabel={cut.rightLabel}
         leftValue={cut.leftValue} rightValue={cut.rightValue}
         title={cut.title} backgroundColor={bgColor} textColor={textColor}
+        {...(cut.leftColor ? { leftColor: cut.leftColor } : {})}
+        {...(cut.rightColor ? { rightColor: cut.rightColor } : {})}
       />
     );
   }
   if (cut.type === "hero_title" && cut.text) {
     return maybeWrapWithBg(
-      <HeroTitle title={cut.text} subtitle={cut.heroSubtitle || cut.subtitle} />
+      <HeroTitle
+        title={cut.text}
+        subtitle={cut.heroSubtitle || cut.subtitle}
+        {...(lightSurface
+          ? {
+              titleColor: textColor,
+              accentColor: accent,
+              subtitleColor: textColor,
+              scrim: "radial-gradient(ellipse at center, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.55) 100%)",
+            }
+          : {})}
+      />
     );
   }
   if (cut.type === "terminal_scene" && cut.steps) {
@@ -752,14 +790,21 @@ const SceneRenderer: React.FC<{ cut: Cut; theme: ThemeConfig }> = ({ cut, theme 
 // Overlay renderer
 // ---------------------------------------------------------------------------
 
-const OverlayRenderer: React.FC<{ overlay: Overlay }> = ({ overlay }) => {
+const OverlayRenderer: React.FC<{ overlay: Overlay; theme: ThemeConfig }> = ({ overlay, theme }) => {
+  // Same rule as SceneRenderer: only correct colours on light surfaces, so dark
+  // themes render exactly as they did before this change.
+  const lightSurface =
+    HEX_COLOR.test(theme.backgroundColor) && isLightColor(theme.backgroundColor);
+  const overlayTextColor = theme.textColor;
+  const overlayAccent = overlay.accentColor || theme.accentColor;
   if (overlay.type === "section_title") {
     return (
       <SectionTitle
         title={overlay.text ?? ""}
         subtitle={overlay.subtitle}
-        accentColor={overlay.accentColor}
+        accentColor={lightSurface ? overlayAccent : overlay.accentColor}
         position={(overlay.position as any) || "top-left"}
+        {...(lightSurface ? { titleColor: overlayTextColor, textShadow: "none" } : {})}
       />
     );
   }
@@ -768,13 +813,27 @@ const OverlayRenderer: React.FC<{ overlay: Overlay }> = ({ overlay }) => {
       <StatReveal
         stat={overlay.text ?? ""}
         label={overlay.subtitle}
-        accentColor={overlay.accentColor}
+        accentColor={lightSurface ? overlayAccent : overlay.accentColor}
         position={(overlay.position as any) || "bottom-right"}
+        {...(lightSurface ? { labelColor: overlayTextColor, textShadow: "none" } : {})}
       />
     );
   }
   if (overlay.type === "hero_title") {
-    return <HeroTitle title={overlay.text ?? ""} subtitle={overlay.subtitle} />;
+    return (
+      <HeroTitle
+        title={overlay.text ?? ""}
+        subtitle={overlay.subtitle}
+        {...(lightSurface
+          ? {
+              titleColor: overlayTextColor,
+              accentColor: overlayAccent,
+              subtitleColor: overlayTextColor,
+              scrim: "radial-gradient(ellipse at center, rgba(255,255,255,0.35) 0%, rgba(255,255,255,0.55) 100%)",
+            }
+          : {})}
+      />
+    );
   }
   if (overlay.type === "provider_chip" && overlay.providers) {
     return (
@@ -827,7 +886,7 @@ export const Explainer: React.FC<ExplainerProps> = (props) => {
 
         return (
           <Sequence key={`overlay-${i}`} from={from} durationInFrames={duration}>
-            <OverlayRenderer overlay={overlay} />
+            <OverlayRenderer overlay={overlay} theme={theme} />
           </Sequence>
         );
       })}

@@ -1,0 +1,59 @@
+{
+  "record_version": "1.0",
+  "frozen_at": "2026-08-19",
+  "revision_frozen": "Engineering Revision 2A (accepted, uncommitted)",
+  "git": {
+    "head": "1bab711820828c2e5fc1f87ed274a32587cb048f",
+    "status": [
+      "M remotion-composer/src/Explainer.tsx",
+      " M remotion-composer/src/components/HeroTitle.tsx",
+      " M remotion-composer/src/components/SectionTitle.tsx",
+      " M remotion-composer/src/components/StatReveal.tsx",
+      " M remotion-composer/src/components/charts/KPIGrid.tsx",
+      " M schemas/artifacts/edit_decisions.schema.json",
+      " M tools/analysis/composition_validator.py",
+      " M tools/video/video_compose.py",
+      "?? engineering/",
+      "?? remotion-composer/public/demo-props/million-billion-trillion.json",
+      "?? tests/contracts/test_component_theme_contracts.py",
+      "?? tests/contracts/test_subtitle_style_contract.py",
+      "?? tests/fixtures/theme_contracts/",
+      "?? tests/lib/remotion_frames.py"
+    ],
+    "diff_stat": [
+      " 8 files changed, 426 insertions(+), 50 deletions(-)"
+    ]
+  },
+  "source_and_test_checksums": {
+    "tools/video/video_compose.py": "a370c097a1a0be1525587420bbc2f35d0d71b52f92282e056a310a589ca9d147",
+    "remotion-composer/src/Explainer.tsx": "d57d14dee07ee0f35c7c70d3e8236c08e8250bbfa4b07b685cb6338904bbb362",
+    "remotion-composer/src/components/HeroTitle.tsx": "97f291cda6a12265a406add54be1e0d359c2f4bc60718ff3fa5e15279f01385d",
+    "remotion-composer/src/components/SectionTitle.tsx": "8e13b1bcdef1e2fd5bf022e2d1a19b329161c12c82cc1d61724e076f077090d1",
+    "remotion-composer/src/components/StatReveal.tsx": "bbded7a32c1421bcec7a9c5b084598c9b08f9d8396ba7931629becc424ba17fc",
+    "remotion-composer/src/components/charts/KPIGrid.tsx": "9d80b205fc690c242c6d0478af483513dc295a487ade216dcc996469c1ea6f1f",
+    "schemas/artifacts/edit_decisions.schema.json": "90b2cc99025f8ece4dbdad5dd0d5e4703706ea1ca07c66dd35b48e09caf0b28e",
+    "tools/analysis/composition_validator.py": "39622f35f2ab6a3d0958fc186a185d7ad5e12ed7b90879190cbbab48eac7ca41",
+    "tests/contracts/test_subtitle_style_contract.py": "fda558a46ed59672b1a6115a495855f8a86e9fa8f077f01091e2e10ae4ee3e54",
+    "tests/contracts/test_component_theme_contracts.py": "40efc6ab04627650939e9340d7d6c4d93595543e539bb882e6967f9e91440a88",
+    "tests/lib/remotion_frames.py": "e561aed533e9a3231b9a83aea9941e8be022cbc9a7f73dd979b2d726640fdfae"
+  },
+  "protected_media": {
+    "frozen_baseline": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+    "original_final": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+    "rev1_regression": "53c35e9ea16608051281376f37d0f256150d8b99507eda9a8ebfa6f55043a343",
+    "rev2a_regression": "574c609da34c2638675b5f6a07df0b139e3b1af2c353195326c9304fc27305fb"
+  },
+  "accepted_test_result": {
+    "full_suite": "1469 passed, 12 skipped, 0 failed",
+    "rev2a_targeted": "46 passed",
+    "rev1_targeted": "31 passed"
+  },
+  "rev2b_rules": [
+    "E6 only",
+    "no E10",
+    "no canonical margin_v field",
+    "no new blocking behaviour",
+    "report-only",
+    "render only to new paths if needed"
+  ]
+}

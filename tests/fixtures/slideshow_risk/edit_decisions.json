@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "renderer_family": "animation-first",
+  "render_runtime": "remotion",
+  "composition_mode": "templated",
+  "cuts": [
+    {
+      "id": "sc1",
+      "source": "",
+      "in_seconds": 0.0,
+      "out_seconds": 5.0,
+      "reason": "Open with the question and name the three quantities; establish the type system and light field."
+    },
+    {
+      "id": "sc2",
+      "source": "",
+      "in_seconds": 5.0,
+      "out_seconds": 10.0,
+      "reason": "First anchor: make one million seconds concrete as a number the viewer can hold."
+    },
+    {
+      "id": "sc3",
+      "source": "",
+      "in_seconds": 10.0,
+      "out_seconds": 15.0,
+      "reason": "The pivot: put million beside billion so the 1,000x gap is seen, not stated."
+    },
+    {
+      "id": "sc4",
+      "source": "",
+      "in_seconds": 15.0,
+      "out_seconds": 21.0,
+      "reason": "Complete the pattern: three cells at once make the x1000 ladder legible; the trillion cell lands the piece."
+    },
+    {
+      "id": "sc5",
+      "source": "",
+      "in_seconds": 21.0,
+      "out_seconds": 28.4,
+      "reason": "Land the takeaway in the fewest possible words and let it rest."
+    }
+  ],
+  "metadata": {
+    "fixture_provenance": "Minimal deterministic fixture copied from the frozen million-billion-trillion validation project (the canonical PASS production). Scoring fields are verbatim; non-scoring blocks were dropped so the fixture stays minimal. No generated media is included. Source of truth for the scores asserted in tests/contracts/test_slideshow_risk_contract.py.",
+    "copied_from": "projects/million-billion-trillion/artifacts/edit_decisions.json",
+    "note": "lib.slideshow_risk.score_slideshow_risk accepts edit_decisions but no dimension reads it; the cuts are used by the cuts-representation test."
+  }
+}

@@ -11,6 +11,10 @@ interface SectionTitleProps {
   subtitle?: string;
   accentColor?: string;
   position?: "top-left" | "bottom-left" | "center";
+  /** Title colour. Defaults to the original near-white so dark themes are unchanged. */
+  titleColor?: string;
+  /** Text shadow. Defaults to the original dark glow; pass "none" on light surfaces. */
+  textShadow?: string;
 }
 
 export const SectionTitle: React.FC<SectionTitleProps> = ({
@@ -18,6 +22,8 @@ export const SectionTitle: React.FC<SectionTitleProps> = ({
   subtitle,
   accentColor = "#22D3EE",
   position = "top-left",
+  titleColor = "#F8FAFC",
+  textShadow = "0 2px 8px rgba(0,0,0,0.6)",
 }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames } = useVideoConfig();
@@ -67,11 +73,11 @@ export const SectionTitle: React.FC<SectionTitleProps> = ({
           style={{
             fontSize: 28,
             fontWeight: 700,
-            color: "#F8FAFC",
+            color: titleColor,
             fontFamily: "Space Grotesk, Inter, system-ui, sans-serif",
             letterSpacing: "0.05em",
             textTransform: "uppercase",
-            textShadow: "0 2px 8px rgba(0,0,0,0.6)",
+            textShadow,
           }}
         >
           {title}
@@ -89,7 +95,7 @@ export const SectionTitle: React.FC<SectionTitleProps> = ({
                 fps,
                 config: { damping: 20 },
               }),
-              textShadow: "0 2px 8px rgba(0,0,0,0.6)",
+              textShadow,
             }}
           >
             {subtitle}

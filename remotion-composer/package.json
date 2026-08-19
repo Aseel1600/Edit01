@@ -1,6 +1,6 @@
 {
   "name": "openmontage-remotion-composer",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Remotion composition renderer for OpenMontage animated explainer videos",
   "scripts": {
     "start": "npx remotion studio",

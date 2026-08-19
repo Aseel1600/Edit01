@@ -165,6 +165,7 @@
         "outline_color": { "type": "string" },
         "background": { "type": "string", "description": "Background color with optional alpha (e.g. #00000088)" },
         "position": { "type": "string", "enum": ["top-center", "bottom-center", "center"] },
+        "vertical_margin": { "type": "integer", "minimum": 0, "description": "Distance in pixels from the aligned frame edge (bottom for bottom-center, top for top-center). Video-space pixels like video_stitch.pip_margin, converted to ASS MarginV using the subtitle PlayRes canvas. Optional: omitting it preserves the historical default. An explicit native margin_v override still wins." },
         "max_words_per_line": { "type": "integer", "minimum": 1 }
       },
       "additionalProperties": false
@@ -222,6 +223,17 @@
         "crf": { "type": "integer", "minimum": 0, "maximum": 51 },
         "concurrency": { "type": "integer", "minimum": 1 }
       }
+    },
+    "templated": {
+      "type": "object",
+      "description": "Optional provenance pointer for composition_mode='templated'. Mirrors `bespoke`: scene/component props are NOT duplicated into cuts[] (which stays strict) — they live in the Remotion composition JSON that compose materialises (conventionally remotion-composer/public/demo-props/<name>.json), validated by composition_validator and consumed by video_compose._remotion_render. This block records exactly which props file was rendered so a run is auditable. Purely additive: artifacts without it remain valid and renderer behaviour is unchanged.",
+      "required": ["composition_props_path"],
+      "properties": {
+        "composition_props_path": { "type": "string", "description": "Repo-relative path to the composition JSON that was (or will be) rendered." },
+        "composition_props_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$", "description": "SHA-256 of the composition JSON at render time. Proves the artifact and the rendered props match." },
+        "composition_id": { "type": "string", "description": "Remotion composition id the props target (e.g. 'Explainer'). Optional; resolved from renderer_family when omitted." }
+      },
+      "additionalProperties": false
     },
     "slideshow_risk_score": {
       "type": "object",

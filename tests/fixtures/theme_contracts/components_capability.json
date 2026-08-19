@@ -1,0 +1,77 @@
+{
+  "theme": "premium-minimalist",
+  "playbook": "premium-minimalist",
+  "themeConfig": {
+    "primaryColor": "#111827",
+    "accentColor": "#2563EB",
+    "backgroundColor": "#F9FAFB",
+    "surfaceColor": "#F9FAFB",
+    "textColor": "#111827",
+    "mutedTextColor": "#6B7280",
+    "headingFont": "Inter",
+    "bodyFont": "Inter",
+    "monoFont": "JetBrains Mono",
+    "chartColors": [
+      "#111827",
+      "#2563EB",
+      "#10B981",
+      "#8B5CF6",
+      "#EC4899",
+      "#06B6D4"
+    ],
+    "springConfig": {
+      "damping": 20,
+      "stiffness": 120,
+      "mass": 1
+    },
+    "transitionDuration": 0.4
+  },
+  "cuts": [
+    {
+      "id": "kpi-exact",
+      "source": "",
+      "type": "kpi_grid",
+      "in_seconds": 0,
+      "out_seconds": 2,
+      "columns": 3,
+      "chartAnimation": "count-up",
+      "chartData": [
+        {
+          "label": "one million seconds",
+          "value": 11.6,
+          "suffix": " days",
+          "decimals": 1,
+          "abbreviate": false
+        },
+        {
+          "label": "one billion seconds",
+          "value": 31.7,
+          "suffix": " years",
+          "decimals": 1,
+          "abbreviate": false
+        },
+        {
+          "label": "one trillion seconds",
+          "value": 31700,
+          "suffix": " years",
+          "decimals": 0,
+          "abbreviate": false
+        }
+      ]
+    },
+    {
+      "id": "cmp-explicit",
+      "source": "",
+      "type": "comparison",
+      "in_seconds": 2,
+      "out_seconds": 4,
+      "leftLabel": "MILLION",
+      "leftValue": "11.6 days",
+      "rightLabel": "BILLION",
+      "rightValue": "31.7 years",
+      "leftColor": "#6B7280",
+      "rightColor": "#2563EB"
+    }
+  ],
+  "overlays": []
+}

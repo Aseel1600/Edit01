@@ -1,0 +1,102 @@
+{
+  "theme": "premium-minimalist",
+  "cuts": [
+    {
+      "id": "hero",
+      "source": "",
+      "type": "hero_title",
+      "in_seconds": 0,
+      "out_seconds": 2,
+      "text": "Scale Matters",
+      "heroSubtitle": "reference frame"
+    },
+    {
+      "id": "stat",
+      "source": "",
+      "type": "stat_card",
+      "in_seconds": 2,
+      "out_seconds": 4,
+      "stat": "11.6 days",
+      "subtitle": "one million seconds"
+    },
+    {
+      "id": "cmp-default",
+      "source": "",
+      "type": "comparison",
+      "in_seconds": 4,
+      "out_seconds": 6,
+      "leftLabel": "MILLION",
+      "leftValue": "11.6 days",
+      "rightLabel": "BILLION",
+      "rightValue": "31.7 years"
+    },
+    {
+      "id": "kpi-legacy",
+      "source": "",
+      "type": "kpi_grid",
+      "in_seconds": 6,
+      "out_seconds": 8,
+      "columns": 3,
+      "chartAnimation": "count-up",
+      "chartData": [
+        {
+          "label": "one million seconds",
+          "value": 11.6,
+          "suffix": " days"
+        },
+        {
+          "label": "one billion seconds",
+          "value": 31.7,
+          "suffix": " years"
+        },
+        {
+          "label": "one trillion seconds",
+          "value": 31700,
+          "suffix": " years"
+        }
+      ]
+    }
+  ],
+  "overlays": [
+    {
+      "type": "section_title",
+      "text": "section label",
+      "subtitle": "secondary",
+      "in_seconds": 2.2,
+      "out_seconds": 3.9
+    },
+    {
+      "type": "stat_reveal",
+      "text": "1000x",
+      "subtitle": "reveal label",
+      "in_seconds": 4.2,
+      "out_seconds": 5.9
+    }
+  ],
+  "playbook": "premium-minimalist",
+  "themeConfig": {
+    "primaryColor": "#111827",
+    "accentColor": "#2563EB",
+    "backgroundColor": "#F9FAFB",
+    "surfaceColor": "#F9FAFB",
+    "textColor": "#111827",
+    "mutedTextColor": "#6B7280",
+    "headingFont": "Inter",
+    "bodyFont": "Inter",
+    "monoFont": "JetBrains Mono",
+    "chartColors": [
+      "#111827",
+      "#2563EB",
+      "#10B981",
+      "#8B5CF6",
+      "#EC4899",
+      "#06B6D4"
+    ],
+    "springConfig": {
+      "damping": 20,
+      "stiffness": 120,
+      "mass": 1
+    },
+    "transitionDuration": 0.4
+  }
+}

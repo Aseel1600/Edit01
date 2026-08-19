@@ -9,9 +9,24 @@ import {
 type HeroTitleProps = {
   title: string;
   subtitle?: string;
+  /** Colour of the non-accent title characters. Default keeps the original look. */
+  titleColor?: string;
+  /** Colour of the first-word accent characters and the underline. Default unchanged. */
+  accentColor?: string;
+  /** Subtitle colour. Default unchanged. */
+  subtitleColor?: string;
+  /** Full CSS background for the scrim behind the title. Default unchanged. */
+  scrim?: string;
 };
 
-export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle }) => {
+export const HeroTitle: React.FC<HeroTitleProps> = ({
+  title,
+  subtitle,
+  titleColor = "#F8FAFC",
+  accentColor = "#22D3EE",
+  subtitleColor = "#A78BFA",
+  scrim = "radial-gradient(ellipse at center, rgba(15,23,42,0.35) 0%, rgba(15,23,42,0.55) 100%)",
+}) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
 
@@ -23,8 +38,7 @@ export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle }) => {
       style={{
         justifyContent: "center",
         alignItems: "center",
-        background:
-          "radial-gradient(ellipse at center, rgba(15,23,42,0.35) 0%, rgba(15,23,42,0.55) 100%)",
+        background: scrim,
       }}
     >
       <div style={{ textAlign: "center", maxWidth: "85%" }}>
@@ -56,7 +70,7 @@ export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle }) => {
                   display: "inline-block",
                   opacity: charSpring,
                   transform: `translateY(${interpolate(charSpring, [0, 1], [30, 0])}px)`,
-                  color: i < 8 ? "#22D3EE" : "#F8FAFC", // Accent first word
+                  color: i < 8 ? accentColor : titleColor, // Accent first word
                   whiteSpace: char === " " ? "pre" : undefined,
                   minWidth: char === " " ? "0.3em" : undefined,
                 }}
@@ -79,7 +93,7 @@ export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle }) => {
               }),
               fontSize: 28,
               fontWeight: 400,
-              color: "#A78BFA",
+              color: subtitleColor,
               fontFamily: "Space Grotesk, Inter, system-ui, sans-serif",
               letterSpacing: "0.1em",
               textTransform: "uppercase",
@@ -94,7 +108,7 @@ export const HeroTitle: React.FC<HeroTitleProps> = ({ title, subtitle }) => {
           style={{
             margin: "24px auto 0",
             height: 3,
-            backgroundColor: "#22D3EE",
+            backgroundColor: accentColor,
             borderRadius: 2,
             width: interpolate(
               spring({

@@ -1,0 +1,278 @@
+{
+  "record_version": "1.0",
+  "created": "2026-08-19",
+  "purpose": "Frozen known-good baseline of the zero-cost OpenMontage end-to-end validation (verdict PASS). Regression reference for the post-validation engineering phase.",
+  "regression_project": "projects/million-billion-trillion",
+  "git": {
+    "commit": "1bab711820828c2e5fc1f87ed274a32587cb048f",
+    "branch": "main",
+    "describe": "1bab711",
+    "status_porcelain": [
+      "?? remotion-composer/public/demo-props/million-billion-trillion.json"
+    ],
+    "remote": "https://github.com/calesthio/OpenMontage.git",
+    "note": "projects/ is gitignored (.gitignore:29) - the validation project is NOT tracked by git; checksums + the copied baseline render are the only preservation."
+  },
+  "checksums": {
+    "required_by_owner": [
+      {
+        "path": "projects/million-billion-trillion/renders/final.mp4",
+        "sha256": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+        "bytes": 7387202
+      },
+      {
+        "path": "projects/million-billion-trillion/artifacts/render_report.json",
+        "sha256": "fa639f31bbb3503d91fd3f5ecb14870f139107bae40c549c794ca00b9e59f6b9",
+        "bytes": 3052
+      },
+      {
+        "path": "projects/million-billion-trillion/artifacts/final_review.json",
+        "sha256": "5180a7c69c5f89c50ee19ce9fec405602e77abcab775652634ff58b510915245",
+        "bytes": 3843
+      },
+      {
+        "path": "projects/million-billion-trillion/artifacts/edit_decisions.json",
+        "sha256": "4eecd5305e076aa7fa65ecd9988a2d1cc58ddf6fef7f8d7b0bf05dd1049f5e08",
+        "bytes": 13667
+      },
+      {
+        "path": "projects/million-billion-trillion/artifacts/asset_manifest.json",
+        "sha256": "38cacad8177339eb2f6048f318be548b4716466e76139f6aa550e59915baa27e",
+        "bytes": 21281
+      },
+      {
+        "path": "projects/million-billion-trillion/decision_log.json",
+        "sha256": "a6301e27f6f890236a3b47d0bf852613fb24cf883555230b3e08d2510795d197",
+        "bytes": 21294
+      }
+    ],
+    "completed_checkpoints": [
+      {
+        "path": "projects/million-billion-trillion/checkpoint_assets.json",
+        "sha256": "aa5ca381e5e49fd166f6d444666d5c8f5cb0fe7ced261a394d11d2227287e9aa",
+        "bytes": 29598
+      },
+      {
+        "path": "projects/million-billion-trillion/checkpoint_compose.json",
+        "sha256": "79f8341aeae3d56ecd44c05a1b08737a950f1b5d75dd0be8d83ecaef79b91654",
+        "bytes": 9898
+      },
+      {
+        "path": "projects/million-billion-trillion/checkpoint_edit.json",
+        "sha256": "5ba594c086ec9db9ba3b4587138a11bc78b9f1ac292aa862b6d3730cbfc5bb1c",
+        "bytes": 24480
+      },
+      {
+        "path": "projects/million-billion-trillion/checkpoint_proposal.json",
+        "sha256": "9469b162b14428026c9aed2cb275ce617adc5a8f047c4ac8f91fbf864d06faee",
+        "bytes": 18934
+      },
+      {
+        "path": "projects/million-billion-trillion/checkpoint_research.json",
+        "sha256": "b05a95e8724158108b0bcb4e0c354d44f85a9a703d9ec50f3ab38c548e93e50a",
+        "bytes": 22143
+      },
+      {
+        "path": "projects/million-billion-trillion/checkpoint_scene_plan.json",
+        "sha256": "9a3b3b59be84bed95dd1c776347768d632f31fb204ee50e317c6fc5f38184674",
+        "bytes": 23920
+      },
+      {
+        "path": "projects/million-billion-trillion/checkpoint_script.json",
+        "sha256": "4022ffdfeec41796fc51d09119e3d532f1121b743ffe4525a6fa4ab003ce1ca5",
+        "bytes": 12807
+      }
+    ],
+    "archived_history": [
+      {
+        "path": "projects/million-billion-trillion/history/checkpoint_assets_20260819T0042430670510000.json",
+        "sha256": "1d06d54af855310ec85ccc285e23e5cc4894949cfe0c9d8677e0aef6cb9a3067",
+        "bytes": 24657
+      },
+      {
+        "path": "projects/million-billion-trillion/history/checkpoint_edit_20260819T0051043593950000.json",
+        "sha256": "8ea62909b1162b1fd97c7c57693a648d0bf30dec641f756c3f1fb37402ebbe1b",
+        "bytes": 14617
+      },
+      {
+        "path": "projects/million-billion-trillion/history/checkpoint_proposal_20260819T0018561395510000.json",
+        "sha256": "15cf6c17b73e48c00919e37481e2e830f9a822edc940566d9b905054a07d7254",
+        "bytes": 27576
+      },
+      {
+        "path": "projects/million-billion-trillion/history/checkpoint_research_20260819T0015010745160000.json",
+        "sha256": "f606950674207cc241e0424396439054ff1e34889ca69f43797efb9534cc3415",
+        "bytes": 22098
+      },
+      {
+        "path": "projects/million-billion-trillion/history/checkpoint_scene_plan_20260819T0027090852560000.json",
+        "sha256": "d4ac7e9a28bee806767043a8535121e7a198150e53ab4450b9b04ad955356f16",
+        "bytes": 22651
+      },
+      {
+        "path": "projects/million-billion-trillion/history/checkpoint_script_20260819T0022043300230000.json",
+        "sha256": "91f1c9ade402ec805adf17f617fd16e60315ec8a653e893acdb2749b4e450326",
+        "bytes": 13513
+      }
+    ],
+    "other_canonical_artifacts": [
+      {
+        "path": "projects/million-billion-trillion/artifacts/research_brief.json",
+        "sha256": "cdff5b939644eb59b374cfa24c7b764718bae7b2e468d592ed6c5388c756839e",
+        "bytes": 18887
+      },
+      {
+        "path": "projects/million-billion-trillion/artifacts/proposal_packet.json",
+        "sha256": "6745cdfbf5ff722313fc1d23ba0452061423870581c0d4a5208c793e2303b425",
+        "bytes": 14978
+      },
+      {
+        "path": "projects/million-billion-trillion/artifacts/script.json",
+        "sha256": "b38a438a6ad7765a09ae41f51b422eafad5ab4959ab286af460dd6507e313d86",
+        "bytes": 10686
+      },
+      {
+        "path": "projects/million-billion-trillion/artifacts/scene_plan.json",
+        "sha256": "d632fdeb0f6574aef18a708642669f49997b9d98290adb09dc1ae78844e109b1",
+        "bytes": 18509
+      }
+    ],
+    "media_and_inputs": [
+      {
+        "path": "projects/million-billion-trillion/assets/subtitles.srt",
+        "sha256": "671f6783d0ecd88a25d449581ae2c66a42b568ff0e0319c401eacea5fb63a4a9",
+        "bytes": 483
+      },
+      {
+        "path": "projects/million-billion-trillion/assets/audio/narration_mix.wav",
+        "sha256": "0d1c61de6df84a9faa2fc086ef8d6fbb0c54b8ee2665c3d9d0230a673822a2d7",
+        "bytes": 10905702
+      },
+      {
+        "path": "projects/million-billion-trillion/renders/final_nosubs.mp4",
+        "sha256": "d41c6d0a95ece322786f444e93ed360bf7fe5cc24341510d99a29a5f2919a1cb",
+        "bytes": 7540387
+      },
+      {
+        "path": "projects/million-billion-trillion/assets/audio/s1.wav",
+        "sha256": "057d4665d11d9fcada86313c5cd361022990ec1cf432db90a72a5f71474ef769",
+        "bytes": 166990
+      },
+      {
+        "path": "projects/million-billion-trillion/assets/audio/s2.wav",
+        "sha256": "6d06a9a36bd7a4cb25233fa0705d25f3e1c48d605640950754e95d0e8ec59942",
+        "bytes": 124972
+      },
+      {
+        "path": "projects/million-billion-trillion/assets/audio/s3.wav",
+        "sha256": "2e03b622e1adacb600cbcb26358f8f28596eb885827fcf9adb5328332b5b899e",
+        "bytes": 166908
+      },
+      {
+        "path": "projects/million-billion-trillion/assets/audio/s4.wav",
+        "sha256": "79cc9e586d05e1d5dfb776632e0fcb066a7dcfcf34b2e572e0f6afd12e66a420",
+        "bytes": 163884
+      },
+      {
+        "path": "projects/million-billion-trillion/assets/audio/s5.wav",
+        "sha256": "5bff30d8e55136eea2dd0fcf94b7779c719322e07cda7cbcea06226c620e1d4a",
+        "bytes": 259300
+      },
+      {
+        "path": "projects/million-billion-trillion/assets/audio/sample/s3_sample_v1.wav",
+        "sha256": "931f3f6aec061e9fd4d0620ab58627604738d27079aee770ee26509a0ae5601a",
+        "bytes": 168444
+      }
+    ],
+    "composition_props": [
+      {
+        "path": "remotion-composer/public/demo-props/million-billion-trillion.json",
+        "sha256": "6bbed557d7916232c213d239e5614e9df272856ef2152399fa6abad6e099905d",
+        "bytes": 2822
+      }
+    ]
+  },
+  "technical_baseline": {
+    "final_mp4": "projects/million-billion-trillion/renders/final.mp4",
+    "duration_seconds": 29.461333,
+    "resolution": "1920x1080",
+    "fps": 30.0,
+    "frame_count_video": 882,
+    "frame_count_audio": 1381,
+    "video_codec": "h264 (High, yuvj420p)",
+    "audio_codec": "aac (LC), 48000 Hz, 2ch stereo",
+    "container": "mov,mp4,m4a,3gp,3g2,mj2",
+    "overall_bitrate_bps": 2005938,
+    "file_size_bytes": 7387202,
+    "loudness_integrated_lufs": -14.9,
+    "loudness_range_lu": 5.5,
+    "peak_dbfs": -4.5,
+    "mean_volume_dbfs": -20.0,
+    "clipping_detected": false,
+    "black_frames_detected": false,
+    "decode_check": "ffmpeg -xerror -map 0 -f null - => exit 0, zero errors; -count_frames => 882/882",
+    "external_cost_usd": 0.0,
+    "zero_cost_status": "CONFIRMED - no API keys, no paid providers, no cloud calls; all tools reported estimate_cost 0.0",
+    "timeline_seconds": 28.4,
+    "timeline_vs_render_note": "Root.tsx calculateMetadata adds 1s tail padding: ceil((28.4+1)*30) = 882 frames = 29.4667s nominal, 29.461s measured.",
+    "remeasured_after_freeze": true
+  },
+  "components_rendered": {
+    "sc1": "TextCard",
+    "sc2": "TextCard",
+    "sc3": "ComparisonCard",
+    "sc4": "TextCard",
+    "sc5": "TextCard"
+  },
+  "originally_intended_components_deferred": {
+    "sc2": "StatCard (blocked by E1)",
+    "sc4": "KPIGrid (blocked by E2)",
+    "sc1_secondary_title": "SectionTitle 'measured in seconds' (blocked by E3)"
+  },
+  "preserved_copies": {
+    "engineering/post-validation-2026-08-19/baseline/final_baseline.mp4": {
+      "path": "engineering/post-validation-2026-08-19/baseline/final_baseline.mp4",
+      "sha256": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+      "bytes": 7387202
+    },
+    "engineering/post-validation-2026-08-19/baseline/composition_props_baseline.json": {
+      "path": "engineering/post-validation-2026-08-19/baseline/composition_props_baseline.json",
+      "sha256": "6bbed557d7916232c213d239e5614e9df272856ef2152399fa6abad6e099905d",
+      "bytes": 2822
+    },
+    "engineering/post-validation-2026-08-19/baseline/subtitles_baseline.srt": {
+      "path": "engineering/post-validation-2026-08-19/baseline/subtitles_baseline.srt",
+      "sha256": "671f6783d0ecd88a25d449581ae2c66a42b568ff0e0319c401eacea5fb63a4a9",
+      "bytes": 483
+    }
+  },
+  "immutability_rules": [
+    "Do not overwrite projects/million-billion-trillion/renders/final.mp4 - a re-render would replace it; the frozen copy under this record is the comparison reference.",
+    "Do not rewrite completed checkpoints or approved artifacts; any regression run must write to a separate project id or a separate output path.",
+    "decision_log.json is append-only."
+  ],
+  "preserved_copies_verified": true,
+  "erratum": {
+    "id": "ERR-1",
+    "finding": "render_report.json and final_review.json record file_size_bytes 6886991 and the compose-time report quoted bitrate 1870109. Those figures came from the FIRST subtitle burn, which was superseded by the corrected re-burn (defect C6).",
+    "true_values_for_the_delivered_file": {
+      "file_size_bytes": 7387202,
+      "overall_bitrate_bps": 2005938
+    },
+    "unchanged_values": [
+      "duration 29.461333 s",
+      "1920x1080",
+      "30 fps",
+      "882 video frames",
+      "1381 audio frames",
+      "h264 High / aac LC 48kHz stereo",
+      "-14.9 LUFS",
+      "peak -4.5 dBFS",
+      "no clipping",
+      "no black frames",
+      "decode exit 0"
+    ],
+    "why_unchanged_audio": "burn_subtitles re-encodes video only; the audio stream is carried through, so loudness and peak are identical.",
+    "disposition": "Recorded here rather than rewriting the completed compose checkpoint or its approved artifacts, per the freeze instruction. Correcting render_report/final_review is proposed as engineering item E9 for owner approval."
+  }
+}

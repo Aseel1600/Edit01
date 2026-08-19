@@ -1,0 +1,191 @@
+{
+  "version": "1.0",
+  "style_playbook": "premium-minimalist",
+  "scenes": [
+    {
+      "id": "sc1",
+      "type": "text_card",
+      "description": "Open with the question and name the three quantities; establish the type system and light field. Remotion cut.type='text_card'. On-screen: A Million. A Billion. A Trillion..",
+      "start_seconds": 0.0,
+      "end_seconds": 5.0,
+      "script_section_id": "s1",
+      "framing": "centred editorial frame, generous margins, one focal object per frame (premium-minimalist grid)",
+      "movement": "no camera move - motion is component-internal (entrance/stagger/hold)",
+      "transition_in": "fade",
+      "transition_out": "fade",
+      "overlay_notes": "section_title 'measured in seconds' (bottom-left, accent)",
+      "shot_language": {
+        "shot_size": "medium",
+        "camera_movement": "static",
+        "lighting_key": "high_key",
+        "depth_of_field": "deep",
+        "color_temperature": "neutral"
+      },
+      "shot_intent": "1) the three words (single centred line, title weight 800) 2) subtitle label 3) empty field",
+      "narrative_role": "establish_context",
+      "information_role": "frame the question",
+      "hero_moment": false,
+      "required_assets": [
+        {
+          "type": "narration_audio",
+          "description": "Piper WAV for script section s1 (assets stage)",
+          "source": "generate"
+        },
+        {
+          "type": "composition_props",
+          "description": "Remotion cut props for text_card (no media file)",
+          "source": "generate"
+        }
+      ]
+    },
+    {
+      "id": "sc2",
+      "type": "animation",
+      "description": "First anchor: make one million seconds concrete as a number the viewer can hold. Remotion cut.type='stat_card'. On-screen: 11.6 days  /  one million seconds.",
+      "start_seconds": 5.0,
+      "end_seconds": 10.0,
+      "script_section_id": "s2",
+      "framing": "centred editorial frame, generous margins, one focal object per frame (premium-minimalist grid)",
+      "movement": "no camera move - motion is component-internal (entrance/stagger/hold)",
+      "transition_in": "fade",
+      "transition_out": "fade",
+      "overlay_notes": "none - overlays listed separately from framing per scene-director rule",
+      "shot_language": {
+        "shot_size": "medium",
+        "camera_movement": "static",
+        "lighting_key": "high_key",
+        "depth_of_field": "deep",
+        "color_temperature": "neutral"
+      },
+      "shot_intent": "1) '11.6 days' (stat, x3.2 scale, accent #2563EB) 2) 'one million seconds' subtitle 3) field",
+      "narrative_role": "evidence",
+      "information_role": "anchor value 1",
+      "hero_moment": false,
+      "required_assets": [
+        {
+          "type": "narration_audio",
+          "description": "Piper WAV for script section s2 (assets stage)",
+          "source": "generate"
+        },
+        {
+          "type": "composition_props",
+          "description": "Remotion cut props for stat_card (no media file)",
+          "source": "generate"
+        }
+      ]
+    },
+    {
+      "id": "sc3",
+      "type": "animation",
+      "description": "The pivot: put million beside billion so the 1,000x gap is seen, not stated. Remotion cut.type='comparison'. On-screen: Million 11.6 days  |  Billion 31.7 years.",
+      "start_seconds": 10.0,
+      "end_seconds": 15.0,
+      "script_section_id": "s3",
+      "framing": "centred editorial frame, generous margins, one focal object per frame (premium-minimalist grid)",
+      "movement": "no camera move - motion is component-internal (entrance/stagger/hold)",
+      "transition_in": "fade",
+      "transition_out": "fade",
+      "overlay_notes": "none - overlays listed separately from framing per scene-director rule",
+      "shot_language": {
+        "shot_size": "medium",
+        "camera_movement": "static",
+        "lighting_key": "high_key",
+        "depth_of_field": "deep",
+        "color_temperature": "neutral"
+      },
+      "shot_intent": "1) right value (31.7 years, accent) 2) left value (11.6 days, charcoal) 3) labels 4) divider",
+      "narrative_role": "comparison",
+      "information_role": "the gap",
+      "hero_moment": true,
+      "required_assets": [
+        {
+          "type": "narration_audio",
+          "description": "Piper WAV for script section s3 (assets stage)",
+          "source": "generate"
+        },
+        {
+          "type": "composition_props",
+          "description": "Remotion cut props for comparison (no media file)",
+          "source": "generate"
+        }
+      ]
+    },
+    {
+      "id": "sc4",
+      "type": "animation",
+      "description": "Complete the pattern: three cells at once make the x1000 ladder legible; the trillion cell lands the piece. Remotion cut.type='kpi_grid'. On-screen: 11.6 days | 31.7 years | 31,700 years.",
+      "start_seconds": 15.0,
+      "end_seconds": 21.0,
+      "script_section_id": "s4",
+      "framing": "centred editorial frame, generous margins, one focal object per frame (premium-minimalist grid)",
+      "movement": "no camera move - motion is component-internal (entrance/stagger/hold)",
+      "transition_in": "fade",
+      "transition_out": "fade",
+      "overlay_notes": "none - overlays listed separately from framing per scene-director rule",
+      "shot_language": {
+        "shot_size": "medium",
+        "camera_movement": "static",
+        "lighting_key": "high_key",
+        "depth_of_field": "deep",
+        "color_temperature": "neutral"
+      },
+      "shot_intent": "1) third cell (31,700 years) 2) first two cells as context 3) cell labels",
+      "narrative_role": "deliver_payload",
+      "information_role": "full ladder",
+      "hero_moment": true,
+      "required_assets": [
+        {
+          "type": "narration_audio",
+          "description": "Piper WAV for script section s4 (assets stage)",
+          "source": "generate"
+        },
+        {
+          "type": "composition_props",
+          "description": "Remotion cut props for kpi_grid (no media file)",
+          "source": "generate"
+        }
+      ]
+    },
+    {
+      "id": "sc5",
+      "type": "text_card",
+      "description": "Land the takeaway in the fewest possible words and let it rest. Remotion cut.type='text_card'. On-screen: The zeros matter..",
+      "start_seconds": 21.0,
+      "end_seconds": 26.0,
+      "script_section_id": "s5",
+      "framing": "centred editorial frame, generous margins, one focal object per frame (premium-minimalist grid)",
+      "movement": "no camera move - motion is component-internal (entrance/stagger/hold)",
+      "transition_in": "fade",
+      "transition_out": "fade",
+      "overlay_notes": "none - overlays listed separately from framing per scene-director rule",
+      "shot_language": {
+        "shot_size": "medium",
+        "camera_movement": "static",
+        "lighting_key": "high_key",
+        "depth_of_field": "deep",
+        "color_temperature": "neutral"
+      },
+      "shot_intent": "1) the sentence (centred, title weight) 2) empty field",
+      "narrative_role": "resolution",
+      "information_role": "takeaway",
+      "hero_moment": false,
+      "required_assets": [
+        {
+          "type": "narration_audio",
+          "description": "Piper WAV for script section s5 (assets stage)",
+          "source": "generate"
+        },
+        {
+          "type": "composition_props",
+          "description": "Remotion cut props for text_card (no media file)",
+          "source": "generate"
+        }
+      ]
+    }
+  ],
+  "metadata": {
+    "fixture_provenance": "Minimal deterministic fixture copied from the frozen million-billion-trillion validation project (the canonical PASS production). Scoring fields are verbatim; non-scoring blocks were dropped so the fixture stays minimal. No generated media is included. Source of truth for the scores asserted in tests/contracts/test_slideshow_risk_contract.py.",
+    "copied_from": "projects/million-billion-trillion/artifacts/scene_plan.json",
+    "scene_count": 5
+  }
+}

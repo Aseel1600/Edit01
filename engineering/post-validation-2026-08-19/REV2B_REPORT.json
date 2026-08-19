@@ -1,0 +1,86 @@
+{
+  "record_version": "1.0",
+  "revision": "Engineering Revision 2B (E6 slideshow-risk restoration, report-only)",
+  "date": "2026-08-19",
+  "files_modified": [
+    "tools/video/video_compose.py"
+  ],
+  "files_added": [
+    "tests/contracts/test_slideshow_risk_contract.py"
+  ],
+  "schema_changes": "NONE",
+  "not_implemented": [
+    "E10",
+    "canonical subtitle margin field",
+    "any new blocking behaviour"
+  ],
+  "root_cause": "_pre_compose_validation did 'scenes = scene_plan or []'; the compose-director passes the scene_plan ARTIFACT dict, so iteration yielded its string keys and every dimension raised AttributeError, which a bare except swallowed as a log warning. The governance check had therefore never run in production.",
+  "fix": {
+    "normalisation": "VideoCompose._normalize_scene_plan -> (scenes, source) accepting artifact dict / list / None, reporting anything else as invalid",
+    "diagnostics": "structured warning carrying exception type, message and scene representation; logged with exc_info only at DEBUG; recorded on VideoCompose.last_slideshow_risk",
+    "report_only": "OPENMONTAGE_SLIDESHOW_RISK_ENFORCEMENT (default report_only; set to block to re-enable the preserved blocking branch)"
+  },
+  "representation_finding": {
+    "scene_plan": {
+      "score": 0.67,
+      "verdict": "strong"
+    },
+    "edit_decision_cuts": {
+      "score": 2.5,
+      "verdict": "acceptable"
+    },
+    "composition_props_cuts": {
+      "score": 3.42,
+      "verdict": "revise"
+    },
+    "why": "The scorer reads scene_plan-only fields (shot_intent, narrative_role, information_role, hero_moment, shot_language). edit_decisions.cuts has additionalProperties:false and cannot carry them, so the cuts fallback is information-poor by construction.",
+    "dimension_deltas_props_vs_plan": {
+      "repetition": 3.5,
+      "decorative_visuals": 5.0,
+      "weak_shot_intent": 5.0,
+      "typography_overreliance": 3.0
+    },
+    "latent_scorer_bug": "_score_typography counts types text_card/stat_card/kpi_grid, which are Remotion CUT type names. scene_plan.type is a different enum (talking_head/broll/animation/character_scene/diagram/text_card/transition/generated/screen_recording) and only 'text_card' overlaps, so typography risk is under-counted on the canonical representation and over-counted on the cuts representation."
+  },
+  "project_sweep": [
+    {
+      "project": "million-billion-trillion",
+      "representation": "scene_plan",
+      "scene_count": 5,
+      "score": 0.67,
+      "verdict": "strong",
+      "would_block_under_old_enforcement": false,
+      "rendered_successfully": true,
+      "renders": [
+        "final.mp4",
+        "final_nosubs.mp4"
+      ],
+      "cuts_representation_score": 2.5,
+      "cuts_representation_verdict": "acceptable",
+      "cuts_would_block": false
+    }
+  ],
+  "second_project": {
+    "project": "tests/qa/output/e2e_pipeline/qa_e2e_test",
+    "representation": "scene_plan",
+    "score": 2.33,
+    "verdict": "acceptable",
+    "would_block": false,
+    "note": "5/5 scenes lack shot_intent and roles even though the artifact is schema-valid - optional metadata drives 10 of the 14 risk points."
+  },
+  "tests": {
+    "new": 32,
+    "rev1": 31,
+    "rev2a": 46,
+    "full_suite": "1501 passed, 12 skipped, 0 failed"
+  },
+  "output_regression": {
+    "method": "re-burn with identical inputs to renders/rev2b/",
+    "rev2a_sha256": "574c609da34c2638675b5f6a07df0b139e3b1af2c353195326c9304fc27305fb",
+    "rev2b_sha256": "574c609da34c2638675b5f6a07df0b139e3b1af2c353195326c9304fc27305fb",
+    "byte_identical": true,
+    "pre_compose_result": "None (not blocked)",
+    "recorded_risk": "0.67 strong from scene_plan, enforcement report_only"
+  },
+  "protected_media_unchanged": true
+}
