@@ -96,7 +96,7 @@ class HunyuanCloud3D(BaseTool):
     )
     agent_skills = ["3d-asset-generation", "threejs-loaders", "threejs-materials"]
 
-    capabilities = ["text_to_3d", "image_to_3d", "multi_view_to_3d", "textured_glb", "pbr_mesh", "white_model"]
+    capabilities = ["text_to_3d", "image_to_3d", "textured_glb", "pbr_mesh", "white_model"]
     supports = {
         "text_to_3d": True,
         "image_to_3d": True,
@@ -124,7 +124,7 @@ class HunyuanCloud3D(BaseTool):
         "properties": {
             "operation": {
                 "type": "string",
-                "enum": ["text_to_3d", "image_to_3d", "multi_view_to_3d"],
+                "enum": ["text_to_3d", "image_to_3d"],
                 "description": "Generation mode.",
             },
             "model": {
@@ -171,10 +171,10 @@ class HunyuanCloud3D(BaseTool):
                     "additionalProperties": False,
                 },
                 "description": (
-                    "Multi-view reference images. view: left/right/back/top/"
-                    "bottom/left_front/right_front, one image per view. The "
-                    "front view comes from image_url or image_path. Encoded "
-                    "total must stay under 8MB."
+                    "Optional multi-view reference images for image_to_3d. "
+                    "view: left/right/back/top/bottom/left_front/right_front, "
+                    "one image per view. The front view comes from image_url "
+                    "or image_path. Encoded total must stay under 8MB."
                 ),
             },
             "enable_pbr": {
@@ -314,11 +314,11 @@ class HunyuanCloud3D(BaseTool):
         result.duration_seconds = round(time.time() - start, 2)
         return result
 
-def _validate(self, inputs: dict[str, Any]) -> str | None:
+    def _validate(self, inputs: dict[str, Any]) -> str | None:
         if not inputs.get("output_path"):
             return "output_path is required for hunyuan_cloud_3d generation"
         operation = str(inputs.get("operation") or "")
-        if operation not in {"text_to_3d", "image_to_3d", "multi_view_to_3d"}:
+        if operation not in {"text_to_3d", "image_to_3d"}:
             return f"Unknown operation {operation!r}"
         if operation == "text_to_3d" and not inputs.get("prompt"):
             return "prompt is required for text_to_3d"
@@ -329,15 +329,8 @@ def _validate(self, inputs: dict[str, Any]) -> str | None:
                 return "image_to_3d requires image_url or image_path"
             if inputs.get("image_url") and inputs.get("image_path"):
                 return "provide only one of image_url or image_path, not both"
-        if operation == "multi_view_to_3d" and not (
-            inputs.get("image_url")
-            or inputs.get("image_path")
-            or inputs.get("multi_view_images")
-        ):
-            return (
-                "multi_view_to_3d requires image_url/image_path (front view) "
-                "and/or multi_view_images"
-            )
+        if operation != "image_to_3d" and inputs.get("multi_view_images"):
+            return "multi_view_images is only valid with image_to_3d"
         for item in inputs.get("multi_view_images") or []:
             view = item.get("view")
             if view not in _VIEW_TYPES:

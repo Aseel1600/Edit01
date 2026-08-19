@@ -5,7 +5,7 @@
   "type": "object",
   "required": ["operation", "output_path"],
   "properties": {
-    "operation": {"type": "string", "enum": ["text_to_3d", "image_to_3d", "multi_view_to_3d"]},
+    "operation": {"type": "string", "enum": ["text_to_3d", "image_to_3d"]},
     "model": {"type": "string", "enum": ["hy-3d-3.1"]},
     "prompt": {"type": "string", "minLength": 3, "maxLength": 1024},
     "image_url": {"type": "string"},

@@ -171,7 +171,8 @@ def test_hunyuan_cloud_3d_cost_matrix_and_missing_key(monkeypatch, tmp_path):
     assert tool.estimate_cost({"operation": "text_to_3d", "enable_pbr": True}) == 0.5
     assert tool.estimate_cost({"operation": "image_to_3d", "face_count": 100000}) == 0.5
     assert tool.estimate_cost({
-        "operation": "multi_view_to_3d",
+        "operation": "image_to_3d",
+        "image_url": "https://x/front.png",
         "multi_view_images": [{"view": "left", "image_url": "https://x/l.png"}],
         "enable_pbr": True,
         "result_format": "FBX",
@@ -199,9 +200,13 @@ def test_hunyuan_cloud_3d_input_validation(monkeypatch):
     fails({"operation": "text_to_3d", "prompt": "a cat", "generate_type": "LowPoly"})  # 3.0-only type
     fails({"operation": "text_to_3d", "prompt": "a cat", "generate_type": "Sketch"})  # 3.0-only type
     fails({"operation": "text_to_3d", "prompt": "a cat", "model": "hy-3d-3.0"})  # unsupported model
-    fails({"operation": "multi_view_to_3d"})  # no views supplied
-    fails({"operation": "multi_view_to_3d", "multi_view_images": [{"view": "front"}]})  # bad viewpoint
-    fails({"operation": "multi_view_to_3d", "multi_view_images": [{"view": "left"}]})  # view without image
+    fails({"operation": "multi_view_to_3d"})  # removed operation
+    fails({"operation": "image_to_3d", "image_url": "https://x/y.png",
+           "multi_view_images": [{"view": "front"}]})  # bad viewpoint
+    fails({"operation": "image_to_3d", "image_url": "https://x/y.png",
+           "multi_view_images": [{"view": "left"}]})  # view without image
+    fails({"operation": "text_to_3d", "prompt": "a cat",
+           "multi_view_images": [{"view": "left", "image_url": "https://x/l.png"}]})  # multi-view not for text
 
 
 def test_hunyuan_cloud_3d_success_downloads_meshes_and_provenance(monkeypatch, tmp_path):
@@ -296,7 +301,7 @@ def test_hunyuan_cloud_3d_payload_mirrors_pro_api_snake_case(monkeypatch, tmp_pa
     monkeypatch.setattr(hunyuan_cloud_3d.requests, "post", fake_post)
     monkeypatch.setattr(hunyuan_cloud_3d.requests, "get", lambda url, **_kwargs: _Response(content=b"mesh-bytes"))
     result = HunyuanCloud3D().execute({
-        "operation": "multi_view_to_3d",
+        "operation": "image_to_3d",
         "image_path": str(image),
         "multi_view_images": [
             {"view": "left", "image_path": str(image)},

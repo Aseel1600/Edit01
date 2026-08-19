@@ -47,11 +47,10 @@ Pricing changes. Confirm the provider page before quoting or running a batch.
 Only model `hy-3d-3.1` is exposed. Operations:
 
 - `text_to_3d` — prompt only, max 1024 UTF-8 characters, Chinese-friendly.
-- `image_to_3d` — one front-view image (`image_url` or local `image_path`).
-  Prompt and image are mutually exclusive.
-- `multi_view_to_3d` — front view plus up to seven `multi_view_images`
-  (`left`, `right`, `back`, `top`, `bottom`, `left_front`, `right_front`),
-  one image per view; encoded total must stay under 8MB.
+- `image_to_3d` — one front-view image (`image_url` or local `image_path`),
+  optionally plus up to seven `multi_view_images` (`left`, `right`, `back`,
+  `top`, `bottom`, `left_front`, `right_front`), one image per view; encoded
+  total must stay under 8MB. Prompt and image are mutually exclusive.
 
 `generate_type` accepts `Normal` (textured) and `Geometry` (untextured
 white model). `LowPoly` and `Sketch` are 3.0-only and rejected by the tool.

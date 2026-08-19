@@ -684,8 +684,7 @@ Only the **`hy-3d-3.1`** professional model is supported. Operations:
 | Operation | Input | Notes |
 |-----------|-------|-------|
 | `text_to_3d` | Prompt (max 1024 UTF-8 chars) | Chinese-friendly; prompt and image are mutually exclusive |
-| `image_to_3d` | One front-view image (URL or local path) | Max 8MB, 128–5000px per side, jpg/png/jpeg/webp |
-| `multi_view_to_3d` | Front view + up to 7 `multi_view_images` | Views: `left`, `right`, `back`, `top`, `bottom`, `left_front`, `right_front`; encoded total ≤8MB |
+| `image_to_3d` | One front-view image (URL or local path), optionally + up to 7 `multi_view_images` | Max 8MB, 128–5000px per side, jpg/png/jpeg/webp; views: `left`, `right`, `back`, `top`, `bottom`, `left_front`, `right_front`; encoded total ≤8MB |
 
 `generate_type`: **Normal** (textured geometry, default) or **Geometry**
 (untextured white model). `LowPoly` and `Sketch` are 3.0-only and rejected.
