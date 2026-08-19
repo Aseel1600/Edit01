@@ -1,0 +1,134 @@
+{
+  "record_version": "1.0",
+  "revision": "Engineering Revision 2D (E10 theme precedence, opt-in only)",
+  "date": "2026-08-19",
+  "root_cause": "remotion-composer/src/Root.tsx resolveTheme checked THEMES[name] FIRST and returned the preset, so an explicit themeConfig was discarded whenever theme/playbook matched a built-in preset name.",
+  "current_precedence": {
+    "named preset only": "preset",
+    "themeConfig only": "DEFAULT_THEME merged with themeConfig",
+    "named preset + themeConfig": "preset (themeConfig IGNORED - the defect)",
+    "unknown name + themeConfig": "DEFAULT_THEME merged with themeConfig",
+    "neither": "DEFAULT_THEME",
+    "preset-named playbook + derived themeConfig": "preset (YAML palette never seen)"
+  },
+  "optin": {
+    "mechanism": "composition props boolean themeConfigWins (props-level, camelCase, matching donut/showGrid/vignette conventions); narrower than a global env var and travels with the composition",
+    "precedence": "DEFAULT_THEME -> named preset -> themeConfig (field-level spread merge, so a partial config cannot blank a field)",
+    "default": "omitted = legacy behaviour"
+  },
+  "files_modified": [
+    "remotion-composer/src/Root.tsx",
+    "remotion-composer/src/Explainer.tsx (ExplainerProps declaration only)"
+  ],
+  "files_added": [
+    "tests/contracts/test_theme_precedence_contract.py",
+    "tests/fixtures/theme_contracts/goldens/presets/ (8 goldens + manifest)"
+  ],
+  "legacy_goldens": {
+    "frames_compared": 16,
+    "byte_identical": true,
+    "presets": [
+      "clean-professional",
+      "flat-motion-graphics",
+      "minimalist-diagram",
+      "anime-ghibli"
+    ]
+  },
+  "tests": {
+    "e10": 24,
+    "rev1": 31,
+    "rev2a": 46,
+    "rev2b": 32,
+    "rev2c": 25,
+    "full_suite": "1550 passed, 12 skipped, 0 failed"
+  },
+  "playbook_divergence": {
+    "clean-professional": {
+      "playbook_loadable": true,
+      "differs": true,
+      "fields": {
+        "surfaceColor": {
+          "preset": "#F9FAFB",
+          "playbook_yaml": "#FFFFFF"
+        }
+      }
+    },
+    "flat-motion-graphics": {
+      "playbook_loadable": true,
+      "differs": true,
+      "fields": {
+        "surfaceColor": {
+          "preset": "#1E293B",
+          "playbook_yaml": "#0F172A"
+        }
+      }
+    },
+    "minimalist-diagram": {
+      "playbook_loadable": true,
+      "differs": true,
+      "fields": {
+        "surfaceColor": {
+          "preset": "#FFFFFF",
+          "playbook_yaml": "#FAFAFA"
+        }
+      }
+    },
+    "anime-ghibli": {
+      "playbook_loadable": false,
+      "note": "styles/anime-ghibli.yaml fails playbook.schema.json (overlays.section_title not permitted); no playbook-derived theme is produced at all",
+      "differs": null
+    }
+  },
+  "project_sweep": [
+    {
+      "project": "code-to-screen",
+      "preset": "flat-motion-graphics",
+      "themeConfig_present": false,
+      "name_matches_builtin": true,
+      "current_source": "named preset",
+      "optin_source": "named preset",
+      "expected_visual_change": "none",
+      "risk": "none"
+    },
+    {
+      "project": "focusflow-pitch",
+      "preset": "flat-motion-graphics",
+      "themeConfig_present": false,
+      "name_matches_builtin": true,
+      "current_source": "named preset",
+      "optin_source": "named preset",
+      "expected_visual_change": "none",
+      "risk": "none"
+    },
+    {
+      "project": "million-billion-trillion",
+      "preset": "premium-minimalist",
+      "themeConfig_present": true,
+      "name_matches_builtin": false,
+      "current_source": "themeConfig",
+      "optin_source": "themeConfig",
+      "expected_visual_change": "none",
+      "risk": "none"
+    },
+    {
+      "project": "world-in-numbers",
+      "preset": "flat-motion-graphics",
+      "themeConfig_present": false,
+      "name_matches_builtin": true,
+      "current_source": "named preset",
+      "optin_source": "named preset",
+      "expected_visual_change": "none",
+      "risk": "none"
+    }
+  ],
+  "mbt_regression": {
+    "theme": "premium-minimalist",
+    "is_builtin_preset": false,
+    "themeConfig_present": true,
+    "themeConfigWins_present": false,
+    "conclusion": "unchanged by E10 - precedence never applied to it; proven by test_million_billion_trillion_is_unaffected_by_e10 and by all six protected MP4 checksums matching the Rev 2C freeze",
+    "no_new_render_required": true
+  },
+  "protected_media_unchanged": true,
+  "new_defect_found": "styles/anime-ghibli.yaml fails schemas/styles/playbook.schema.json (overlays.section_title not permitted), so _build_theme_from_playbook returns nothing for it - that playbook can never produce a themeConfig. Pre-existing, unrelated to E10, NOT fixed in this revision."
+}

@@ -1,0 +1,54 @@
+{
+  "clean-professional": {
+    "palette": {
+      "primaryColor": "#2563EB",
+      "accentColor": "#F59E0B",
+      "backgroundColor": "#FFFFFF",
+      "surfaceColor": "#F9FAFB",
+      "textColor": "#1F2937"
+    },
+    "frames": {
+      "hero": "0b052a46660f555651f2e0597fd6f6ef70493cd1cd36b8d86d3ebdb915670897",
+      "stat": "be40926cf8a65c9b2c56cf3e20793ff2483e7d9a0e3da7587987de4535af9642"
+    }
+  },
+  "flat-motion-graphics": {
+    "palette": {
+      "primaryColor": "#7C3AED",
+      "accentColor": "#EC4899",
+      "backgroundColor": "#0F172A",
+      "surfaceColor": "#1E293B",
+      "textColor": "#F8FAFC"
+    },
+    "frames": {
+      "hero": "f5f98ddfa9c4c26cf6ddbe2d8a060e5f67dc9ae0cf42483b641a6ed780f16a67",
+      "stat": "b325dc336266d0e4b77679a41810fc38dcedb4b741e08b91c54ac12308bfd61e"
+    }
+  },
+  "minimalist-diagram": {
+    "palette": {
+      "primaryColor": "#1A1A2E",
+      "accentColor": "#E94560",
+      "backgroundColor": "#FAFAFA",
+      "surfaceColor": "#FFFFFF",
+      "textColor": "#1A1A2E"
+    },
+    "frames": {
+      "hero": "3b5a91fd022c1cf6cc7aa589b3d6e8279bbe964e2d06d82e2c0c678bc104d668",
+      "stat": "759f7dda8e60dfd13521f8f140412129a71ffe1bc940150cfd74707989c7f28b"
+    }
+  },
+  "anime-ghibli": {
+    "palette": {
+      "primaryColor": "#2D5016",
+      "accentColor": "#FFB347",
+      "backgroundColor": "#0A0A1A",
+      "surfaceColor": "#1A2332",
+      "textColor": "#F0E6D3"
+    },
+    "frames": {
+      "hero": "c5b04e141a3b5e4e965a22921aac4c34cd4f0e1159ab04b5b131e4f48cd8d74b",
+      "stat": "4519274ed8996dc14a655d7e2b9c7816a23e87bcd44fc87e884b270b263bbeb6"
+    }
+  }
+}

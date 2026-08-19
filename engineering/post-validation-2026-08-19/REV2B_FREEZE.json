@@ -1,0 +1,60 @@
+{
+  "record_version": "1.0",
+  "frozen_at": "2026-08-19",
+  "revision_frozen": "Engineering Revision 2B (accepted, uncommitted)",
+  "git": {
+    "head": "1bab711820828c2e5fc1f87ed274a32587cb048f",
+    "diff_stat": [
+      " 8 files changed, 524 insertions(+), 58 deletions(-)"
+    ],
+    "status": [
+      "M remotion-composer/src/Explainer.tsx",
+      " M remotion-composer/src/components/HeroTitle.tsx",
+      " M remotion-composer/src/components/SectionTitle.tsx",
+      " M remotion-composer/src/components/StatReveal.tsx",
+      " M remotion-composer/src/components/charts/KPIGrid.tsx",
+      " M schemas/artifacts/edit_decisions.schema.json",
+      " M tools/analysis/composition_validator.py",
+      " M tools/video/video_compose.py",
+      "?? engineering/",
+      "?? remotion-composer/public/demo-props/million-billion-trillion.json",
+      "?? tests/contracts/test_component_theme_contracts.py",
+      "?? tests/contracts/test_slideshow_risk_contract.py",
+      "?? tests/contracts/test_subtitle_style_contract.py",
+      "?? tests/fixtures/theme_contracts/",
+      "?? tests/lib/remotion_frames.py"
+    ]
+  },
+  "accepted_test_result": {
+    "full_suite": "1501 passed, 12 skipped, 0 failed",
+    "rev2b_targeted": "32 passed",
+    "rev2a_targeted": "46 passed",
+    "rev1_targeted": "31 passed"
+  },
+  "protected_media": {
+    "frozen_baseline": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+    "original_final": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+    "rev1_regression": "53c35e9ea16608051281376f37d0f256150d8b99507eda9a8ebfa6f55043a343",
+    "rev2a_regression": "574c609da34c2638675b5f6a07df0b139e3b1af2c353195326c9304fc27305fb",
+    "rev2b_output": "574c609da34c2638675b5f6a07df0b139e3b1af2c353195326c9304fc27305fb"
+  },
+  "source_checksums": {
+    "tools/video/video_compose.py": "e0e5b0139a41a4da1472dc0b2b116c04248330ae46168af46b1fada29ec1af86",
+    "schemas/artifacts/edit_decisions.schema.json": "90b2cc99025f8ece4dbdad5dd0d5e4703706ea1ca07c66dd35b48e09caf0b28e",
+    "tests/contracts/test_subtitle_style_contract.py": "fda558a46ed59672b1a6115a495855f8a86e9fa8f077f01091e2e10ae4ee3e54",
+    "tests/contracts/test_slideshow_risk_contract.py": "00081dae458ccf0bf653984e7d3dd27d5cee814468d65292b6764d108565e3d2",
+    "tests/contracts/test_component_theme_contracts.py": "40efc6ab04627650939e9340d7d6c4d93595543e539bb882e6967f9e91440a88",
+    "tools/analysis/composition_validator.py": "39622f35f2ab6a3d0958fc186a185d7ad5e12ed7b90879190cbbab48eac7ca41"
+  },
+  "e6_state": {
+    "enforcement_default": "report_only",
+    "env_flag": "OPENMONTAGE_SLIDESHOW_RISK_ENFORCEMENT",
+    "must_remain_unchanged": true
+  },
+  "rev2c_rules": [
+    "canonical subtitle margin only",
+    "no E10",
+    "no slideshow-risk change",
+    "render only to renders/rev2c/"
+  ]
+}

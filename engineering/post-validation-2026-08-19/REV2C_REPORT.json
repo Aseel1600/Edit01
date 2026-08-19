@@ -1,0 +1,54 @@
+{
+  "record_version": "1.0",
+  "revision": "Engineering Revision 2C (canonical subtitle vertical margin)",
+  "date": "2026-08-19",
+  "canonical_field": "edit_decisions.subtitles.vertical_margin",
+  "naming_evidence": "schemas/tools/video_stitch.schema.json pip_margin = {type integer, minimum 0, \"Margin in pixels for PiP overlay from edges\"} - the repository's only margin precedent. Qualifier+margin naming, integer, minimum 0, video-space pixels. A distinct name from the native ASS margin_v was required because the resolver flattens canonical and native keys into one dict.",
+  "files_modified": [
+    "schemas/artifacts/edit_decisions.schema.json",
+    "tools/video/video_compose.py"
+  ],
+  "files_added": [
+    "tests/contracts/test_subtitle_margin_contract.py"
+  ],
+  "conversion": "MarginV = round(vertical_margin_px * 288 / video_height); 68px -> 18 @1080, 27 @720, 9 @2160 (all ~67.5px effective)",
+  "precedence": "defaults(40) -> playbook -> canonical vertical_margin -> explicit native margin_v",
+  "tests": {
+    "rev2c": 25,
+    "rev1": 31,
+    "rev2a": 46,
+    "rev2b": 32,
+    "full_suite": "1526 passed, 12 skipped, 0 failed"
+  },
+  "regression": {
+    "output": "projects/million-billion-trillion/renders/rev2c/final_rev2c.mp4",
+    "sha256": "05120fa1a542020413979d71a086944df8dd595629d955841c03ba75d8514b43",
+    "canonical_only": true,
+    "native_margin_used": false,
+    "force_style": "FontName=Inter,FontSize=11.2,Bold=1,PrimaryColour=&H00271811,OutlineColour=&H00FFFFFF,BorderStyle=1,Outline=2,Shadow=0,MarginV=18,Alignment=2",
+    "caption_bottom_gap_px": {
+      "baseline_manual_ass": 69,
+      "rev2a_canonical_no_margin": 151,
+      "rev2c_canonical_margin": 69
+    },
+    "caption_block_height_px": {
+      "baseline_manual_ass": 88,
+      "rev2a": 76,
+      "rev2c": 75
+    },
+    "technical": {
+      "duration": 29.461333,
+      "resolution": "1920x1080",
+      "fps": 30,
+      "video_frames": 882,
+      "audio_frames": 1381,
+      "codecs": "h264 High + aac LC 48kHz stereo",
+      "lufs": -14.9,
+      "peak_dbfs": -4.5,
+      "decode_exit": 0
+    }
+  },
+  "protected_media_unchanged": true,
+  "e6_unchanged": true,
+  "doc_finding": "skills/pipelines/talking-head/compose-director.md:179 advises \"On a 1920-high frame ... MarginV=160\" as if MarginV were frame pixels. Against the real 288-line PlayRes that is ~1067px from the edge - mid-frame. The canonical vertical_margin now makes that guidance expressible correctly; the doc line itself is left unmodified (out of scope)."
+}

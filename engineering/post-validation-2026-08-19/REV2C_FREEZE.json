@@ -1,0 +1,76 @@
+{
+  "record_version": "1.0",
+  "frozen_at": "2026-08-19",
+  "revision_frozen": "Engineering Revision 2C (accepted, uncommitted)",
+  "git": {
+    "head": "1bab711820828c2e5fc1f87ed274a32587cb048f",
+    "diff_stat": [
+      " 8 files changed, 532 insertions(+), 60 deletions(-)"
+    ],
+    "status": [
+      "M remotion-composer/src/Explainer.tsx",
+      " M remotion-composer/src/components/HeroTitle.tsx",
+      " M remotion-composer/src/components/SectionTitle.tsx",
+      " M remotion-composer/src/components/StatReveal.tsx",
+      " M remotion-composer/src/components/charts/KPIGrid.tsx",
+      " M schemas/artifacts/edit_decisions.schema.json",
+      " M tools/analysis/composition_validator.py",
+      " M tools/video/video_compose.py",
+      "?? engineering/",
+      "?? remotion-composer/public/demo-props/million-billion-trillion.json",
+      "?? tests/contracts/test_component_theme_contracts.py",
+      "?? tests/contracts/test_slideshow_risk_contract.py",
+      "?? tests/contracts/test_subtitle_margin_contract.py",
+      "?? tests/contracts/test_subtitle_style_contract.py",
+      "?? tests/fixtures/theme_contracts/",
+      "?? tests/lib/remotion_frames.py"
+    ]
+  },
+  "accepted_test_result": {
+    "full_suite": "1526 passed, 12 skipped, 0 failed",
+    "rev2c": 25,
+    "rev2b": 32,
+    "rev2a": 46,
+    "rev1": 31
+  },
+  "protected_media": {
+    "frozen_baseline": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+    "original_final": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+    "rev1": "53c35e9ea16608051281376f37d0f256150d8b99507eda9a8ebfa6f55043a343",
+    "rev2a": "574c609da34c2638675b5f6a07df0b139e3b1af2c353195326c9304fc27305fb",
+    "rev2b": "574c609da34c2638675b5f6a07df0b139e3b1af2c353195326c9304fc27305fb",
+    "rev2c": "05120fa1a542020413979d71a086944df8dd595629d955841c03ba75d8514b43"
+  },
+  "tracked_modified_checksums": {
+    "remotion-composer/src/Explainer.tsx": "d57d14dee07ee0f35c7c70d3e8236c08e8250bbfa4b07b685cb6338904bbb362",
+    "remotion-composer/src/components/HeroTitle.tsx": "97f291cda6a12265a406add54be1e0d359c2f4bc60718ff3fa5e15279f01385d",
+    "remotion-composer/src/components/SectionTitle.tsx": "8e13b1bcdef1e2fd5bf022e2d1a19b329161c12c82cc1d61724e076f077090d1",
+    "remotion-composer/src/components/StatReveal.tsx": "bbded7a32c1421bcec7a9c5b084598c9b08f9d8396ba7931629becc424ba17fc",
+    "remotion-composer/src/components/charts/KPIGrid.tsx": "9d80b205fc690c242c6d0478af483513dc295a487ade216dcc996469c1ea6f1f",
+    "schemas/artifacts/edit_decisions.schema.json": "7f9ecc25f835d45be57e781ea23c3678c84f37c65d93cfd8c497a0951cd7327e",
+    "tools/analysis/composition_validator.py": "39622f35f2ab6a3d0958fc186a185d7ad5e12ed7b90879190cbbab48eac7ca41",
+    "tools/video/video_compose.py": "1fa3257d63395c26bf179ae9c05134ff47b78d962ddbdfc63936442b26c192d9"
+  },
+  "test_checksums": {
+    "tests/contracts/test_component_theme_contracts.py": "40efc6ab04627650939e9340d7d6c4d93595543e539bb882e6967f9e91440a88",
+    "tests/contracts/test_subtitle_style_contract.py": "fda558a46ed59672b1a6115a495855f8a86e9fa8f077f01091e2e10ae4ee3e54",
+    "tests/contracts/test_slideshow_risk_contract.py": "00081dae458ccf0bf653984e7d3dd27d5cee814468d65292b6764d108565e3d2",
+    "tests/contracts/test_subtitle_margin_contract.py": "4ad1322f2129ba16ee8565027c21f724d18e161e5e246a20777a25a32dfa4f5c",
+    "tests/lib/remotion_frames.py": "e561aed533e9a3231b9a83aea9941e8be022cbc9a7f73dd979b2d726640fdfae"
+  },
+  "e6_state": "OPENMONTAGE_SLIDESHOW_RISK_ENFORCEMENT default = report_only (unchanged)",
+  "rev1_goldens_preserved": {
+    "dark_comparison.png": "57753f548016702fd6b657422a37c36d60a09695144f8b53f708426569785b68",
+    "dark_hero.png": "f5f98ddfa9c4c26cf6ddbe2d8a060e5f67dc9ae0cf42483b641a6ed780f16a67",
+    "dark_kpi.png": "71c18164f565f6fd7d4968afcfa4ac9c1c323c97325a7746d2204538ef2a3a7d",
+    "dark_stat.png": "b325dc336266d0e4b77679a41810fc38dcedb4b741e08b91c54ac12308bfd61e"
+  },
+  "rev2d_rules": [
+    "E10 only",
+    "opt-in mechanism only, never flip the default",
+    "no subtitle change",
+    "no slideshow change",
+    "no schema fields",
+    "never overwrite baselines or prior renders"
+  ]
+}

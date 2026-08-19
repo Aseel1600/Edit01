@@ -1,0 +1,37 @@
+{
+  "clean-professional": {
+    "playbook_loadable": true,
+    "differs": true,
+    "fields": {
+      "surfaceColor": {
+        "preset": "#F9FAFB",
+        "playbook_yaml": "#FFFFFF"
+      }
+    }
+  },
+  "flat-motion-graphics": {
+    "playbook_loadable": true,
+    "differs": true,
+    "fields": {
+      "surfaceColor": {
+        "preset": "#1E293B",
+        "playbook_yaml": "#0F172A"
+      }
+    }
+  },
+  "minimalist-diagram": {
+    "playbook_loadable": true,
+    "differs": true,
+    "fields": {
+      "surfaceColor": {
+        "preset": "#FFFFFF",
+        "playbook_yaml": "#FAFAFA"
+      }
+    }
+  },
+  "anime-ghibli": {
+    "playbook_loadable": false,
+    "note": "styles/anime-ghibli.yaml fails playbook.schema.json (overlays.section_title not permitted); no playbook-derived theme is produced at all",
+    "differs": null
+  }
+}

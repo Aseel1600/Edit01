@@ -1,0 +1,42 @@
+[
+  {
+    "project": "code-to-screen",
+    "preset": "flat-motion-graphics",
+    "themeConfig_present": false,
+    "name_matches_builtin": true,
+    "current_source": "named preset",
+    "optin_source": "named preset",
+    "expected_visual_change": "none",
+    "risk": "none"
+  },
+  {
+    "project": "focusflow-pitch",
+    "preset": "flat-motion-graphics",
+    "themeConfig_present": false,
+    "name_matches_builtin": true,
+    "current_source": "named preset",
+    "optin_source": "named preset",
+    "expected_visual_change": "none",
+    "risk": "none"
+  },
+  {
+    "project": "million-billion-trillion",
+    "preset": "premium-minimalist",
+    "themeConfig_present": true,
+    "name_matches_builtin": false,
+    "current_source": "themeConfig",
+    "optin_source": "themeConfig",
+    "expected_visual_change": "none",
+    "risk": "none"
+  },
+  {
+    "project": "world-in-numbers",
+    "preset": "flat-motion-graphics",
+    "themeConfig_present": false,
+    "name_matches_builtin": true,
+    "current_source": "named preset",
+    "optin_source": "named preset",
+    "expected_visual_change": "none",
+    "risk": "none"
+  }
+]

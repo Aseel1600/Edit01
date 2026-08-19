@@ -176,7 +176,7 @@ remotion_caption_burn.execute({
 **Fallback ONLY if Remotion is completely unavailable:** Use `video_compose` with `burn_subtitles` operation. This is a degraded experience -- warn the user that word-by-word highlighting won't be available.
 
 **CRITICAL: Caption positioning for 9:16 vertical video (FFmpeg fallback only).**
-Captions MUST be in the lower 20% of the frame. On a 1920-high frame, that means `MarginV=160` or higher. The default FFmpeg subtitle position is center -- this WILL occlude the face. You MUST override it.
+Captions MUST be in the lower 20% of the frame. Prefer the canonical control: set `edit_decisions.subtitles.position: "bottom-center"` and `vertical_margin` in **video pixels** (e.g. `160` on a 1920-high frame) — `video_compose` converts it for you. Raw ASS `MarginV` is **not** frame pixels: ffmpeg renders SRT on a 384x288 script canvas, so `MarginV=160` on a 1920-high frame is ~1067px from the edge, i.e. mid-frame. If you must pass ASS directly, convert first: `margin_v = pixels * 288 / frame_height`. See docs/COMPOSITION_CONTRACTS.md. The default FFmpeg subtitle position is center -- this WILL occlude the face. You MUST override it.
 
 FFmpeg subtitle style string for vertical talking-head:
 ```

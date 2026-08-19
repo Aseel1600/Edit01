@@ -1,0 +1,110 @@
+{
+  "record_version": "1.0",
+  "frozen_at": "2026-08-19",
+  "revision_frozen": "Engineering Revision 2D (accepted, uncommitted) - FINAL",
+  "git": {
+    "head": "1bab711820828c2e5fc1f87ed274a32587cb048f",
+    "status": [
+      "M remotion-composer/src/Explainer.tsx",
+      " M remotion-composer/src/Root.tsx",
+      " M remotion-composer/src/components/HeroTitle.tsx",
+      " M remotion-composer/src/components/SectionTitle.tsx",
+      " M remotion-composer/src/components/StatReveal.tsx",
+      " M remotion-composer/src/components/charts/KPIGrid.tsx",
+      " M schemas/artifacts/edit_decisions.schema.json",
+      " M tools/analysis/composition_validator.py",
+      " M tools/video/video_compose.py",
+      "?? engineering/",
+      "?? remotion-composer/public/demo-props/million-billion-trillion.json",
+      "?? tests/contracts/test_component_theme_contracts.py",
+      "?? tests/contracts/test_slideshow_risk_contract.py",
+      "?? tests/contracts/test_subtitle_margin_contract.py",
+      "?? tests/contracts/test_subtitle_style_contract.py",
+      "?? tests/contracts/test_theme_precedence_contract.py",
+      "?? tests/fixtures/theme_contracts/",
+      "?? tests/lib/remotion_frames.py"
+    ],
+    "diff_stat": [
+      "remotion-composer/src/Explainer.tsx                |  73 ++++-",
+      " remotion-composer/src/Root.tsx                     |  34 ++-",
+      " remotion-composer/src/components/HeroTitle.tsx     |  26 +-",
+      " remotion-composer/src/components/SectionTitle.tsx  |  12 +-",
+      " remotion-composer/src/components/StatReveal.tsx    |  10 +-",
+      " .../src/components/charts/KPIGrid.tsx              |  56 +++-",
+      " schemas/artifacts/edit_decisions.schema.json       |  12 +",
+      " tools/analysis/composition_validator.py            |  84 ++++++",
+      " tools/video/video_compose.py                       | 324 ++++++++++++++++++---",
+      " 9 files changed, 567 insertions(+), 64 deletions(-)"
+    ]
+  },
+  "accepted_test_result": {
+    "full_suite": "1550 passed, 12 skipped, 0 failed",
+    "e10": 24,
+    "rev2c": 25,
+    "rev2b": 32,
+    "rev2a": 46,
+    "rev1": 31
+  },
+  "protected_media": {
+    "frozen_baseline": {
+      "sha256": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+      "bytes": 7387202
+    },
+    "original_final": {
+      "sha256": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+      "bytes": 7387202
+    },
+    "rev1": {
+      "sha256": "53c35e9ea16608051281376f37d0f256150d8b99507eda9a8ebfa6f55043a343",
+      "bytes": 7366446
+    },
+    "rev2a": {
+      "sha256": "574c609da34c2638675b5f6a07df0b139e3b1af2c353195326c9304fc27305fb",
+      "bytes": 7338492
+    },
+    "rev2b": {
+      "sha256": "574c609da34c2638675b5f6a07df0b139e3b1af2c353195326c9304fc27305fb",
+      "bytes": 7338492
+    },
+    "rev2c": {
+      "sha256": "05120fa1a542020413979d71a086944df8dd595629d955841c03ba75d8514b43",
+      "bytes": 7307473
+    }
+  },
+  "engineering_record_checksums": {
+    "REV1_FREEZE.json": "7332de6ad8c810ae894892aa397146037480bcee22493a33803e4e02eb5e4830",
+    "REV2A_FREEZE.json": "35de2c8e6f209039fcc3a36eb4626a7c03e2c3486b43c60c7b1d172a32982d51",
+    "REV2B_FREEZE.json": "9887e47713d797e275d9ebf1e81165977dfb1c436f196813f7548044804767bf",
+    "REV2C_FREEZE.json": "acaea5072e6527348b5e1d1469a77463e09ace98eae7c3be7cebafd0712e3cbf",
+    "REV1_REGRESSION_REPORT.json": "8ce203288314f96d186fe02ab9a029f793c9dc10e06d156795b517b867d96fee",
+    "REV2A_REPORT.json": "744975c8b14243107df81e0f155be316b8aa4271d3dadf035a20824806253c46",
+    "REV2B_REPORT.json": "eaff598b44e547fe937929c9309310cd4c5716e3c69b6aef83593b231cedeed6",
+    "REV2C_REPORT.json": "4aced2a807bd8c4387fee53547a8bd766d12d83e79b9fe3b1681f116f5797e0c",
+    "REV2D_REPORT.json": "d48379243cfa72edaf34ae016c01815111dfe2a83b08e2aab8eef2b6ae3074e2",
+    "BASELINE.json": "1445aa7adfc45ebeae89d57b981bd5e61752868fb90708d20d9939edbc1a4aa0",
+    "E10_PLAYBOOK_DIVERGENCE.json": "c1b7ce8e926addfbccf39d07adb7d8fc6b474367a38eaa6fc99d7fafff54fa52",
+    "E10_PRESET_GOLDENS_post.json": "1c3ac7cf8673100fdfd8ad6a49a7c39df990c1f9e52c5c8f54b763789eb0e500",
+    "E10_PRESET_GOLDENS_pre.json": "1c3ac7cf8673100fdfd8ad6a49a7c39df990c1f9e52c5c8f54b763789eb0e500",
+    "E10_PROJECT_SWEEP.json": "4dd56dd51cf137959f62297a20fd892e6b460f8603b4338761434646b860323f",
+    "E6_ANALYSIS.json": "cc9b78061a3f8d814112a5c7d1f618dbd267ffcf35adca4029a68b22fe479d06",
+    "ENGINEERING_PLAN.json": "704debbd6fc92082e7ee44f905071a0bf125dd5885638582bc21ca51c9762cf5"
+  },
+  "goldens": {
+    "dark_rev1": {
+      "dark_comparison.png": "57753f548016702fd6b657422a37c36d60a09695144f8b53f708426569785b68",
+      "dark_hero.png": "f5f98ddfa9c4c26cf6ddbe2d8a060e5f67dc9ae0cf42483b641a6ed780f16a67",
+      "dark_kpi.png": "71c18164f565f6fd7d4968afcfa4ac9c1c323c97325a7746d2204538ef2a3a7d",
+      "dark_stat.png": "b325dc336266d0e4b77679a41810fc38dcedb4b741e08b91c54ac12308bfd61e"
+    },
+    "presets_rev2d": {
+      "anime-ghibli_hero.png": "c5b04e141a3b5e4e965a22921aac4c34cd4f0e1159ab04b5b131e4f48cd8d74b",
+      "anime-ghibli_stat.png": "4519274ed8996dc14a655d7e2b9c7816a23e87bcd44fc87e884b270b263bbeb6",
+      "clean-professional_hero.png": "0b052a46660f555651f2e0597fd6f6ef70493cd1cd36b8d86d3ebdb915670897",
+      "clean-professional_stat.png": "be40926cf8a65c9b2c56cf3e20793ff2483e7d9a0e3da7587987de4535af9642",
+      "flat-motion-graphics_hero.png": "f5f98ddfa9c4c26cf6ddbe2d8a060e5f67dc9ae0cf42483b641a6ed780f16a67",
+      "flat-motion-graphics_stat.png": "b325dc336266d0e4b77679a41810fc38dcedb4b741e08b91c54ac12308bfd61e",
+      "minimalist-diagram_hero.png": "3b5a91fd022c1cf6cc7aa589b3d6e8279bbe964e2d06d82e2c0c678bc104d668",
+      "minimalist-diagram_stat.png": "759f7dda8e60dfd13521f8f140412129a71ffe1bc940150cfd74707989c7f28b"
+    }
+  }
+}

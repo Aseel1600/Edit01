@@ -108,14 +108,40 @@ export const THEMES: Record<string, ThemeConfig> = {
 // Default theme when none is specified — uses the existing dark style for backwards compatibility
 export const DEFAULT_THEME = THEMES["flat-motion-graphics"];
 
+/**
+ * Resolve the composition theme.
+ *
+ * LEGACY (default, unchanged): a recognised `theme`/`playbook` NAME wins and an
+ * explicit `themeConfig` is ignored. Existing preset-named projects therefore
+ * render exactly as before.
+ *
+ * OPT-IN (`themeConfigWins: true`): the resolution order becomes
+ * DEFAULT_THEME -> named preset -> explicit themeConfig, so a playbook-derived
+ * themeConfig can override individual preset fields. Merging is field-level, so
+ * a partial themeConfig can never leave a required field undefined.
+ *
+ * The opt-in exists because tools/video/video_compose.py derives a themeConfig
+ * from the playbook YAML ("every video gets a unique visual identity derived
+ * from its production decisions — not picked from a preset menu"), which the
+ * legacy precedence silently discards whenever the playbook name happens to
+ * match a built-in preset.
+ */
 export function resolveTheme(props: Record<string, unknown>): ThemeConfig {
   const themeName = (props.theme as string) || (props.playbook as string);
-  if (themeName && THEMES[themeName]) {
-    return THEMES[themeName];
+  const preset = themeName ? THEMES[themeName] : undefined;
+  const custom =
+    props.themeConfig && typeof props.themeConfig === "object"
+      ? (props.themeConfig as Partial<ThemeConfig>)
+      : undefined;
+  const themeConfigWins = props.themeConfigWins === true;
+
+  if (preset) {
+    // Opt-in: explicit themeConfig is the final override, field by field.
+    return themeConfigWins && custom ? { ...DEFAULT_THEME, ...preset, ...custom } : preset;
   }
   // Allow custom theme passed as full object
-  if (props.themeConfig && typeof props.themeConfig === "object") {
-    return { ...DEFAULT_THEME, ...(props.themeConfig as Partial<ThemeConfig>) };
+  if (custom) {
+    return { ...DEFAULT_THEME, ...custom };
   }
   return DEFAULT_THEME;
 }

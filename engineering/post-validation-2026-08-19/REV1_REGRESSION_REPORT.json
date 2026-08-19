@@ -1,0 +1,98 @@
+{
+  "record_version": "1.0",
+  "revision": "Engineering Revision 1",
+  "date": "2026-08-19",
+  "authorised_scope": [
+    "E1",
+    "E2",
+    "E3",
+    "E4",
+    "E7",
+    "E8",
+    "E9"
+  ],
+  "explicitly_not_implemented": [
+    "E5 subtitle schema/renderer mapping",
+    "E6 slideshow-risk normalisation/activation",
+    "E10 themeConfig vs preset precedence"
+  ],
+  "files_modified_tracked": [
+    "remotion-composer/src/Explainer.tsx",
+    "remotion-composer/src/components/HeroTitle.tsx",
+    "remotion-composer/src/components/SectionTitle.tsx",
+    "remotion-composer/src/components/StatReveal.tsx",
+    "remotion-composer/src/components/charts/KPIGrid.tsx",
+    "schemas/artifacts/edit_decisions.schema.json",
+    "tools/analysis/composition_validator.py"
+  ],
+  "files_added": [
+    "tests/contracts/test_component_theme_contracts.py",
+    "tests/lib/remotion_frames.py",
+    "tests/fixtures/theme_contracts/*.json",
+    "tests/fixtures/theme_contracts/goldens/dark/*.png"
+  ],
+  "schema_change": {
+    "file": "schemas/artifacts/edit_decisions.schema.json",
+    "change": "added optional properties.templated (composition_props_path required; optional composition_props_sha256, composition_id; additionalProperties false)",
+    "diff": "+11 lines, 0 deletions",
+    "breaking": false,
+    "cuts_unchanged": true
+  },
+  "tests": {
+    "new_file": "tests/contracts/test_component_theme_contracts.py",
+    "new_tests": 31,
+    "full_suite": "1423 passed, 12 skipped, 0 failed",
+    "render_based": "pytest + npx remotion still + Pillow; no JS test runner, no new production dependency",
+    "dev_dependency_installed": "requirements-dev.txt (pytest, pytest-asyncio) - the repo's own declared dev deps, needed to run its suite"
+  },
+  "dark_theme_regression": {
+    "method": "pre-fix goldens captured BEFORE any source edit, compared byte-for-byte after",
+    "frames": [
+      "dark_hero",
+      "dark_stat",
+      "dark_comparison",
+      "dark_kpi"
+    ],
+    "result": "byte-identical (4/4)",
+    "mechanism": "theme colours are forwarded only when the resolved surface is light (isLightColor); dark themes receive no new props at all"
+  },
+  "regression_project": {
+    "baseline": "engineering/post-validation-2026-08-19/baseline/final_baseline.mp4",
+    "baseline_sha256": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+    "rev1_output": "projects/million-billion-trillion/renders/rev1/final_rev1.mp4",
+    "rev1_sha256": "53c35e9ea16608051281376f37d0f256150d8b99507eda9a8ebfa6f55043a343",
+    "baseline_integrity": "ALL UNCHANGED (renders/final.mp4 and the frozen copy re-verified against BASELINE.json)",
+    "identical": [
+      "duration 29.461333s",
+      "1920x1080",
+      "30 fps",
+      "882 video frames",
+      "1381 audio frames",
+      "h264 High + aac LC 48kHz stereo",
+      "-14.9 LUFS",
+      "peak -4.5 dBFS",
+      "decode exit 0"
+    ],
+    "differences": {
+      "file_size_bytes": {
+        "baseline": 7387202,
+        "rev1": 7366446,
+        "delta": -20756
+      },
+      "per_scene": {
+        "sc1": "identical",
+        "sc2": "identical",
+        "sc3": "differs 1.50% - EXPECTED (E4)",
+        "sc4": "identical at render level; 549px (0.03%, max delta 18/255) after the subtitle burn - lossy inter-frame drift from the changed sc3 region",
+        "sc5": "identical",
+        "tail": "identical"
+      }
+    },
+    "expected_difference_explained": "The frozen composition props already supplied leftColor #6B7280 / rightColor #2563EB for sc3; before E4 Explainer dropped them and ComparisonCard used its defaults (#2563EB/#10B981). E4 makes the supplied colours take effect, removing the off-palette green recorded as deviation d18.",
+    "unexpected_differences": "none",
+    "content_restoration": "NOT performed - sc2 StatCard, sc4 KPIGrid and the sc1 secondary title remain as approved; restoration stays a separate owner-authorised variant.",
+    "cost_usd": 0.0
+  },
+  "E9_status": "Correction retained in BASELINE.json (erratum ERR-1) and here. The approved render_report.json and final_review.json were NOT rewritten. True delivered baseline: 7,387,202 bytes / 2,005,938 bps.",
+  "provenance_demo": "engineering/post-validation-2026-08-19/rev1_provenance.json (validates against the new optional templated block; sha256 matches the props file actually rendered)."
+}

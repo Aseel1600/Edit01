@@ -1,0 +1,145 @@
+{
+  "record_version": "1.0",
+  "created": "2026-08-19",
+  "status": "PLAN ONLY - no source modified",
+  "baseline_ref": "engineering/post-validation-2026-08-19/BASELINE.json",
+  "repo_ref": "1bab711820828c2e5fc1f87ed274a32587cb048f (main)",
+  "test_tooling_constraint": {
+    "javascript": "remotion-composer has NO test runner (devDependencies: @types/react, typescript only). Adding jest/vitest would be a dependency addition, which the owner excluded unless proven necessary.",
+    "chosen_strategy": "Render-based golden/contrast tests driven from the existing pytest suite via `npx remotion still` (already installed) plus Pillow (already a Python dependency). Zero new dependencies; asserts the real render path.",
+    "python": "pytest with tests/contracts/ conventions; tests/conftest.py blocks outbound sockets (loopback allowed), so all tests must stay local."
+  },
+  "findings": [
+    {
+      "id": "E1",
+      "title": "StatCard subtitle unreadable on light themes",
+      "files": ["remotion-composer/src/Explainer.tsx (SceneRenderer stat_card branch, ~line 586)", "remotion-composer/src/components/StatCard.tsx (color default '#FFFFFF', line 18)"],
+      "root_cause": "Explainer passes stat/subtitle/accentColor/backgroundColor but never `color`, so StatCard falls back to its dark-theme default #FFFFFF. The theme object already holds textColor.",
+      "class": "implementation bug",
+      "evidence": "projects/million-billion-trillion/snapshots (pre-fix sc2 still): white subtitle on #F9FAFB field.",
+      "smallest_fix": "In Explainer's stat_card branch pass color={textColor} (textColor is already computed on the line above as cut.color || theme.textColor). No component API change.",
+      "backward_compat_risk": "cosmetic-low: on flat-motion-graphics subtitle #FFFFFF -> #F8FAFC (imperceptible); on anime-ghibli #FFFFFF -> #F0E6D3 (slight warm tint, arguably the theme's intent).",
+      "dark_projects_affected": "yes, cosmetically only (subtitle tint)",
+      "tests": ["light-theme render assert: subtitle pixel contrast vs background >= 4.5:1", "dark-theme golden: flat-motion-graphics stat_card frame hash stable or contrast unchanged"]
+    },
+    {
+      "id": "E2",
+      "title": "KPIGrid cannot render decimals or exact >=1000 values",
+      "files": ["remotion-composer/src/components/charts/KPIGrid.tsx (line 278 Math.round, line 360 formatDisplayValue)"],
+      "root_cause": "displayValue = Math.round(metric.value * countProgress) forces integers; formatDisplayValue abbreviates >=1e3 as '31.7K' and >=1e6 as 'M'. No prop controls decimals or abbreviation. formatDisplayValue is local to KPIGrid (not shared).",
+      "class": "implementation bug (missing capability) + documentation mismatch (SCENE_TYPES.md implies arbitrary metrics)",
+      "evidence": "sc4 rendered '12 days / 32 years / 31.7K years' against approved 11.6 / 31.7 / 31,700.",
+      "smallest_fix": "Add two optional Metric fields - `decimals?: number` and `abbreviate?: boolean` (default true) - plus optional grid-level defaults; when decimals is set use toFixed(decimals) and thousands separators via toLocaleString; when abbreviate is false skip the K/M branch. Defaults reproduce today's output exactly.",
+      "backward_compat_risk": "none when the new fields are omitted (identical output); additive props only.",
+      "dark_projects_affected": "no",
+      "tests": ["unit-ish render assert: metrics [11.6,'days'],[31.7,'years'],[31700,'years'] with decimals/abbreviate produce '11.6 days','31.7 years','31,700 years'", "default-path golden: existing integer metrics unchanged, 31700 still renders '31.7K' when abbreviate omitted"]
+    },
+    {
+      "id": "E3",
+      "title": "SectionTitle / StatReveal / HeroTitle hardcode near-white text",
+      "files": ["remotion-composer/src/components/SectionTitle.tsx (color '#F8FAFC' line 70)", "remotion-composer/src/components/StatReveal.tsx (label color '#F8FAFC' line 82)", "remotion-composer/src/components/HeroTitle.tsx (#22D3EE first-8-chars, #F8FAFC rest, #A78BFA subtitle)", "remotion-composer/src/Explainer.tsx (OverlayRenderer ~line 755, hero_title branch ~line 609)"],
+      "root_cause": "Colour constants baked into the components; Explainer forwards only accentColor/position, so no caller can correct them.",
+      "class": "implementation bug (theme-unaware components)",
+      "evidence": "sc1 overlay 'MEASURED IN SECONDS' near-white on light field; HeroTitle rejected at scene_plan for the same reason (decision d11).",
+      "smallest_fix": "Add optional colour props (textColor / subtitleColor / titleColor) defaulting to the CURRENT constants, then have Explainer forward theme-derived values only when the resolved background is light (the existing isLightColor helper in Explainer.tsx). Dark themes keep byte-identical output.",
+      "backward_compat_risk": "zero for dark themes with the light-only forwarding; HIGH if theme colours were forwarded unconditionally - HeroTitle's cyan/purple would become theme accents and visibly change every existing hero_title (e.g. the zero-key demo world-in-numbers).",
+      "dark_projects_affected": "no (with the recommended light-only forwarding); yes if unconditional forwarding is chosen instead",
+      "tests": ["light-theme contrast assertions for all three components", "dark-theme golden hash for HeroTitle/SectionTitle/StatReveal must be byte-identical to pre-fix"]
+    },
+    {
+      "id": "E4",
+      "title": "ComparisonCard per-side colours not forwarded",
+      "files": ["remotion-composer/src/Explainer.tsx (comparison branch ~line 598)", "remotion-composer/src/components/ComparisonCard.tsx (leftColor/rightColor props exist, defaults #2563EB/#10B981)"],
+      "root_cause": "Explainer forwards leftLabel/rightLabel/leftValue/rightValue/title/backgroundColor/textColor but drops cut.leftColor and cut.rightColor, so component defaults always win.",
+      "class": "implementation bug (prop drop)",
+      "evidence": "sc3 right value rendered #10B981, outside the premium-minimalist accents; owner accepted the deviation (d18).",
+      "smallest_fix": "Forward leftColor={cut.leftColor ?? theme.primaryColor} and rightColor={cut.rightColor ?? theme.accentColor}? - NOTE: defaulting to theme colours changes existing output. Safer minimal fix: forward only when the cut supplies them (cut.leftColor && {leftColor: cut.leftColor}), leaving defaults untouched.",
+      "backward_compat_risk": "zero with the pass-through-only variant; medium if defaults are re-pointed at the theme (every existing comparison scene changes colour).",
+      "dark_projects_affected": "no (pass-through-only variant)",
+      "tests": ["render with explicit leftColor/rightColor and assert the value pixels match", "render without them and assert output identical to pre-fix golden"]
+    },
+    {
+      "id": "E5",
+      "title": "Subtitle style: schema vocabulary does not reach the renderer, and a schema-valid value crashes the resolver",
+      "files": ["schemas/artifacts/edit_decisions.schema.json (subtitles block)", "tools/video/video_compose.py (_build_subtitle_style, _resolve_subtitle_style, _burn_subtitles, _compose)"],
+      "root_cause": "Three separate mismatches. (a) _build_subtitle_style reads ASS keys (primary_color, outline_color, back_color, alignment, margin_v, outline_width, border_style) while the schema defines color, outline_color, background, position, max_words_per_line - so color/position are silently dropped and hex values are emitted where ASS needs &HAABBGGRR. (b) _resolve_subtitle_style does edit_decisions['subtitles']['style'].items(), but the schema types `style` as a STRING ('sentence'|'word-by-word'|'karaoke') - reproduced: AttributeError: 'str' object has no attribute 'items'. (c) FontSize is interpreted by libass against the SRT->ASS script height (288 lines), so schema font_size is not pixels at 1080p - 42 rendered ~157px.",
+      "class": "schema mismatch + implementation bug + documentation mismatch",
+      "evidence": "First burn produced oversized, vertically-centred captions obscuring scene content (defect C6); AttributeError reproduced directly against the schema-valid shape.",
+      "smallest_fix": "Add a mapping layer in video_compose: translate the schema's subtitles fields (color->primary_color with hex->&HBBGGRR conversion, background->back_color, position->alignment, max_words_per_line passthrough) and scale font_size by playres (font_size * 288/height) unless an explicit ASS key is supplied; make _resolve_subtitle_style accept `style` as either a string (display style) or a legacy dict, reading sibling fields for styling. Keep explicit ASS keys working as the highest-priority override.",
+      "backward_compat_risk": "medium-visible: projects that today pass ASS-style dicts under subtitles.style keep working (explicit override retained), but any project that relied on the silently-dropped schema fields will now actually get them - captions will change size/colour/position, for the better. This is a public contract clarification and must be called out in the fix note.",
+      "dark_projects_affected": "yes - any project that burns subtitles through the schema fields will change appearance (currently those fields do nothing).",
+      "tests": ["unit: schema-valid subtitles block -> expected force_style string (colour converted, alignment 2, scaled FontSize)", "unit: subtitles.style as string no longer raises", "unit: explicit ASS keys still win", "render: burned frame has captions in the bottom third and no overlap with the centre band"]
+    },
+    {
+      "id": "E6",
+      "title": "Slideshow-risk check silently disabled by a scene_plan shape mismatch",
+      "files": ["tools/video/video_compose.py (_pre_compose_validation, `scenes = scene_plan or []`)", "lib/slideshow_risk.py (score_slideshow_risk, _score_repetition Counter over scenes)"],
+      "root_cause": "_render passes inputs['scene_plan'] straight through, and the compose-director skill passes the scene_plan ARTIFACT ({version, style_playbook, scenes[], metadata}). score_slideshow_risk expects a LIST of scenes; iterating the dict yields its keys (strings) -> 'str' object has no attribute 'get'. The exception is swallowed by a bare `except Exception` and logged as a warning, so the governance check silently never runs.",
+      "class": "implementation bug + validation gap (the swallow hides it)",
+      "evidence": "Reproduced exactly: AttributeError at `types = Counter(s.get('type','unknown') for s in scenes)`. Confirmed the same call succeeds when given scene_plan['scenes'].",
+      "smallest_fix": "Normalise at the boundary: `scenes = scene_plan.get('scenes', []) if isinstance(scene_plan, dict) else (scene_plan or [])`. Optionally downgrade the bare except to log the exception type and add it to `warnings` so a broken governance check is visible rather than silent.",
+      "backward_compat_risk": "behavioural: the slideshow gate starts actually running. A project whose plan scores 'fail' would now be BLOCKED at compose where it previously rendered. That is the intended governance behaviour but it can stop existing pipelines - must be flagged to the owner before enabling.",
+      "dark_projects_affected": "not theme-related, but any existing project can be affected by the gate becoming live",
+      "tests": ["unit: artifact-dict input scores identically to list input, no exception", "unit: the canonical million-billion-trillion scene_plan scores and returns a verdict", "unit: a deliberately slideshow-y plan produces verdict fail (gate still works)"]
+    },
+    {
+      "id": "E7",
+      "title": "Overlay timing keys fail late as a NaN Sequence error",
+      "files": ["remotion-composer/src/Explainer.tsx (Overlay interface uses in_seconds/out_seconds; overlay Sequence ~line 829)", "tools/analysis/composition_validator.py (validates cuts + audio only - no overlay checks)"],
+      "root_cause": "The Overlay contract requires in_seconds/out_seconds. Any other key (e.g. start_seconds) yields undefined -> from=NaN and Remotion throws mid-render: 'The from prop of a sequence must be finite, but got NaN.' composition_validator inspects cuts and audio but never overlays, so nothing catches it earlier.",
+      "class": "validation gap (contract is correct; enforcement is missing)",
+      "evidence": "Reproduced during this run - the first still render aborted with the NaN Sequence TypeError; composition_validator had reported valid=true on the same file.",
+      "smallest_fix": "Add an overlay check to composition_validator: each overlay must have numeric finite in_seconds/out_seconds with out > in, a known `type`, and (for section_title/stat_reveal/hero_title) a `text`. Emit a targeted error naming the correct keys when start_seconds/end_seconds are present.",
+      "backward_compat_risk": "low-additive: projects with malformed overlays start failing validation, but they already fail at render. No schema change.",
+      "dark_projects_affected": "no",
+      "tests": ["validator rejects overlay with start_seconds/end_seconds and names in_seconds/out_seconds", "validator rejects out<=in and non-numeric values", "validator still passes the frozen baseline composition"]
+    },
+    {
+      "id": "E8",
+      "title": "Canonical cuts cannot carry component props",
+      "files": ["schemas/artifacts/edit_decisions.schema.json (cuts.items additionalProperties:false)", "tools/video/video_compose.py (_render -> _remotion_render; accepts edit_decisions OR composition_data)", "tools/analysis/composition_validator.py (validates a composition JSON by path)", "skills/pipelines/animation/compose-director.md (step 2: build remotion-composer/public/demo-props/<name>.json)"],
+      "root_cause": "Two parallel contracts exist: the canonical editorial artifact (strict) and the Remotion composition JSON (scene props). _remotion_render consumes the composition shape, but the canonical artifact has no declared field recording WHICH props file produced the render, so the link is undocumented and unverifiable.",
+      "class": "architecture limitation (documented split) + schema gap (no pointer)",
+      "resolution_options_assessed": {
+        "A_extend_cuts": "REJECTED - would clone the Remotion Cut interface (14+ scene types, dozens of props) into a public JSON Schema and force lockstep maintenance with Explainer.tsx. Highest churn, highest breakage risk.",
+        "B_governed_component_props_structure": "PARTIAL - a typed props block inside edit_decisions duplicates the composition JSON that composition_validator and _remotion_render already consume by path.",
+        "C_keep_props_outside": "CLOSEST TO TODAY - what the compose-director already prescribes, but leaves the artifact silent about the render input.",
+        "D_repository_intended": "SELECTED - the repository already intends the split: composition JSON under remotion-composer/public/demo-props/<name>.json, validated by composition_validator and rendered via _remotion_render(composition_data). The atelier path shows the intended pattern for referencing an external render input: a small declared block (`bespoke` with entry/composition_id/art_direction, required when composition_mode='atelier')."
+      },
+      "smallest_fix": "Mirror the `bespoke` precedent for templated mode: add an OPTIONAL `templated` block (or single `composition_props_path` string) to edit_decisions recording the composition JSON path (plus optional sha256), and have video_compose load it when `edit_decisions.cuts` carry no scene props. Keeps cuts strict, makes the render input auditable, and matches the existing architecture instead of inventing one.",
+      "backward_compat_risk": "none if optional and additive; it is a public schema addition, so it must be versioned/announced. Existing projects that pass composition_data directly keep working unchanged.",
+      "dark_projects_affected": "no",
+      "tests": ["schema: edit_decisions with the new optional field validates; without it still validates", "tool: when the pointer is present and cuts lack props, video_compose loads the props file and renders", "governance: recorded path's sha256 matches the file actually rendered"]
+    },
+    {
+      "id": "E9",
+      "title": "render_report / final_review record the superseded file size",
+      "files": ["projects/million-billion-trillion/artifacts/render_report.json", "projects/million-billion-trillion/artifacts/final_review.json"],
+      "root_cause": "Both were written with the measurements taken after the FIRST subtitle burn (6,886,991 bytes / 1,870,109 bps). The corrected re-burn replaced final.mp4 (7,387,202 bytes / 2,005,938 bps) and the artifacts were not re-measured.",
+      "class": "process/reporting defect (agent), not a repository bug",
+      "evidence": "BASELINE.json erratum ERR-1; re-probe of the delivered file.",
+      "smallest_fix": "Owner-approved correction write of the two artifacts (and the compose checkpoint) with the true size/bitrate, leaving all other values unchanged. Not performed - the freeze instruction forbids rewriting approved artifacts.",
+      "backward_compat_risk": "none",
+      "dark_projects_affected": "no",
+      "tests": ["compose-stage assertion that render_report.outputs[].file_size_bytes equals the on-disk size of the delivered file"]
+    },
+    {
+      "id": "E10",
+      "title": "Playbook-derived theme is silently ignored for four playbook names",
+      "files": ["remotion-composer/src/Root.tsx (resolveTheme: named THEMES preset wins over themeConfig)", "tools/video/video_compose.py (_build_theme_from_playbook)"],
+      "root_cause": "resolveTheme checks props.theme/props.playbook against the hardcoded THEMES map FIRST and returns the preset, ignoring the themeConfig that _build_theme_from_playbook derives from the playbook YAML. THEMES contains clean-professional, flat-motion-graphics, minimalist-diagram, anime-ghibli. Any project using one of those playbook names renders with the baked-in preset, so playbook palette edits never reach Remotion.",
+      "class": "architecture/implementation mismatch (discovered during this investigation, not in the original eight)",
+      "evidence": "premium-minimalist is NOT a preset, which is the only reason the injected themeConfig took effect in this validation run.",
+      "smallest_fix": "Invert the precedence when an explicit themeConfig is supplied: themeConfig (derived from the playbook YAML) should win, with the named preset as the fallback for callers that pass only a name.",
+      "backward_compat_risk": "medium-visible: projects using those four playbook names would start rendering with YAML-derived colours instead of the presets. Needs an explicit owner decision; a per-call opt-in flag is the conservative variant.",
+      "dark_projects_affected": "yes - flat-motion-graphics and anime-ghibli are both preset names",
+      "tests": ["unit: themeConfig supplied + preset name -> themeConfig wins", "golden: name-only callers unchanged"]
+    }
+  ],
+  "light_theme_exposure_note": "Two of the four built-in presets are already light (clean-professional #FFFFFF, minimalist-diagram #FAFAFA). E1 and E3 therefore already affect any existing project using those presets with stat_card subtitles, section_title, stat_reveal or hero_title - the defects are not exotic to premium-minimalist.",
+  "regression_plan": {
+    "baseline_comparison": "Re-render the frozen million-billion-trillion composition after fixes and diff against engineering/post-validation-2026-08-19/baseline/final_baseline.mp4 (sha256 f8362f7b...) on duration, resolution, fps, frame count, codecs, LUFS, peak, and per-scene frame contrast. Approved content must not change automatically.",
+    "restoration_candidates_requiring_owner_approval": ["sc2 back to StatCard (after E1)", "sc4 back to KPIGrid with decimals/abbreviate (after E2)", "sc1 secondary title via a theme-aware SectionTitle (after E3)"],
+    "rule": "The regression project's approved content is not to be changed automatically; restoration is a separate owner-approved variant, rendered to a NEW output path so the baseline stays intact."
+  }
+}

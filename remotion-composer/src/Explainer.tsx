@@ -295,6 +295,11 @@ interface AudioConfig {
 
 export interface ExplainerProps {
   [key: string]: unknown;
+  /**
+   * Opt in to explicit-themeConfig precedence over a named preset.
+   * Omitted/false keeps the legacy behaviour (named preset wins).
+   */
+  themeConfigWins?: boolean;
   cuts: Cut[];
   overlays?: Overlay[];
   captions?: WordCaption[];

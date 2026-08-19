@@ -1,0 +1,107 @@
+{
+  "record_version": "1.0",
+  "revision": "Engineering Revision 2A (E5 subtitle contract)",
+  "date": "2026-08-19",
+  "scope_implemented": [
+    "E5.1 style-string crash",
+    "E5.2 canonical->renderer mapping",
+    "E5.3 CSS hex -> ASS &HAABBGGRR",
+    "E5.4 PlayRes-correct font size",
+    "E5.5 native override precedence"
+  ],
+  "not_implemented": [
+    "E6 slideshow-risk (production behaviour unchanged)",
+    "E10 theme/preset precedence (unchanged)"
+  ],
+  "files_modified": [
+    "tools/video/video_compose.py"
+  ],
+  "schema_files_modified": "NONE - no public schema change was required in 2A",
+  "playres_evidence": {
+    "source": "ffmpeg Lavc63.1.100 SRT->ASS header",
+    "PlayResX": 384,
+    "PlayResY": 288,
+    "default_style": "Arial,16,&Hffffff,...,Alignment 2,MarginV 10"
+  },
+  "conversion": {
+    "name": "VideoCompose.canonical_px_to_ass_units",
+    "formula": "ass_units = canonical_px * 288 / video_height",
+    "reference_height": 1080,
+    "examples": {
+      "42px@1080": 11.2,
+      "42px@720": 16.8,
+      "42px@2160": 5.6
+    }
+  },
+  "colour_conversion": {
+    "name": "VideoCompose.css_color_to_ass",
+    "rule": "#RRGGBB[AA] -> &HAABBGGRR with ASS alpha inverted (CSS opacity -> ASS transparency); &H values pass through",
+    "examples": {
+      "#111827": "&H00271811",
+      "#FF0000": "&H000000FF",
+      "#00000088": "&H77000000"
+    }
+  },
+  "position_mapping": {
+    "bottom-center": 2,
+    "center": 5,
+    "top-center": 8,
+    "unsupported": "raises ValueError naming the supported values"
+  },
+  "precedence": "defaults -> playbook -> canonical (edit_decisions.subtitles) -> explicit native/ASS override",
+  "tests": {
+    "file": "tests/contracts/test_subtitle_style_contract.py",
+    "count": 46,
+    "result": "46 passed",
+    "full_suite": "1469 passed, 12 skipped, 0 failed"
+  },
+  "regression_render": {
+    "output": "projects/million-billion-trillion/renders/rev2a/final_rev2a.mp4",
+    "sha256": "574c609da34c2638675b5f6a07df0b139e3b1af2c353195326c9304fc27305fb",
+    "input": "renders/rev1/final_nosubs_rev1.mp4 (Revision 1 silent render) + baseline SRT",
+    "style_source": "CANONICAL schema fields only (no ASS workaround)",
+    "force_style": "FontName=Inter,FontSize=11.2,Bold=1,PrimaryColour=&H00271811,OutlineColour=&H00FFFFFF,BorderStyle=1,Outline=2,Shadow=0,MarginV=40,Alignment=2",
+    "identical_to_baseline": [
+      "duration 29.461333s",
+      "1920x1080",
+      "30fps",
+      "882 video frames",
+      "1381 audio frames",
+      "h264 High + aac LC 48kHz stereo",
+      "-14.9 LUFS",
+      "peak -4.5 dBFS",
+      "decode exit 0"
+    ],
+    "size_bytes": 7338492,
+    "caption_measurements": {
+      "rev1_manual_ass": {
+        "ink_rows": [
+          923,
+          1011
+        ],
+        "block_height_px": 88,
+        "bottom_margin_px": 69
+      },
+      "rev2a_canonical": {
+        "ink_rows": [
+          853,
+          929
+        ],
+        "block_height_px": 76,
+        "bottom_margin_px": 151
+      },
+      "colour": {
+        "rev1": "(18,23,36)",
+        "rev2a": "(19,24,37)",
+        "target": "#111827"
+      }
+    },
+    "success_criterion": "MET - canonical schema alone reproduces bottom-centre placement, charcoal colour, white outline, the two-line semantic break and no centre-band collision. Remaining deltas (12px smaller block, 82px higher) follow directly from the canonical declaration (font_size 42px + default MarginV 40) versus the workaround (ASS 13 = 48.75px, MarginV 18 = 67px)."
+  },
+  "protected_unchanged": {
+    "baseline": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+    "original_final": "f8362f7b3bfada741ee40583ecb8283353adc3b5ef731193468444afd4e4c817",
+    "rev1_regression": "53c35e9ea16608051281376f37d0f256150d8b99507eda9a8ebfa6f55043a343"
+  },
+  "known_gap": "edit_decisions.subtitles has no canonical margin field, so vertical offset can only be tuned through the native margin_v. Candidate for a later additive schema revision."
+}

@@ -1,0 +1,8 @@
+{
+  "composition_mode": "templated",
+  "templated": {
+    "composition_props_path": "engineering/post-validation-2026-08-19/baseline/composition_props_baseline.json",
+    "composition_props_sha256": "6bbed557d7916232c213d239e5614e9df272856ef2152399fa6abad6e099905d",
+    "composition_id": "Explainer"
+  }
+}
