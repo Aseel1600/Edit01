@@ -94,7 +94,11 @@ remotion-composer/public/demo-props/caption-burn-*
 
 venv/
 .venv/
-.venv_clean/   # local clean venv (built with PYTHONPATH unset to avoid hermes-agent 3.11 leakage)
+# local clean venv (built with PYTHONPATH unset to avoid hermes-agent 3.11 leakage)
+.venv_clean/
+
+# Local pipeline scratch output
+out/
 
 # Backlot local cache (thumbnails)
 .backlot/
