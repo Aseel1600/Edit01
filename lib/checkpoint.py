@@ -20,6 +20,8 @@ from schemas.artifacts import ARTIFACT_NAMES, validate_artifact
 ALL_KNOWN_STAGES = frozenset([
     "research", "proposal", "idea", "script", "scene_plan",
     "assets", "edit", "compose", "publish",
+    "preflight", "tunnel", "backend", "verify",
+    "render", "score", "breed",
 ])
 
 # Backward-compatible alias — existing code / tests that import STAGES still work.
@@ -37,6 +39,10 @@ CANONICAL_STAGE_ARTIFACTS = {
     "edit": "edit_decisions",
     "compose": "render_report",
     "publish": "publish_log",
+    "preflight": "deploy_report",
+    "tunnel": "deploy_report",
+    "backend": "deploy_report",
+    "verify": "deploy_report",
 }
 
 # Additional artifacts that may be produced alongside canonical ones.
@@ -106,8 +112,12 @@ def _validate_artifacts_for_stage(
     status: str,
     artifacts: dict[str, Any],
 ) -> None:
-    required_artifact = CANONICAL_STAGE_ARTIFACTS[stage]
-    if status in {"completed", "awaiting_human"} and required_artifact not in artifacts:
+    required_artifact = CANONICAL_STAGE_ARTIFACTS.get(stage)
+    if (
+        required_artifact
+        and status in {"completed", "awaiting_human"}
+        and required_artifact not in artifacts
+    ):
         raise CheckpointValidationError(
             f"Stage {stage!r} with status {status!r} must include "
             f"canonical artifact {required_artifact!r}"

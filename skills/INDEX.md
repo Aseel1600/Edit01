@@ -270,6 +270,29 @@ Stage director skills teach the agent HOW to execute each pipeline stage. Each s
 | Compose Director | `pipelines/localization-dub/compose-director.md` | `compose` | Per-locale rendering, subtitle-fit checks, output labeling |
 | Publish Director | `pipelines/localization-dub/publish-director.md` | `publish` | Locale packaging, metadata precision, QA-note retention |
 
+### Hermes Flywheel (`pipelines/hermes-flywheel/`)
+
+| Skill | File | Stage | Key Capabilities |
+|-------|------|-------|-----------------|
+| Flywheel Director | `pipelines/hermes-flywheel/flywheel-director.md` | `all` | Autonomous Script → Render → Score → Breed loop |
+| Creative driver | `creative/hermes-flywheel.md` | MCP / agent | Drive the flywheel from Hermes or Cursor |
+
+### Hermes Hostinger (`pipelines/hermes-hostinger/`) — v1.0
+
+Infrastructure + delivery: local LM Studio inference, Hostinger-domain Hermes API, optional YouTube upload. Does **not** compose video.
+
+| Skill | File | Stage | Key Capabilities |
+|-------|------|-------|-----------------|
+| **Executive Producer** | `pipelines/hermes-hostinger/executive-producer.md` | `all` | Domain, auth, no-spend, stage order |
+| Scale configs | `infra/hermes-scale/` | ops | NVIDIA vLLM / hosted / Mac studio env + compose |
+| Idea Director | `pipelines/hermes-hostinger/idea-director.md` | `idea` | Domain, LM Studio, YouTube scope |
+| Preflight Director | `pipelines/hermes-hostinger/preflight-director.md` | `preflight` | Health of LM Studio / Hostinger / YouTube |
+| Tunnel Director | `pipelines/hermes-hostinger/tunnel-director.md` | `tunnel` | Local-only vs Cloudflare Tunnel; never expose :1234 |
+| Backend Director | `pipelines/hermes-hostinger/backend-director.md` | `backend` | Docker Hermes API on Hostinger VPS |
+| Publish Director | `pipelines/hermes-hostinger/publish-director.md` | `publish` | export_bundle + youtube_upload (unlisted default) |
+| Verify Director | `pipelines/hermes-hostinger/verify-director.md` | `verify` | Public /health + unauthenticated /v1 rejected |
+| Creative driver | `creative/hermes-hostinger.md` | MCP / agent | Operator skill for this pipeline |
+
 ## Meta Skills
 
 Cross-cutting skills that apply to all pipelines:

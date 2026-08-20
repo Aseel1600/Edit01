@@ -1,0 +1,22 @@
+services:
+  hermes-api:
+    build: .
+    image: hermes-api:local
+    ports:
+      - "8080:8080"
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-hermestudios.com}
+      LM_STUDIO_BASE_URL: ${LM_STUDIO_BASE_URL:-http://host.docker.internal:1234/v1}
+      LM_STUDIO_API_KEY: ${LM_STUDIO_API_KEY:-lm-studio}
+      LM_STUDIO_MODEL: ${LM_STUDIO_MODEL:-}
+      INFERENCE_BACKEND: ${INFERENCE_BACKEND:-}
+      INFERENCE_BASE_URL: ${INFERENCE_BASE_URL:-}
+      INFERENCE_API_KEY: ${INFERENCE_API_KEY:-}
+      INFERENCE_MODEL: ${INFERENCE_MODEL:-}
+      HERMES_API_KEY: ${HERMES_API_KEY:-}
+      HERMES_REQUIRE_AUTH: ${HERMES_REQUIRE_AUTH:-true}
+      HERMES_MAX_INFLIGHT: ${HERMES_MAX_INFLIGHT:-32}
+      HERMES_INFLIGHT_WAIT_SECONDS: ${HERMES_INFLIGHT_WAIT_SECONDS:-5}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
