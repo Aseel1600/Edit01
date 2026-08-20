@@ -14,7 +14,7 @@ This stage is what separates an OpenMontage video from generic AI slop. Without 
 |-------|----------|---------|
 | Schema | `schemas/artifacts/research_brief.schema.json` | Artifact validation |
 | User input | Topic, audience hint, platform hint | Research scope |
-| Tools | Web search, web fetch | Research execution |
+| Tools | Web search, web fetch, optional `xquik_social_research` | Research execution |
 
 ## Process
 
@@ -60,6 +60,15 @@ Before searching anything, establish boundaries:
 - **Depth**: Is this a well-known topic (HTTPS, React) or niche (vector clock CRDTs, QUIC protocol)?
 
 If the user's request is a single phrase like "make a video about kubernetes," that's fine — you have enough to research. Do NOT ask clarifying questions at this stage. Research first, clarify later (in the Proposal stage).
+
+### Optional X conversation pulse
+
+Use `xquik_social_research` when it is available and public X conversation
+would improve the topic or target-platform research. Read the
+`xquik-social-research` Layer 3 skill before calling it.
+
+Follow that skill's bounded-search and evidence rules. Do not replace
+primary-source searches with social reactions.
 
 ### Step 2: Content Landscape Scan
 
@@ -315,7 +324,7 @@ Before submitting your research_brief, verify:
 | Max time on research | 3-5 minutes | Research is valuable but has diminishing returns |
 | Max searches | 25 | Prevent infinite rabbit holes |
 | Min searches | 10 | Ensure adequate coverage |
-| No paid tools | — | Research uses web search only — zero cost |
+| Research source cost | Web search is free; Xquik is optional | Xquik uses bounded read credits and reports no USD estimate |
 
 ## Common Pitfalls
 

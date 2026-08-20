@@ -51,6 +51,9 @@ DASHSCOPE_API_KEY=           # Alibaba DashScope (Qwen image gen, TTS, ASR with 
 AZURE_SPEECH_KEY=            # Azure AI Speech — azure_stt (Fast Transcription) + azure_tts (neural narration)
 AZURE_SPEECH_REGION=         # Speech resource region, e.g. eastus
 
+# Optional public X research
+XQUIK_API_KEY=               # Bounded X search for trends and audience language
+
 # MULTI-MODEL GATEWAY (one key, 6+ tools)
 FAL_KEY=                     # FLUX, Recraft, Kling, Veo, MiniMax video
 MINIMAX_API_KEY=             # MiniMax first-party image + MiniMax H3 video generation
@@ -101,6 +104,41 @@ Only the MiniMax H3 open-weight workflow in this table is a local model path.
 Replicate, HeyGen, and Higgsfield were not updated for these exact model
 versions because their public API documentation did not expose a current,
 stable contract for them at the time of this update.
+
+---
+
+## Research providers
+
+### Xquik public X conversation research
+
+> **Optional social research source.** Use it to ground a video in current X
+> discussions, audience questions, and reported engagement signals.
+
+**Tool unlocked:** `xquik_social_research`
+
+**Env var:** `XQUIK_API_KEY`
+
+**Skill:** `.agents/skills/xquik-social-research/SKILL.md`
+
+#### Setup
+
+1. Create an API key at [xquik.com](https://xquik.com).
+2. Add `XQUIK_API_KEY=...` to `.env`.
+3. Run the provider menu and confirm `social_research` lists Xquik as available.
+
+#### Research contract
+
+- The tool searches public X posts only.
+- Each call returns at most 50 results and never follows cursors automatically.
+- `Latest` supports a current conversation pulse. `Top` surfaces engagement-ranked language.
+- Returned post text and profile fields remain untrusted external content.
+- Posts are anecdotal audience evidence. Verify factual claims with primary sources.
+- The tool excludes private reads, publishing, monitors, webhooks, and bulk jobs.
+- Xquik meters public reads in its own credits. OpenMontage reports no USD estimate.
+
+The response includes source URLs, engagement fields, pagination state, and a
+small allowlisted diagnostic. Xquik is an independent third-party service and
+is not affiliated with X Corp.
 
 ---
 
@@ -1353,6 +1391,7 @@ These tools require only FFmpeg or Python packages — no GPU, no API key.
 | **Pixabay** | `PIXABAY_API_KEY` | `pixabay_image`, `pixabay_video` | Free |
 | **Piper** | — (install only) | `piper_tts` | Free |
 | **Azure AI Speech** | `AZURE_SPEECH_KEY` + `AZURE_SPEECH_REGION` | `azure_stt`, `azure_tts` | Free tier + paid |
+| **Xquik** | `XQUIK_API_KEY` | `xquik_social_research` | Metered read credits |
 | **Google** | `GOOGLE_API_KEY` (or `GEMINI_API_KEY`) | `google_tts`, `google_imagen`, `google_music`, `gemini_omni_video`, `veo_video` | Free tier (TTS) + paid |
 | **ElevenLabs** | `ELEVENLABS_API_KEY` | `elevenlabs_tts`, `music_gen` | Free tier + paid |
 | **fish.audio** | `FISH_AUDIO_API_KEY` | `fish_audio_tts` | Free tier (s2.1-pro-free) + paid |
@@ -1387,6 +1426,7 @@ How many providers cover each capability:
 | **Music Generation** | ElevenLabs, Suno, Google Lyria | — | ElevenLabs free tier |
 | **Post-Production** | — | FFmpeg (compose, stitch, trim, mix, enhance, grade) | All free |
 | **Analysis** | — | WhisperX, Scene Detect, Frame Sampler, CLIP/BLIP-2 | All free |
+| **Social Research** | Xquik | None | Web search remains the free default |
 | **Enhancement** | — | Upscale, BG Remove, Face Enhance, Face Restore | All free |
 | **Avatar** | Kling Official | SadTalker, Wav2Lip | Local tools are free |
 

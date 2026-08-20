@@ -249,6 +249,9 @@ PEXELS_API_KEY=your-key        # Free stock footage and images
 PIXABAY_API_KEY=your-key       # Free stock footage and images
 UNSPLASH_ACCESS_KEY=your-key   # Free stock images
 
+# Optional public X conversation research:
+XQUIK_API_KEY=your-key         # Bounded X search for trends and audience language
+
 # Music:
 SUNO_API_KEY=your-key          # Full songs, instrumentals, any genre
 

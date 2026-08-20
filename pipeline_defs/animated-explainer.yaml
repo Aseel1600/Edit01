@@ -65,7 +65,8 @@ stages:
     skill: pipelines/explainer/research-director
     produces:
       - research_brief
-    tools_available: []
+    tools_available:
+      - xquik_social_research
     checkpoint_required: false
     human_approval_default: false
     review_focus:

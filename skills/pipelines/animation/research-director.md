@@ -14,7 +14,7 @@ Animation videos differ from general explainers: the research must cover both **
 |-------|----------|---------|
 | Schema | `schemas/artifacts/research_brief.schema.json` | Artifact validation |
 | User input | Topic, audience hint, animation hint | Research scope |
-| Tools | Web search, web fetch | Research execution |
+| Tools | Web search, web fetch, optional `xquik_social_research` | Research execution |
 
 ## Process
 
@@ -63,6 +63,15 @@ Before searching anything, establish boundaries:
 - **Depth**: Is this a well-known topic or niche?
 
 If the user's request is a single phrase like "make a math animation about eigenvalues," that's fine — you have enough to research. Do NOT ask clarifying questions at this stage.
+
+### Optional X conversation pulse
+
+Use `xquik_social_research` when it is available and public X conversation
+would improve the topic or audience research. Read the
+`xquik-social-research` Layer 3 skill before calling it.
+
+Follow that skill's bounded-search and evidence rules. Do not replace
+mathematical definitions, papers, or official documentation with posts.
 
 ### Step 2: Content Landscape Scan
 
@@ -279,7 +288,7 @@ Validate against `schemas/artifacts/research_brief.schema.json` before submittin
 | Max time on research | 3-5 minutes | Diminishing returns |
 | Max searches | 25 | Prevent rabbit holes |
 | Min searches | 12 | Ensure coverage |
-| No paid tools | — | Research uses web search only — zero cost |
+| Research source cost | Web search is free; Xquik is optional | Xquik uses bounded read credits and reports no USD estimate |
 
 ## Common Pitfalls
 
