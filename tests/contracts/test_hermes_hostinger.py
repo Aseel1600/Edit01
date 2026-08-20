@@ -48,9 +48,26 @@ def test_deploy_report_schema():
                 "base_url": "http://127.0.0.1:1234/v1",
                 "reachable": False,
             },
+            "inference": {
+                "backend": "vllm",
+                "base_url": "http://127.0.0.1:8000/v1",
+                "reachable": False,
+                "phase": "1",
+            },
             "checks": [{"name": "lmstudio", "ok": False, "detail": "server stopped"}],
         },
     )
+
+
+def test_scale_config_files_exist():
+    root = PROJECT_ROOT / "infra" / "hermes-scale"
+    assert (root / "README.md").is_file()
+    assert (root / "env" / "gateway.env.example").is_file()
+    assert (root / "env" / "inference-nvidia.env.example").is_file()
+    assert (root / "env" / "inference-hosted.env.example").is_file()
+    assert (root / "compose" / "docker-compose.vllm.yml").is_file()
+    manifest = load_pipeline("hermes-hostinger")
+    assert manifest["metadata"]["inference"]["planning_session"] == "cse_01PrUJjvaENr4zTMsM1UB4Bb"
 
 
 def test_no_compose_stage():
