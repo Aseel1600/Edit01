@@ -1,0 +1,25 @@
+# Mac studio — optional Cloudflare tunnel to LM Studio (fallback only).
+# Copy to ~/Library/LaunchAgents/com.hermestudios.cloudflared.plist
+# after replacing YOUR_TUNNEL_ID and the cloudflared binary path.
+# Never advertise this URL to API clients.
+
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.hermestudios.cloudflared</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/cloudflared</string>
+    <string>tunnel</string>
+    <string>--config</string>
+    <string>/Users/YOU/Documents/GitHub/OpenMontage/services/hermes-api/cloudflared.yml</string>
+    <string>run</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+</dict>
+</plist>

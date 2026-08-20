@@ -1,0 +1,41 @@
+# AMD Instinct (MI300X-class) — cost-play only. Not Radeon. Not the default.
+# Official ROCm image; keep NVIDIA and AMD in separate pools.
+
+services:
+  vllm:
+    image: ${VLLM_IMAGE:-vllm/vllm-openai-rocm:latest}
+    ipc: host
+    restart: unless-stopped
+    group_add:
+      - video
+    devices:
+      - /dev/kfd
+      - /dev/dri
+    ports:
+      - "${VLLM_PORT:-8000}:8000"
+    env_file:
+      - ../env/inference-amd.env.example
+    environment:
+      HUGGING_FACE_HUB_TOKEN: ${HF_TOKEN:-}
+      VLLM_USE_TRITON_FLASH_ATTN: "0"
+    volumes:
+      - huggingface:/root/.cache/huggingface
+    command:
+      - --model
+      - ${VLLM_MODEL:-Qwen/Qwen3-30B-A3B-Instruct}
+      - --served-model-name
+      - ${VLLM_SERVED_NAME:-qwen3-30b-a3b}
+      - --tensor-parallel-size
+      - ${TENSOR_PARALLEL_SIZE:-1}
+      - --max-model-len
+      - ${MAX_MODEL_LEN:-32768}
+      - --trust-remote-code
+      - --api-key
+      - ${INFERENCE_API_KEY:-changeme}
+    cap_add:
+      - SYS_PTRACE
+    security_opt:
+      - seccomp:unconfined
+
+volumes:
+  huggingface:

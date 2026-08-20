@@ -1,0 +1,19 @@
+# Linux GPU node — vLLM (optional). The Hostinger VPS runs hermes-api, not this unit.
+# Copy to /etc/systemd/system/hermes-vllm.service after compose lives on the node.
+
+[Unit]
+Description=Hermes NVIDIA vLLM
+Requires=docker.service
+After=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=/opt/hermes-scale/compose
+EnvironmentFile=/opt/hermes-scale/env/inference-nvidia.env
+ExecStart=/usr/bin/docker compose -f docker-compose.vllm.yml up -d
+ExecStop=/usr/bin/docker compose -f docker-compose.vllm.yml down
+TimeoutStartSec=0
+
+[Install]
+WantedBy=multi-user.target
