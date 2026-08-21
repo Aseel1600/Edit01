@@ -21,8 +21,12 @@ hostinger_deploy.execute({
   "domain": "<brief domain>"
 })
 ```
-Confirm `docker-compose.yml` and `Dockerfile` exist under
-`services/hermes-api/`.
+This writes any missing gateway files under `services/hermes-api/`
+(Dockerfile, compose, Caddyfile, `.env.example`) and runs
+`docker compose config`. Confirm `compose_valid` is true (or docker is
+absent, in which case files still exist). Docker HEALTHCHECK hits
+`/livez` so a down GPU does not mark the container unhealthy. Production
+TLS is the `tls` compose profile (`COMPOSE_PROFILES=tls` → Caddy 80/443).
 
 ### Step 2: Production env
 Required on the VPS:
@@ -47,9 +51,10 @@ and tell the user the GitHub Action path
 Do not subscribe to a new VPS.
 
 ### Step 4: DNS
-Domain `hermestudios.com` is active: point A/AAAA at the VPS, or CNAME
-if Hostinger documents that for the site. Record the intended URL on
-`deploy_report.backend.url`.
+Do not set records here. The next stage is `dns` (`dns-director.md`).
+Record the intended public URL on `deploy_report.backend.url`
+(`https://hermestudios.com`). Map any `hermestudio.com` shorthand to that
+canonical host.
 
 ### Step 5: Self-evaluate
 | Criterion | Question |

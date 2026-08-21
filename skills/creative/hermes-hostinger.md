@@ -32,7 +32,7 @@ Optional: export_bundle → youtube_upload
 | Need | Tool |
 |------|------|
 | Ping / chat local server | `lmstudio` |
-| Docker + Hostinger VPS | `hostinger_deploy` |
+| Docker + Hostinger VPS + DNS | `hostinger_deploy` |
 | YouTube | `youtube_upload` after `export_bundle` |
 | Local API | `python scripts/hermes_hostinger.py serve` |
 

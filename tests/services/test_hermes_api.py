@@ -39,6 +39,11 @@ def client(monkeypatch):
 
 def test_health_and_landing(client):
     http, _ = client
+    livez = http.get("/livez")
+    assert livez.status_code == 200
+    assert livez.json()["ok"] is True
+    readyz = http.get("/readyz")
+    assert readyz.status_code == 200
     health = http.get("/health")
     assert health.status_code == 200
     body = health.json()
@@ -74,6 +79,10 @@ def test_missing_production_key_refuses_inference(monkeypatch):
     http = TestClient(module.app)
     res = http.post("/v1/chat/completions", json={"messages": [{"role": "user", "content": "hi"}]})
     assert res.status_code == 503
+    livez = http.get("/livez")
+    assert livez.status_code == 200
+    readyz = http.get("/readyz")
+    assert readyz.status_code == 503
 
 
 def test_inference_base_url_preferred(monkeypatch):

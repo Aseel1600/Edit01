@@ -19,7 +19,8 @@ hostinger_deploy.execute({
   "url": "https://<domain>/health"
 })
 ```
-For local-only, hit `http://127.0.0.1:8080/health`.
+For local-only, hit `http://127.0.0.1:8080/health`. Map `hermestudio.com`
+to `https://hermestudios.com`.
 
 ### Step 2: Auth probe
 POST `/v1/chat/completions` **without** a bearer token. Production must

@@ -21,6 +21,7 @@ def test_manifest_loads_and_is_listed():
         "preflight",
         "tunnel",
         "backend",
+        "dns",
         "publish",
         "verify",
     ]
@@ -66,6 +67,8 @@ def test_scale_config_files_exist():
     assert (root / "env" / "inference-nvidia.env.example").is_file()
     assert (root / "env" / "inference-hosted.env.example").is_file()
     assert (root / "compose" / "docker-compose.vllm.yml").is_file()
+    assert (PROJECT_ROOT / "services" / "hermes-api" / "Caddyfile").is_file()
+    assert (PROJECT_ROOT / "services" / "hermes-api" / ".env.example").is_file()
     manifest = load_pipeline("hermes-hostinger")
     assert manifest["metadata"]["inference"]["planning_session"] == "cse_01PrUJjvaENr4zTMsM1UB4Bb"
 

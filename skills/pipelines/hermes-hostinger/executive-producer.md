@@ -23,7 +23,7 @@ Default domain is `hermestudios.com` (active, already resolvable). Do not pay
 for a new Hostinger plan, VPS, or domain without explicit user approval.
 
 ### Step 2: Drive stages in order
-`idea → preflight → tunnel → backend → publish → verify`
+`idea → preflight → tunnel → backend → dns → publish → verify`
 
 Read each stage's `*-director.md` **before** acting. Honor
 `human_approval_default` from the manifest — most stages gate.

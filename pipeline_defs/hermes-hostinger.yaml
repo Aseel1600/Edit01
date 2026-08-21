@@ -3,11 +3,11 @@ version: "1.0"
 description: >-
   Hermes Hostinger pipeline: run local LM Studio inference (OpenAI-compatible
   on :1234), expose it through a public Hermes API on a Hostinger domain
-  (hermestudios.com), and optionally publish finished OpenMontage renders
-  to YouTube. This is an infrastructure + delivery pipeline, not a video
-  composer — video production still goes through hermes-flywheel or a base
-  pipeline. Stage machine: idea -> preflight -> tunnel -> backend -> publish
-  -> verify.
+  (hermestudios.com), point Hostinger DNS A records at the VPS, and optionally
+  publish finished OpenMontage renders to YouTube. This is an infrastructure
+  + delivery pipeline, not a video composer — video production still goes
+  through hermes-flywheel or a base pipeline. Stage machine: idea -> preflight
+  -> tunnel -> backend -> dns -> publish -> verify.
 category: custom
 stability: beta
 default_checkpoint_policy: guided
@@ -24,6 +24,7 @@ required_skills:
   - pipelines/hermes-hostinger/preflight-director
   - pipelines/hermes-hostinger/tunnel-director
   - pipelines/hermes-hostinger/backend-director
+  - pipelines/hermes-hostinger/dns-director
   - pipelines/hermes-hostinger/publish-director
   - pipelines/hermes-hostinger/verify-director
   - creative/hermes-hostinger
@@ -40,6 +41,8 @@ orchestration:
 
 metadata:
   primary_domain: hermestudios.com
+  shorthand_domains:
+    - hermestudio.com
   alias_domains:
     - hermestudios.online
     - hermestudios.org
@@ -124,6 +127,23 @@ stages:
     success_criteria:
       - Hermes API image/compose is ready
       - Production auth (HERMES_API_KEY) is configured or blocked with a reason
+
+  - name: dns
+    skill: pipelines/hermes-hostinger/dns-director
+    required_artifacts_in: [deploy_report]
+    produces: [deploy_report]
+    required_tools: [hostinger_deploy]
+    tools_available: [hostinger_deploy]
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - canonical_domain
+      - apex_a_record
+      - www_a_record
+      - nameservers_remain_hostinger
+    success_criteria:
+      - Canonical domain is hermestudios.com (hermestudio.com mapped, not purchased)
+      - A/@ and A/www point at the VPS IPv4 OR dns.status is blocked with a reason
 
   - name: publish
     skill: pipelines/hermes-hostinger/publish-director

@@ -236,6 +236,29 @@ def index() -> FileResponse:
     return FileResponse(index_path)
 
 
+@app.get("/livez")
+def livez() -> dict[str, Any]:
+    """Process liveness — never probes upstream inference."""
+    return {"ok": True, "service": "hermes-api"}
+
+
+@app.get("/readyz")
+def readyz() -> dict[str, Any]:
+    """Deploy readiness: production refuses to be ready without HERMES_API_KEY."""
+    if _production_locked() and not _api_key():
+        raise HTTPException(
+            status_code=503,
+            detail="HERMES_API_KEY is not configured; refusing public traffic.",
+        )
+    return {
+        "ok": True,
+        "service": "hermes-api",
+        "domain": _public_domain(),
+        "auth_configured": bool(_api_key()),
+        "inference_backend": _inference_backend(),
+    }
+
+
 @app.get("/health")
 def health() -> dict[str, Any]:
     lm = _lm_health()

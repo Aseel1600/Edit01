@@ -31,7 +31,7 @@ Planning session: `cse_01PrUJjvaENr4zTMsM1UB4Bb`.
 | `tools/llm/lmstudio.py` | Local OpenAI-compatible client |
 | `tools/publishers/youtube_upload.py` | YouTube CLI / tool |
 | `tools/publishers/hostinger_deploy.py` | Scaffold + VPS gate |
-| `services/hermes-api/` | FastAPI backend + landing page |
+| `services/hermes-api/` | FastAPI backend + landing page + Caddy TLS profile |
 | `infra/hermes-scale/` | NVIDIA/AMD/hosted/Mac env + vLLM compose |
 | `.github/workflows/deploy-hostinger.yml` | Hostinger VPS deploy |
 
@@ -44,11 +44,19 @@ python scripts/hermes_hostinger.py serve
 
 Start LM Studio's local server on port 1234 first if you want `/v1` to proxy.
 
+Gateway liveness is `GET /livez` (no upstream ping). `GET /health` still
+reports inference reachability. Production TLS:
+
+```bash
+COMPOSE_PROFILES=tls docker compose -f services/hermes-api/docker-compose.yml up -d
+```
+
 ## Deploy to Hostinger
-1. `hermestudios.com` is already active — point its DNS (A/AAAA) at the VPS.
-2. Add GitHub secrets `HOSTINGER_API_KEY`, `HERMES_API_KEY`, `LM_STUDIO_BASE_URL`
+1. Canonical host is `hermestudios.com` (map `hermestudio.com`; do not buy it).
+2. Point DNS A/@ and A/www at the VPS: `python scripts/hermes_hostinger.py dns --apply --ipv4 <VPS_IPV4>`.
+3. Add GitHub secrets `HOSTINGER_API_KEY`, `HERMES_API_KEY`, `LM_STUDIO_BASE_URL`
    and variable `HOSTINGER_VM_ID`.
-3. Run the **Deploy Hermes API to Hostinger** workflow.
+4. Run the **Deploy Hermes API to Hostinger** workflow.
 
 Do not buy a VPS or plan from the agent. Local `serve` is enough to verify.
 

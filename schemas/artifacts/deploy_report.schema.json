@@ -50,6 +50,19 @@
         "auth_configured": { "type": "boolean" }
       }
     },
+    "dns": {
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string" },
+        "canonical_domain": { "type": "string" },
+        "requested_domain": { "type": "string" },
+        "apex_a": { "type": "array", "items": { "type": "string" } },
+        "www_a": { "type": "array", "items": { "type": "string" } },
+        "target_ipv4": { "type": "string" },
+        "applied": { "type": "boolean" },
+        "status": { "type": "string" }
+      }
+    },
     "youtube": {
       "type": "object",
       "properties": {

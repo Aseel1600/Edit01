@@ -127,6 +127,7 @@ hermes-api: ensure-venv
 
 hermes-scale-check:
 	docker compose -f services/hermes-api/docker-compose.yml config >/dev/null
+	COMPOSE_PROFILES=tls docker compose -f services/hermes-api/docker-compose.yml config >/dev/null
 	docker compose --env-file infra/hermes-scale/env/inference-nvidia.env.example -f infra/hermes-scale/compose/docker-compose.vllm.yml config >/dev/null
 	docker compose --env-file infra/hermes-scale/env/inference-amd.env.example -f infra/hermes-scale/compose/docker-compose.vllm-amd.yml config >/dev/null
 

@@ -89,6 +89,16 @@ def cmd_youtube(args: argparse.Namespace) -> int:
     )
 
 
+def cmd_dns(args: argparse.Namespace) -> int:
+    from tools.publishers.hostinger_deploy import HostingerDeploy
+
+    action = "dns_apply" if args.apply else "dns_status"
+    payload: dict = {"action": action, "domain": args.domain}
+    if args.ipv4:
+        payload["ipv4"] = args.ipv4
+    return _dump(HostingerDeploy().execute(payload))
+
+
 def cmd_deploy(args: argparse.Namespace) -> int:
     from tools.publishers.hostinger_deploy import HostingerDeploy
 
@@ -118,6 +128,11 @@ def main() -> int:
     dep.add_argument("--domain", default="hermestudios.com")
     dep.add_argument("--remote", action="store_true")
 
+    dns = sub.add_parser("dns", help="Read or apply Hostinger DNS A records")
+    dns.add_argument("--domain", default="hermestudios.com")
+    dns.add_argument("--apply", action="store_true")
+    dns.add_argument("--ipv4", default="")
+
     args = parser.parse_args()
     if args.cmd == "preflight":
         return cmd_preflight(args)
@@ -127,6 +142,8 @@ def main() -> int:
         return cmd_youtube(args)
     if args.cmd == "deploy":
         return cmd_deploy(args)
+    if args.cmd == "dns":
+        return cmd_dns(args)
     return 1
 
 
