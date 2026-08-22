@@ -239,6 +239,7 @@ This repo is built for agentic operation. If you're an OpenClaw-style agent, her
 # Image + video gateway:
 FAL_KEY=your-key               # FLUX images + Google Veo, Kling, MiniMax video + Recraft images
 ATLASCLOUD_API_KEY=your-key    # Atlas Cloud — Seedream/Nano Banana/GPT Image + Kling/Seedance/Hailuo video
+SIFTQ_API_KEY=your-key         # SiftQ H3 — $0.015/sec 768P, $0.025/sec 2K (~81% below official list)
 
 # Kling official direct API:
 KLING_API_KEY=your-key         # Official Kling video, image, TTS, avatar, lip sync
@@ -506,6 +507,7 @@ Each tool declares which Layer 3 skills it relies on. The agent reads Layer 1 to
 | **Grok Imagine Video** | Cloud API | Strong reference-image video and xAI-native short-form generation |
 | **Higgsfield** | Cloud API | Multi-model orchestrator with Soul ID for character consistency |
 | **MiniMax / H3** | Cloud API | Cost-effective generation, including text, image, and reference-driven H3 workflows |
+| **SiftQ / H3** | Cloud API | Lowest-priced H3 route documented here: $0.015/sec 768P, $0.025/sec 2K (~81% below MiniMax official list); text, image, first/last-frame, and references |
 | **HeyGen** | Cloud API | Multi-model gateway |
 | **WAN 2.1 / 2.2** | Local GPU | Free local variants plus accelerated ComfyUI workflows |
 | **Hunyuan** | Local GPU | Free, high quality |

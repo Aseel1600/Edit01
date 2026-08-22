@@ -24,12 +24,20 @@ class VideoSelector(BaseTool):
 
     # Operations that REQUIRE motion: an image-only tool (image_selector) is not
     # an acceptable last-resort fallback for these, so fallback_tools_for() drops it.
-    MOTION_REQUIRED_OPERATIONS = frozenset({"image_to_video", "reference_to_video", "video_edit"})
+    MOTION_REQUIRED_OPERATIONS = frozenset(
+        {
+            "image_to_video",
+            "first_last_frame_to_video",
+            "reference_to_video",
+            "video_edit",
+        }
+    )
     # Default score gap for the preferred_provider override (see input_schema).
     PREFERRED_PROVIDER_GAP = 0.15
 
     capabilities = [
-        "text_to_video", "image_to_video", "reference_to_video", "video_edit", "stock_video",
+        "text_to_video", "image_to_video", "first_last_frame_to_video",
+        "reference_to_video", "video_edit", "stock_video",
         "provider_selection", "search_video", "download_video",
     ]
     supports = {
@@ -70,12 +78,25 @@ class VideoSelector(BaseTool):
             "allowed_providers": {"type": "array", "items": {"type": "string"}},
             "operation": {
                 "type": "string",
-                "enum": ["text_to_video", "image_to_video", "reference_to_video", "video_edit", "rank"],
+                "enum": [
+                    "text_to_video",
+                    "image_to_video",
+                    "first_last_frame_to_video",
+                    "reference_to_video",
+                    "video_edit",
+                    "rank",
+                ],
                 "default": "text_to_video",
             },
             "target_operation": {
                 "type": "string",
-                "enum": ["text_to_video", "image_to_video", "reference_to_video", "video_edit"],
+                "enum": [
+                    "text_to_video",
+                    "image_to_video",
+                    "first_last_frame_to_video",
+                    "reference_to_video",
+                    "video_edit",
+                ],
                 "description": "Operation to score when operation='rank'.",
                 "default": "text_to_video",
             },
@@ -266,10 +287,11 @@ class VideoSelector(BaseTool):
 
         ``image_selector`` is a legitimate degraded last-resort for a still-image
         brief (text_to_video with no motion requirement), but for motion-required
-        operations (image_to_video / reference_to_video) an image-only fallback
-        silently defeats the brief. Gate it here at the selector layer so a direct
-        caller — with no director skill enforcing the prohibition — still cannot
-        fall back to an image tool when motion was requested.
+        operations (image_to_video / first_last_frame_to_video /
+        reference_to_video) an image-only fallback silently defeats the brief.
+        Gate it here at the selector layer so a direct caller — with no director
+        skill enforcing the prohibition — still cannot fall back to an image tool
+        when motion was requested.
         """
         tools = [t.name for t in self._providers()]
         operation = inputs.get("operation", "text_to_video")
@@ -523,6 +545,13 @@ class VideoSelector(BaseTool):
                 if supports.get("reference_to_video") or "reference_image_urls" in props:
                     matched_operation = True
                     filtered.append(tool)
+                continue
+
+            if operation == "first_last_frame_to_video":
+                if supports.get("first_last_frame_to_video"):
+                    matched_operation = True
+                    if self._operation_ready(tool, "first_last_frame_to_video"):
+                        filtered.append(tool)
                 continue
 
             matched_operation = True

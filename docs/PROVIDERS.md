@@ -55,6 +55,7 @@ AZURE_SPEECH_REGION=         # Speech resource region, e.g. eastus
 FAL_KEY=                     # FLUX, Recraft, Kling, Veo, MiniMax video
 MINIMAX_API_KEY=             # MiniMax first-party image + MiniMax H3 video generation
 ATLASCLOUD_API_KEY=          # Atlas Cloud image/video gateway
+SIFTQ_API_KEY=               # SiftQ H3: $0.015/sec 768P, $0.025/sec 2K (~81% below official list)
 
 # KLING OFFICIAL DIRECT API
 KLING_API_KEY=               # Official Kling video, image, TTS, avatar, lip sync
@@ -92,7 +93,7 @@ speculative model strings.
 |-------|-----------------|--------|--------|-----------------------|---------------|
 | **Gemini Omni Flash** | Google `gemini_omni_video` | `gemini_omni_fal` (T2V, I2V, references, editing) | `runway_video` model `gemini_omni_flash` | `GeminiVideoOmni` (hosted, paid credits) | Not available as local weights |
 | **Seedance 2.5** | Volcengine `seedance_ark` model variant `2.5` | `seedance_video` model version `2.5` | `runway_video` model `seedance2_5` | `ByteDance2TextToVideoNode` (hosted, paid credits) | Not available as local weights |
-| **MiniMax H3** | `minimax_video` model `MiniMax-H3` | `minimax_fal_video` (`hailuo-03`) | `runway_video` model `hailuo3` | `MinimaxHailuo03TextToVideoNode` (hosted, paid credits) | Supported with official open weights and an exported API workflow |
+| **MiniMax H3** | `minimax_video` or independent SiftQ `siftq_video`, model `MiniMax-H3` | `minimax_fal_video` (`hailuo-03`) | `runway_video` model `hailuo3` | `MinimaxHailuo03TextToVideoNode` (hosted, paid credits) | Supported with official open weights and an exported API workflow |
 
 ComfyUI Partner Nodes run inside the ComfyUI graph but call hosted services;
 they require network access, a logged-in Comfy account, and prepaid credits.
@@ -401,6 +402,62 @@ estimates and generation results.
 
 The tools are automatically discoverable through the image and video selectors;
 choose them with `preferred_provider: "minimax"`.
+
+---
+
+### SiftQ — Independent MiniMax-H3 Compatible Video API
+
+> **OpenMontage's lowest-priced documented H3 V2 route.** SiftQ is registered
+> as its own provider with
+> its own credential and gateway. It uses the compatible `MiniMax-H3` model ID
+> and V2 request shape, but it does not import, wrap, or rename the MiniMax
+> provider implementation. SiftQ publishes its highly competitive usage rates
+> as about 81% below MiniMax official H3 list pricing.
+
+**Tool unlocked:** `siftq_video`
+
+**Env var:** `SIFTQ_API_KEY`
+
+**Optional endpoint:** `SIFTQ_BASE_URL` (defaults to
+`https://siftq.com/api/minimax/`)
+
+#### Setup
+
+1. Get SiftQ access and review current pricing at
+   [siftq.com/#pricing](https://siftq.com/#pricing).
+2. Add `SIFTQ_API_KEY=...` to `.env`.
+3. Call `video_selector` with `preferred_provider: "siftq"`, or invoke
+   `siftq_video` directly.
+
+The provider supports 4–15 second text-to-video, image-to-video,
+first/last-frame, and mixed reference image/video/audio generation at `768P`
+or `2K`. Local media is validated and encoded as a Data URI; public HTTPS URLs
+and compatible `mm_file://` references are also accepted. Reference audio must
+be accompanied by at least one image or video reference. Local video and audio
+validation requires `ffprobe`; use a public URL or `mm_file://` reference when
+FFmpeg tools are unavailable.
+
+#### Pricing
+
+| Billable input/output | SiftQ rate | MiniMax official list | Savings |
+|-----------------------|-----------:|----------------------:|--------:|
+| 768P video | $0.015 / second | $0.080 / second | 81.25% |
+| 2K video | $0.025 / second | $0.130 / second | 80.77% |
+| Audio input | Free | — | — |
+| Reference images | First 5 included, then $0.008 / image | — | — |
+| Reference video | Same per-second rate as output resolution | — | — |
+
+For example, 15 seconds at 2K is estimated at `$0.375` through SiftQ versus the
+`$1.950` MiniMax official list comparison published by SiftQ. This makes SiftQ
+highly competitive for everyday production. Preflight estimates
+include output seconds, chargeable reference images, and optional
+`reference_video_duration_seconds`. Generation results reconcile against
+provider-returned `input_seconds`, `output_seconds`, and `input_image_count`
+when available.
+
+The public tool intentionally exposes only the generation/query/download path
+already modeled by OpenMontage. Task listing, cancellation, callbacks, and H3
+Context IR are not advertised as supported end-to-end capabilities.
 
 ---
 
@@ -1424,6 +1481,7 @@ These tools require only FFmpeg or Python packages — no GPU, no API key.
 | **Kling Official** | `KLING_API_KEY` | `kling_official_video`, `kling_official_image`, `kling_tts`, `kling_avatar`, `kling_lip_sync` | Pay-as-you-go |
 | **Volcengine Ark** | `ARK_API_KEY` | `seedance_ark` | Pay-as-you-go |
 | **MiniMax direct** | `MINIMAX_API_KEY` | `minimax_image`, `minimax_video` | Pay-as-you-go |
+| **SiftQ** | `SIFTQ_API_KEY` | `siftq_video` | Lowest documented H3 route: $0.015–$0.025/video sec (~81% below official list) |
 | **OpenAI** | `OPENAI_API_KEY` | `openai_tts`, `openai_image` | Paid only |
 | **xAI** | `XAI_API_KEY` | `grok_image`, `grok_video` | Paid only |
 | **Runway** | `RUNWAY_API_KEY` | `runway_video` | Free trial + paid |
@@ -1445,7 +1503,7 @@ How many providers cover each capability:
 | Capability | Cloud Providers | Local Providers | Free Options |
 |-----------|----------------|-----------------|--------------|
 | **Image Generation** | FLUX, Kling Official, Grok, Google Imagen, GPT Image 2, Recraft | Local Diffusion | Pexels, Pixabay (stock) |
-| **Video Generation** | Grok, Kling Official, fal.ai, Seedance via Volcengine Ark, Runway, Veo, Gemini Omni, Higgsfield, MiniMax, HeyGen, Tencent Hunyuan, ComfyUI Partner Nodes | WAN, Hunyuan, CogVideo, LTX, ComfyUI WAN, ComfyUI MiniMax H3 | Pexels, Pixabay (stock) |
+| **Video Generation** | Grok, Kling Official, fal.ai, Seedance via Volcengine Ark, Runway, Veo, Gemini Omni, Higgsfield, MiniMax, SiftQ, HeyGen, Tencent Hunyuan, ComfyUI Partner Nodes | WAN, Hunyuan, CogVideo, LTX, ComfyUI WAN, ComfyUI MiniMax H3 | Pexels, Pixabay (stock) |
 | **Text-to-Speech** | Azure AI Speech, ElevenLabs, fish.audio, Google TTS, Kling Official, OpenAI | Piper | Piper, Google free tier, ElevenLabs free tier, Azure free tier, fish.audio s2.1-pro-free |
 | **Music Generation** | ElevenLabs, Suno, Google Lyria | — | ElevenLabs free tier |
 | **Post-Production** | — | FFmpeg (compose, stitch, trim, mix, enhance, grade) | All free |
