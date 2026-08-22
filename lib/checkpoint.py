@@ -20,7 +20,7 @@ from schemas.artifacts import ARTIFACT_NAMES, validate_artifact
 ALL_KNOWN_STAGES = frozenset([
     "research", "proposal", "idea", "script", "scene_plan",
     "assets", "edit", "compose", "publish",
-    "preflight", "tunnel", "backend", "verify",
+    "preflight", "tunnel", "backend", "dns", "verify",
     "render", "score", "breed",
 ])
 
@@ -42,6 +42,7 @@ CANONICAL_STAGE_ARTIFACTS = {
     "preflight": "deploy_report",
     "tunnel": "deploy_report",
     "backend": "deploy_report",
+    "dns": "deploy_report",
     "verify": "deploy_report",
 }
 

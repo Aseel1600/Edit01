@@ -13,6 +13,7 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request as UrlRequest, urlopen
 
 from fastapi import FastAPI, Header, HTTPException, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -101,7 +102,19 @@ async def _lifespan(_app: FastAPI) -> AsyncIterator[None]:
     yield
 
 
-app = FastAPI(title="Hermes Studios", version="1.1.0", docs_url="/docs", lifespan=_lifespan)
+app = FastAPI(title="Hermes Studios", version="1.2.0", docs_url="/docs", lifespan=_lifespan)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://hermestudios.com",
+        "https://www.hermestudios.com",
+        "https://hermestudios.org",
+        "http://127.0.0.1:8080",
+        "http://localhost:8080",
+    ],
+    allow_methods=["GET", "POST", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+)
 if STATIC_DIR.is_dir():
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
@@ -289,23 +302,25 @@ async def list_models(authorization: str | None = Header(default=None)) -> JSONR
     return JSONResponse(content=body, status_code=code)
 
 
-@app.post("/v1/chat/completions")
-async def chat_completions(
+async def _proxy_json(
     request: Request,
-    authorization: str | None = Header(default=None),
-):
+    authorization: str | None,
+    upstream_path: str,
+    *,
+    stream: bool = False,
+) -> JSONResponse | StreamingResponse:
     _require_auth(authorization)
     payload = await request.json()
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="JSON object required")
     if not payload.get("model"):
         payload["model"] = _default_model()
-    if payload.get("stream"):
+    if stream or payload.get("stream"):
         sem = await _acquire_inflight()
 
         def stream_and_release():
             try:
-                yield from _upstream_stream("/chat/completions", payload, 180)
+                yield from _upstream_stream(upstream_path, payload, 180)
             except URLError as exc:
                 yield json.dumps(
                     {"error": f"Inference unreachable at {_inference_base()}: {exc.reason}"}
@@ -315,8 +330,32 @@ async def chat_completions(
 
         return StreamingResponse(stream_and_release(), media_type="text/event-stream")
     async with _inflight_slot():
-        code, body = await asyncio.to_thread(_upstream, "POST", "/chat/completions", payload, 180)
+        code, body = await asyncio.to_thread(_upstream, "POST", upstream_path, payload, 180)
     return JSONResponse(content=body, status_code=code)
+
+
+@app.post("/v1/chat/completions")
+async def chat_completions(
+    request: Request,
+    authorization: str | None = Header(default=None),
+):
+    return await _proxy_json(request, authorization, "/chat/completions")
+
+
+@app.post("/v1/completions")
+async def completions(
+    request: Request,
+    authorization: str | None = Header(default=None),
+):
+    return await _proxy_json(request, authorization, "/completions")
+
+
+@app.post("/v1/embeddings")
+async def embeddings(
+    request: Request,
+    authorization: str | None = Header(default=None),
+):
+    return await _proxy_json(request, authorization, "/embeddings")
 
 
 @app.post("/api/youtube/upload")
