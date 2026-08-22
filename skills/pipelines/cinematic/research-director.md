@@ -14,7 +14,7 @@ Unlike explainer research (which focuses on facts, data, and content gaps), cine
 |-------|----------|---------|
 | Schema | `schemas/artifacts/research_brief.schema.json` | Artifact validation |
 | User input | Subject, mood hints, footage situation, references | Research scope |
-| Tools | Web search, web fetch | Research execution |
+| Tools | Web search, web fetch, optional `xquik_social_research` | Research execution |
 
 ## Process
 
@@ -62,6 +62,15 @@ Before searching, extract from the user's request:
 - **Mood hints**: Any emotional direction given? ("dark", "epic", "intimate", "raw", "hopeful")
 - **Platform**: Where will this live?
 - **Duration hint**: Short (15-30s), medium (30-90s), long (90s+)?
+
+### Optional X conversation pulse
+
+Use `xquik_social_research` when it is available and public X conversation
+would improve the subject, mood, or distribution research. Read the
+`xquik-social-research` Layer 3 skill before calling it.
+
+Follow that skill's bounded-search and evidence rules. Do not replace
+cinematography references or primary sources with social reactions.
 
 ### Step 2: Visual Reference Mining
 
@@ -196,7 +205,7 @@ Validate against `schemas/artifacts/research_brief.schema.json` before submittin
 | Max time on research | 3-5 minutes | Research is valuable but has diminishing returns |
 | Max searches | 20 | Prevent infinite rabbit holes |
 | Min searches | 8 | Ensure adequate coverage |
-| No paid tools | — | Research uses web search only — zero cost |
+| Research source cost | Web search is free; Xquik is optional | Xquik uses bounded read credits and reports no USD estimate |
 
 ## Common Pitfalls
 
