@@ -132,7 +132,12 @@ class GptImage2Fal(BaseTool):
         cpu_cores=1, ram_mb=512, vram_mb=0, disk_mb=100, network_required=True
     )
     retry_policy = RetryPolicy(max_retries=2, retryable_errors=["rate_limit", "timeout"])
-    idempotency_key_fields = ["prompt", "operation", "width", "height", "quality"]
+    idempotency_key_fields = [
+        "prompt", "operation", "width", "height", "quality",
+        "num_images", "output_format",
+        "image_url", "image_path", "image_urls", "image_paths",
+        "mask_url", "mask_path",
+    ]
     side_effects = ["writes image file(s) to output_path", "calls fal.ai API"]
     user_visible_verification = ["Inspect generated image for relevance, quality, and edit fidelity"]
 

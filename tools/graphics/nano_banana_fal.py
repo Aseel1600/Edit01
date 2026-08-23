@@ -138,7 +138,12 @@ class NanoBananaFal(BaseTool):
         cpu_cores=1, ram_mb=512, vram_mb=0, disk_mb=200, network_required=True
     )
     retry_policy = RetryPolicy(max_retries=2, retryable_errors=["rate_limit", "timeout"])
-    idempotency_key_fields = ["prompt", "model", "operation", "aspect_ratio", "resolution"]
+    idempotency_key_fields = [
+        "prompt", "model", "operation", "aspect_ratio", "resolution",
+        "num_images", "seed", "output_format", "enable_web_search", "system_prompt",
+        "image_url", "image_path", "image_urls", "image_paths",
+        "extra_params",
+    ]
     side_effects = ["writes image file(s) to output_path", "calls fal.ai API"]
     user_visible_verification = ["Inspect generated/edited images for prompt fidelity and edit consistency"]
 
