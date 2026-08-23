@@ -112,3 +112,46 @@ def test_dns_apply_puts_apex_and_www(monkeypatch):
     assert result.data["applied"] is True
     assert result.data["target_ipv4"] == "203.0.113.10"
     assert result.data["canonical_domain"] == "hermestudios.com"
+
+
+def test_deploy_posts_docker_manager(monkeypatch):
+    calls: list[dict] = []
+
+    def fake(self, method, path, payload=None):
+        calls.append({"method": method, "path": path, "payload": payload})
+        return {"ok": True, "status_code": 200, "body": {"id": 1, "status": "pending"}}
+
+    monkeypatch.setenv("HERMES_API_KEY", "secret-test-key")
+    monkeypatch.setenv("HOSTINGER_API_KEY", "fake")
+    monkeypatch.setenv("HOSTINGER_VM_ID", "1794045")
+    monkeypatch.setattr(HostingerDeploy, "_hostinger_request", fake)
+    result = HostingerDeploy().execute({"action": "deploy", "domain": "hermestudios.com"})
+    assert result.success is True
+    assert result.data["deployed"] is True
+    post = next(call for call in calls if call["method"] == "POST")
+    assert post["path"] == "/api/vps/v1/virtual-machines/1794045/docker"
+    assert post["payload"]["project_name"] == "hermes-api"
+    assert "hermes-api:" in post["payload"]["content"]
+    assert "HERMES_API_KEY=secret-test-key" in post["payload"]["environment"]
+
+
+def test_deploy_reports_docker_manager_unsupported(monkeypatch):
+    def fake(self, method, path, payload=None):
+        return {
+            "ok": False,
+            "status_code": 400,
+            "error": "Hostinger API 400",
+            "body": {
+                "message": "[VPS:2044] Currently installed operating system does not support Docker Manager."
+            },
+        }
+
+    monkeypatch.setenv("HERMES_API_KEY", "secret-test-key")
+    monkeypatch.setenv("HOSTINGER_API_KEY", "fake")
+    monkeypatch.setenv("HOSTINGER_VM_ID", "1794045")
+    monkeypatch.setattr(HostingerDeploy, "_hostinger_request", fake)
+    result = HostingerDeploy().execute({"action": "deploy", "domain": "hermestudios.com"})
+    assert result.success is False
+    assert result.data["deployed"] is False
+    assert "VPS:2044" in (result.error or "")
+    assert "HERMES_DEPLOY_METHOD=ssh" in (result.error or "")

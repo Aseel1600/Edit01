@@ -294,64 +294,126 @@ class HostingerDeploy(BaseTool):
             )
 
         if action == "deploy":
-            api_key = os.environ.get("HOSTINGER_API_KEY")
-            vm_id = os.environ.get("HOSTINGER_VM_ID")
-            hermes_key = os.environ.get("HERMES_API_KEY") or ""
-            if not hermes_key.strip():
-                return ToolResult(
-                    success=False,
-                    error=(
-                        "HERMES_API_KEY is required to mark a production deploy. "
-                        "Scaffold and serve_local remain available."
-                    ),
-                    data={
-                        "domain": domain,
-                        "deployed": False,
-                        "auth_configured": False,
-                        "workflow": ".github/workflows/deploy-hostinger.yml",
-                    },
-                    duration_seconds=time.monotonic() - started,
-                )
-            if not api_key or not vm_id:
-                return ToolResult(
-                    success=False,
-                    error=(
-                        "HOSTINGER_API_KEY and HOSTINGER_VM_ID are required for remote deploy. "
-                        "Use serve_local or the GitHub Action instead. Do not buy a VPS without approval."
-                    ),
-                    data={
-                        "domain": domain,
-                        "deployed": False,
-                        "auth_configured": True,
-                        "workflow": ".github/workflows/deploy-hostinger.yml",
-                        "compose_path": str(SERVICE_DIR / "docker-compose.yml"),
-                    },
-                    duration_seconds=time.monotonic() - started,
-                )
-            if shutil.which("docker") is None:
-                return ToolResult(success=False, error="docker CLI not found")
-            check = self._compose_config()
-            if not check["ok"]:
-                return ToolResult(
-                    success=False,
-                    error=check["error"],
-                    data={"compose_valid": False, "deployed": False},
-                    duration_seconds=time.monotonic() - started,
-                )
+            payload = self._deploy_remote(domain)
             return ToolResult(
-                success=True,
-                data={
-                    "domain": domain,
-                    "vm_id_set": True,
-                    "compose_valid": True,
-                    "auth_configured": True,
-                    "deployed": False,
-                    "next": "Push to main or run workflow_dispatch on deploy-hostinger.yml",
-                },
+                success=bool(payload.get("ok")),
+                data=payload,
+                error=None if payload.get("ok") else payload.get("error"),
                 duration_seconds=time.monotonic() - started,
             )
 
         return ToolResult(success=False, error=f"Unknown action: {action}")
+
+    def _deploy_remote(self, domain: str) -> dict[str, Any]:
+        hermes_key = os.environ.get("HERMES_API_KEY") or ""
+        if not hermes_key.strip():
+            return {
+                "ok": False,
+                "domain": domain,
+                "deployed": False,
+                "auth_configured": False,
+                "workflow": ".github/workflows/deploy-hostinger.yml",
+                "error": (
+                    "HERMES_API_KEY is required to mark a production deploy. "
+                    "Scaffold and serve_local remain available."
+                ),
+            }
+        api_key = os.environ.get("HOSTINGER_API_KEY")
+        vm_id = (os.environ.get("HOSTINGER_VM_ID") or "").strip()
+        if not api_key or not vm_id:
+            return {
+                "ok": False,
+                "domain": domain,
+                "deployed": False,
+                "auth_configured": True,
+                "workflow": ".github/workflows/deploy-hostinger.yml",
+                "compose_path": str(SERVICE_DIR / "docker-compose.yml"),
+                "error": (
+                    "HOSTINGER_API_KEY and HOSTINGER_VM_ID are required for remote deploy. "
+                    "Use serve_local or the GitHub Action instead. Do not buy a VPS without approval."
+                ),
+            }
+        hosted = SERVICE_DIR / "docker-compose.hosted.yml"
+        compose_path = hosted if hosted.is_file() else SERVICE_DIR / "docker-compose.yml"
+        compose_text = compose_path.read_text(encoding="utf-8")
+        env_lines = [
+            f"PUBLIC_DOMAIN={domain}",
+            "HERMES_REQUIRE_AUTH=true",
+            f"HERMES_API_KEY={hermes_key}",
+            f"HERMES_MAX_INFLIGHT={os.environ.get('HERMES_MAX_INFLIGHT') or '32'}",
+            "HERMES_INFLIGHT_WAIT_SECONDS=5",
+            f"CADDY_EMAIL={os.environ.get('CADDY_EMAIL') or 'ops@hermestudios.com'}",
+        ]
+        for key in (
+            "INFERENCE_BACKEND",
+            "INFERENCE_BASE_URL",
+            "INFERENCE_API_KEY",
+            "INFERENCE_MODEL",
+            "LM_STUDIO_BASE_URL",
+            "LM_STUDIO_API_KEY",
+            "LM_STUDIO_MODEL",
+        ):
+            value = os.environ.get(key)
+            if value:
+                env_lines.append(f"{key}={value}")
+        payload = {
+            "project_name": "hermes-api",
+            "content": compose_text,
+            "environment": "\n".join(env_lines),
+        }
+        response = self._hostinger_request(
+            "POST",
+            f"/api/vps/v1/virtual-machines/{vm_id}/docker",
+            payload,
+        )
+        ok = bool(response.get("ok"))
+        body = response.get("body")
+        message = ""
+        if isinstance(body, dict):
+            message = str(body.get("message") or "")
+        docker_manager_unsupported = "VPS:2044" in message or "does not support Docker Manager" in message
+        if docker_manager_unsupported:
+            return {
+                "ok": False,
+                "domain": domain,
+                "vm_id_set": True,
+                "auth_configured": True,
+                "deployed": False,
+                "compose_path": str(compose_path),
+                "compose_profile": "ssh",
+                "status_code": response.get("status_code"),
+                "error": (
+                    "Ubuntu VPS does not support Hostinger Docker Manager (VPS:2044). "
+                    "Use SSH compose: set GitHub variable HERMES_DEPLOY_METHOD=ssh, "
+                    "variable HOSTINGER_VPS_IP, and secret HOSTINGER_SSH_KEY. "
+                    "Install that public key on the VM via hPanel VPS → Settings → SSH keys "
+                    "or the browser console. API public-keys attach does not inject "
+                    "authorized_keys on a running Ubuntu 24.04 image."
+                ),
+                "action": body,
+                "workflow": ".github/workflows/deploy-hostinger.yml",
+                "next": (
+                    "Add the deploy public key in hPanel, then run the SSH job. "
+                    "Do not buy a new VPS."
+                ),
+            }
+        return {
+            "ok": ok,
+            "domain": domain,
+            "vm_id_set": True,
+            "auth_configured": True,
+            "deployed": ok,
+            "compose_path": str(compose_path),
+            "compose_profile": "hosted" if compose_path.name.endswith(".hosted.yml") else "local",
+            "status_code": response.get("status_code"),
+            "error": None if ok else (response.get("error") or "Hostinger Docker Manager deploy failed"),
+            "action": None if ok else body,
+            "next": (
+                f"https://{domain}/livez"
+                if ok
+                else "Inspect Hostinger Docker Manager; do not buy a new VPS."
+            ),
+        }
 
     def _scaffold(self, domain: str) -> dict[str, Any]:
         SERVICE_DIR.mkdir(parents=True, exist_ok=True)

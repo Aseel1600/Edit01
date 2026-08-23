@@ -1,0 +1,90 @@
+# Self-contained stack for Hostinger Docker Manager (no build context / SSH).
+# Pulls the gateway from the public GitHub tarball, then Caddy terminates TLS.
+
+services:
+  hermes-api:
+    image: python:3.11-slim
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-hermestudios.com}
+      LM_STUDIO_BASE_URL: ${LM_STUDIO_BASE_URL:-}
+      LM_STUDIO_API_KEY: ${LM_STUDIO_API_KEY:-lm-studio}
+      LM_STUDIO_MODEL: ${LM_STUDIO_MODEL:-}
+      INFERENCE_BACKEND: ${INFERENCE_BACKEND:-}
+      INFERENCE_BASE_URL: ${INFERENCE_BASE_URL:-}
+      INFERENCE_API_KEY: ${INFERENCE_API_KEY:-}
+      INFERENCE_MODEL: ${INFERENCE_MODEL:-}
+      HERMES_API_KEY: ${HERMES_API_KEY:-}
+      HERMES_REQUIRE_AUTH: ${HERMES_REQUIRE_AUTH:-true}
+      HERMES_MAX_INFLIGHT: ${HERMES_MAX_INFLIGHT:-32}
+      HERMES_INFLIGHT_WAIT_SECONDS: ${HERMES_INFLIGHT_WAIT_SECONDS:-5}
+      PYTHONUNBUFFERED: "1"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from urllib.request import urlopen; urlopen('http://127.0.0.1:8080/livez', timeout=2)",
+        ]
+      interval: 20s
+      timeout: 5s
+      retries: 8
+      start_period: 90s
+    restart: unless-stopped
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -eu
+        apt-get update
+        apt-get install -y --no-install-recommends curl ca-certificates
+        rm -rf /var/lib/apt/lists/*
+        curl -fsSL https://codeload.github.com/calesthio/OpenMontage/tar.gz/refs/heads/main -o /tmp/om.tgz
+        mkdir -p /tmp/om /app
+        tar -xzf /tmp/om.tgz -C /tmp/om --strip-components=1
+        cp -a /tmp/om/services/hermes-api/. /app/
+        cd /app
+        pip install --no-cache-dir -r requirements.txt
+        exec uvicorn app:app --host 0.0.0.0 --port 8080
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      CADDY_EMAIL: ${CADDY_EMAIL:-ops@hermestudios.com}
+    volumes:
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      hermes-api:
+        condition: service_healthy
+    restart: unless-stopped
+    command:
+      - /bin/sh
+      - -c
+      - |
+        cat > /etc/caddy/Caddyfile <<'EOF'
+        {
+          email {$CADDY_EMAIL}
+        }
+
+        hermestudios.com, www.hermestudios.com {
+          encode gzip
+          reverse_proxy hermes-api:8080
+        }
+
+        hermestudios.org {
+          encode gzip
+          reverse_proxy hermes-api:8080
+        }
+        EOF
+        exec caddy run --config /etc/caddy/Caddyfile --adapter caddyfile
+
+volumes:
+  caddy_data:
+  caddy_config:
