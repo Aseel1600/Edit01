@@ -26,8 +26,10 @@ type CaptionOverlayProps = {
   highlightColor?: string;
   backgroundColor?: string;
   fontFamily?: string;
-  // Separator rendered between words. Space-delimited languages want the
-  // default " "; CJK languages (no inter-word spacing) should pass "".
+  // Separator rendered between words. Left unset, it is decided per adjacent
+  // pair by `separatorBetween`, which is what CJK captions need — a fixed
+  // string cannot be right for both sides of a script boundary. Set it to
+  // force one separator everywhere.
   wordSeparator?: string;
 };
 
@@ -36,6 +38,33 @@ interface CaptionPage {
   startMs: number;
   endMs: number;
 }
+
+// Scripts written without inter-word spaces: Han ideographs (including the
+// Extension blocks that carry rarer Traditional forms), kana, Hangul, and the
+// CJK punctuation / fullwidth blocks — the latter matter because a closing
+// mark like "。" must stay glued to the word it follows.
+const CJK_CHARACTER =
+  /^(?:[\u3000-\u303F\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uAC00-\uD7AF\uF900-\uFAFF\uFF00-\uFFEF]|[\u{20000}-\u{2FA1F}])$/u;
+
+// Array.from splits by code point, so an Extension B ideograph is compared as
+// one character rather than as half of a surrogate pair.
+const firstCharacter = (text: string): string => Array.from(text)[0] ?? "";
+const lastCharacter = (text: string): string => {
+  const characters = Array.from(text);
+  return characters[characters.length - 1] ?? "";
+};
+
+/**
+ * Separator to render between two caption tokens when none was configured.
+ *
+ * The space is dropped only when *both* sides are CJK, so a script boundary
+ * keeps the space that separates the two writing systems — "使用 OpenMontage
+ * 製作的影片" reads correctly, and space-delimited text is unchanged.
+ */
+export const separatorBetween = (left: string, right: string): string =>
+  CJK_CHARACTER.test(lastCharacter(left)) && CJK_CHARACTER.test(firstCharacter(right))
+    ? ""
+    : " ";
 
 function buildPages(words: WordCaption[], wordsPerPage: number): CaptionPage[] {
   const pages: CaptionPage[] = [];
@@ -64,7 +93,7 @@ const PageRenderer: React.FC<{
   highlightColor: string;
   backgroundColor: string;
   fontFamily: string;
-  wordSeparator: string;
+  wordSeparator?: string;
 }> = ({ page, fontSize, color, highlightColor, backgroundColor, fontFamily, wordSeparator }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -109,6 +138,12 @@ const PageRenderer: React.FC<{
           {page.words.map((w, i) => {
             const isActive = w.startMs <= currentMs && w.endMs > currentMs;
             const isPast = w.endMs <= currentMs;
+            const next = page.words[i + 1];
+            // Computed here rather than inline so no JSX line break can
+            // reintroduce whitespace a CJK caption must not have.
+            const separator = next
+              ? wordSeparator ?? separatorBetween(w.word, next.word)
+              : "";
             return (
               <span
                 key={`${w.startMs}-${i}`}
@@ -125,7 +160,7 @@ const PageRenderer: React.FC<{
                     : "0 2px 4px rgba(0,0,0,0.5)",
                 }}
               >
-                {w.word}{i < page.words.length - 1 ? wordSeparator : ""}
+                {w.word}{separator}
               </span>
             );
           })}
@@ -143,7 +178,7 @@ export const CaptionOverlay: React.FC<CaptionOverlayProps> = ({
   highlightColor = "#22D3EE",
   backgroundColor = "rgba(15, 23, 42, 0.75)",
   fontFamily = "Space Grotesk, Inter, system-ui, sans-serif",
-  wordSeparator = " ",
+  wordSeparator,
 }) => {
   const { fps } = useVideoConfig();
   const pages = buildPages(words, wordsPerPage);
