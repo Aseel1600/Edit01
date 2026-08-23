@@ -76,6 +76,19 @@ _CREDITS_PBR = 10.0
 _CREDITS_FACE_COUNT = 10.0
 _CREDITS_RESULT_FORMAT = 5.0
 
+# Multi-view images share one documented 8MB encoded limit, counted
+# separately from the front-view image's own 8MB limit. Source:
+# https://cloud.tencent.com/document/api/1804/123447
+_MAX_ENCODED_MULTI_VIEW_TOTAL = 8 * 1024 * 1024
+
+# ZIP package extraction bounds (defense against zip bombs and malformed
+# packages). The API's mesh packages are obj + mtl + a few textures,
+# typically under 50MB across fewer than 30 members, so these caps are
+# generous while still bounding disk usage.
+_MAX_ZIP_MEMBERS = 200
+_MAX_ZIP_EXPANDED_BYTES = 100 * 1024 * 1024
+_MAX_ZIP_RATIO = 100
+
 
 class HunyuanCloud3D(BaseTool):
     """Tencent Hunyuan 3D asset generation via TokenHub API."""
@@ -315,22 +328,48 @@ class HunyuanCloud3D(BaseTool):
         return result
 
     def _validate(self, inputs: dict[str, Any]) -> str | None:
+        # check output_path
         if not inputs.get("output_path"):
             return "output_path is required for hunyuan_cloud_3d generation"
+
+        # check generate type
+        generate_type = inputs.get("generate_type", "Normal")
+        if generate_type not in _GENERATE_TYPES_31:
+            return (
+                f"generate_type {generate_type!r} is not available, "
+                f"only supports: {', '.join(_GENERATE_TYPES_31)}"
+            )
+
+        # check model
+        if inputs.get("model") and inputs.get("model") != _MODEL:
+            return f"only model {_MODEL!r} is supported, got {inputs['model']!r}"
+
+        # check operation
         operation = str(inputs.get("operation") or "")
         if operation not in {"text_to_3d", "image_to_3d"}:
             return f"Unknown operation {operation!r}"
+
+        # text_to_3d only needs prompt
         if operation == "text_to_3d" and not inputs.get("prompt"):
             return "prompt is required for text_to_3d"
-        if operation != "text_to_3d" and inputs.get("prompt"):
+
+        # text_to_3d rejects image and multi-view inputs
+        if operation == "text_to_3d" and (inputs.get("image_url")
+                                          or inputs.get("image_path")
+                                          or inputs.get("multi_view_images")):
+            return "reject image and multi-view inputs for text_to_3d operation"
+
+        # image_to_3d rejects prompt because Prompt and ImageBase64/ImageUrl are mutually exclusive
+        if operation == "image_to_3d" and inputs.get("prompt"):
             return "prompt cannot be combined with image inputs"
+
+        # image_to_3d needs image_url or image_path but not all
         if operation == "image_to_3d":
             if not (inputs.get("image_url") or inputs.get("image_path")):
                 return "image_to_3d requires image_url or image_path"
             if inputs.get("image_url") and inputs.get("image_path"):
                 return "provide only one of image_url or image_path, not both"
-        if operation != "image_to_3d" and inputs.get("multi_view_images"):
-            return "multi_view_images is only valid with image_to_3d"
+        
         for item in inputs.get("multi_view_images") or []:
             view = item.get("view")
             if view not in _VIEW_TYPES:
@@ -339,14 +378,6 @@ class HunyuanCloud3D(BaseTool):
                 return f"view {view}: provide only one of image_url or image_path"
             if not (item.get("image_url") or item.get("image_path")):
                 return f"view {view}: image_url or image_path is required"
-        generate_type = inputs.get("generate_type", "Normal")
-        if generate_type not in _GENERATE_TYPES_31:
-            return (
-                f"generate_type {generate_type!r} is not available on "
-                f"{_MODEL} (LowPoly and Sketch are 3.0-only)"
-            )
-        if inputs.get("model") and inputs.get("model") != _MODEL:
-            return f"only model {_MODEL!r} is supported, got {inputs['model']!r}"
         return None
 
     # ------------------------------------------------------------------
@@ -390,17 +421,39 @@ class HunyuanCloud3D(BaseTool):
             # textures) instead of a bare mesh. Detect by magic bytes rather
             # than the URL suffix, which is unreliable here.
             if content[:2] == b"PK":
-                package_dir = destination.parent / f"{destination.stem}-pkg"
-                if package_dir.exists():
-                    package_dir = destination.parent / f"{destination.stem}-pkg-{len(packages) + 1:02d}"
-                package_dir.mkdir(parents=True, exist_ok=True)
                 with zipfile.ZipFile(io.BytesIO(content)) as archive:
+                    # Pre-extraction zip-bomb bounds: reject oversized member
+                    # counts, expanded sizes, and compression ratios before
+                    # anything touches the disk. Capping the per-member ratio
+                    # also caps the aggregate ratio.
+                    infos = archive.infolist()
+                    if len(infos) > _MAX_ZIP_MEMBERS:
+                        raise RuntimeError(
+                            f"ZIP package has {len(infos)} members (max {_MAX_ZIP_MEMBERS})"
+                        )
+                    expanded = sum(info.file_size for info in infos)
+                    if expanded > _MAX_ZIP_EXPANDED_BYTES:
+                        raise RuntimeError(
+                            f"ZIP package expands to {expanded} bytes "
+                            f"(max {_MAX_ZIP_EXPANDED_BYTES})"
+                        )
+                    for info in infos:
+                        ratio = info.file_size / max(info.compress_size, 1)
+                        if ratio > _MAX_ZIP_RATIO:
+                            raise RuntimeError(
+                                f"ZIP member {info.filename!r} compression ratio "
+                                f"{ratio:.0f}:1 exceeds the {_MAX_ZIP_RATIO}:1 limit"
+                            )
                     members = [
                         name for name in archive.namelist()
                         if name and not name.endswith("/")
                         and ".." not in Path(name).parts
                         and not Path(name).is_absolute()
                     ]
+                    package_dir = destination.parent / f"{destination.stem}-pkg"
+                    if package_dir.exists():
+                        package_dir = destination.parent / f"{destination.stem}-pkg-{len(packages) + 1:02d}"
+                    package_dir.mkdir(parents=True, exist_ok=True)
                     archive.extractall(package_dir, members=members)
                 for member in members:
                     extracted = package_dir / member
@@ -468,17 +521,24 @@ class HunyuanCloud3D(BaseTool):
             payload["image_base64"] = self._encode_image(inputs["image_path"])
         multi_view = inputs.get("multi_view_images")
         if multi_view:
-            payload["multi_view_images"] = [
-                {
-                    "view_type": item["view"],
-                    **(
-                        {"view_image_url": item["image_url"]}
-                        if item.get("image_url")
-                        else {"view_image_base64": self._encode_image(item["image_path"])}
-                    ),
-                }
-                for item in multi_view
-            ]
+            views: list[dict[str, Any]] = []
+            encoded_total = 0
+            for item in multi_view:
+                if item.get("image_url"):
+                    views.append({"view_type": item["view"], "view_image_url": item["image_url"]})
+                else:
+                    encoded = self._encode_image(item["image_path"])
+                    encoded_total += len(encoded)
+                    views.append({"view_type": item["view"], "view_image_base64": encoded})
+            # All multi-view images combined share one 8MB encoded budget,
+            # counted separately from the front view (which has its own 8MB
+            # limit enforced per file in _encode_image).
+            if encoded_total > _MAX_ENCODED_MULTI_VIEW_TOTAL:
+                raise ValueError(
+                    f"Combined base64-encoded multi-view image size "
+                    f"({encoded_total} bytes) exceeds the 8MB limit"
+                )
+            payload["multi_view_images"] = views
         if "enable_pbr" in inputs:
             payload["enable_pbr"] = bool(inputs["enable_pbr"])
         if inputs.get("face_count") is not None:

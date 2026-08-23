@@ -209,6 +209,41 @@ def test_hunyuan_cloud_3d_input_validation(monkeypatch):
            "multi_view_images": [{"view": "left", "image_url": "https://x/l.png"}]})  # multi-view not for text
 
 
+def test_hunyuan_cloud_3d_text_to_3d_rejects_image_inputs_before_request(monkeypatch, tmp_path):
+    # Regression: the HY-3D pro API treats Prompt and ImageBase64/ImageUrl as
+    # mutually exclusive. Validation must reject image inputs for text_to_3d
+    # before any request is made — execute() failing on its own is not enough
+    # (a blocked network attempt would also fail).
+    monkeypatch.setenv("TENCENT_TOKENHUB_API_KEY", "test-key")
+    image = tmp_path / "concept.png"
+    image.write_bytes(b"png-bytes")
+    requests_seen = []
+    monkeypatch.setattr(
+        hunyuan_cloud_3d.requests, "post",
+        lambda *args, **kwargs: requests_seen.append("post"),
+    )
+    monkeypatch.setattr(
+        hunyuan_cloud_3d.requests, "get",
+        lambda *args, **kwargs: requests_seen.append("get"),
+    )
+    tool = HunyuanCloud3D()
+
+    combos = [
+        {"image_url": "https://x/y.png"},
+        {"image_path": str(image)},
+        {"multi_view_images": [{"view": "left", "image_url": "https://x/l.png"}]},
+    ]
+    for extra in combos:
+        result = tool.execute({
+            "operation": "text_to_3d", "prompt": "a cat",
+            "output_path": str(tmp_path / "asset.glb"),
+            **extra,
+        })
+        assert not result.success, extra
+        assert "reject image and multi-view inputs" in (result.error or ""), result.error
+    assert requests_seen == []  # validation short-circuited; no network attempt
+
+
 def test_hunyuan_cloud_3d_success_downloads_meshes_and_provenance(monkeypatch, tmp_path):
     monkeypatch.setenv("TENCENT_TOKENHUB_API_KEY", "test-key")
     monkeypatch.setattr(hunyuan_cloud_3d.time, "sleep", lambda _seconds: None)
@@ -327,3 +362,99 @@ def test_hunyuan_cloud_3d_payload_mirrors_pro_api_snake_case(monkeypatch, tmp_pa
     assert provenance["parameters"]["multi_view_images"] == [
         {"view": "left", "image_path": str(image)},
     ]
+
+
+def test_hunyuan_cloud_3d_enforces_8mb_multi_view_total_before_request(monkeypatch, tmp_path):
+    # Each view passes the per-file 6MB raw cap in _encode_image, but their
+    # combined base64 exceeds the documented 8MB multi-view budget. Rejection
+    # must happen before any request is made.
+    monkeypatch.setenv("TENCENT_TOKENHUB_API_KEY", "test-key")
+    big = tmp_path / "big.png"
+    big.write_bytes(b"x" * 4_500_000)  # ~6MB base64 per view, 12MB combined
+    requests_seen = []
+    monkeypatch.setattr(
+        hunyuan_cloud_3d.requests, "post",
+        lambda *args, **kwargs: requests_seen.append("post"),
+    )
+    monkeypatch.setattr(
+        hunyuan_cloud_3d.requests, "get",
+        lambda *args, **kwargs: requests_seen.append("get"),
+    )
+    result = HunyuanCloud3D().execute({
+        "operation": "image_to_3d",
+        "image_url": "https://x/front.png",
+        "multi_view_images": [
+            {"view": "left", "image_path": str(big)},
+            {"view": "right", "image_path": str(big)},
+        ],
+        "output_path": str(tmp_path / "asset.glb"),
+    })
+    assert not result.success
+    assert "8MB" in (result.error or "")
+    assert requests_seen == []
+
+
+def test_hunyuan_cloud_3d_front_view_not_counted_in_multi_view_limit(tmp_path):
+    # Front view and multi-view have separate 8MB budgets per the API doc; a
+    # large front view must not consume the multi-view allowance.
+    big = tmp_path / "big.png"
+    big.write_bytes(b"x" * 4_500_000)
+    payload = HunyuanCloud3D()._build_payload({
+        "operation": "image_to_3d",
+        "image_path": str(big),
+        "multi_view_images": [{"view": "left", "image_path": str(big)}],
+    })
+    assert len(payload["image_base64"]) > 4 * 1024 * 1024
+    assert payload["multi_view_images"][0]["view_image_base64"]
+
+
+def test_hunyuan_cloud_3d_rejects_zip_bomb_packages(monkeypatch, tmp_path):
+    import io
+    import zipfile
+
+    monkeypatch.setenv("TENCENT_TOKENHUB_API_KEY", "test-key")
+    monkeypatch.setattr(hunyuan_cloud_3d.time, "sleep", lambda _seconds: None)
+
+    def build_zip(members):
+        package = io.BytesIO()
+        with zipfile.ZipFile(package, "w", zipfile.ZIP_DEFLATED) as archive:
+            for name, data in members.items():
+                archive.writestr(name, data)
+        return package.getvalue()
+
+    def run(zip_bytes):
+        def fake_post(url, json=None, **_kwargs):
+            if url.endswith("/submit"):
+                return _Response({"id": "job-z", "status": "queued"})
+            return _Response({"status": "completed", "data": [
+                {"type": "obj", "url": "https://cdn.example/package.zip"},
+            ]})
+
+        monkeypatch.setattr(hunyuan_cloud_3d.requests, "post", fake_post)
+        monkeypatch.setattr(
+            hunyuan_cloud_3d.requests, "get",
+            lambda url, **_kwargs: _Response(content=zip_bytes),
+        )
+        return HunyuanCloud3D().execute({
+            "operation": "text_to_3d", "prompt": "a bench",
+            "output_path": str(tmp_path / "reject.glb"),
+        })
+
+    # member count: one more than the cap
+    many = {f"file{i:03d}.obj": b"x" for i in range(hunyuan_cloud_3d._MAX_ZIP_MEMBERS + 1)}
+    result = run(build_zip(many))
+    assert not result.success
+    assert "members" in (result.error or "")
+
+    # compression ratio: highly repetitive 1MB member -> ~1000:1
+    result = run(build_zip({"bomb.obj": b"\0" * 1_000_000}))
+    assert not result.success
+    assert "ratio" in (result.error or "")
+
+    # expanded size: lower the cap so a small member trips it
+    monkeypatch.setattr(hunyuan_cloud_3d, "_MAX_ZIP_EXPANDED_BYTES", 100)
+    result = run(build_zip({"mesh.obj": b"y" * 200}))
+    assert not result.success
+    assert "expands" in (result.error or "")
+    # Rejected packages leave nothing on disk, not even the package dir.
+    assert not (tmp_path / "reject-pkg").exists()
