@@ -249,6 +249,14 @@ def index() -> FileResponse:
     return FileResponse(index_path)
 
 
+@app.get("/console")
+def console() -> FileResponse:
+    console_path = STATIC_DIR / "console.html"
+    if not console_path.is_file():
+        raise HTTPException(status_code=404, detail="Console missing")
+    return FileResponse(console_path)
+
+
 @app.get("/livez")
 def livez() -> dict[str, Any]:
     """Process liveness — never probes upstream inference."""
