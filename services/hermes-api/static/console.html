@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Hermes OS console</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/os.css" />
+  </head>
+  <body>
+    <a class="skip" href="#workspace">Skip to workspace</a>
+    <div class="shell">
+      <aside class="sidebar">
+        <a class="brand" href="/">
+          <span class="mark">H</span>
+          <span>
+            <strong>Hermes OS</strong>
+            <small>AI Media Operating System</small>
+          </span>
+        </a>
+        <nav id="nav" aria-label="Console"></nav>
+        <div class="side-foot">
+          <span>v0.4.0</span>
+          <span class="badge">Autonomous</span>
+        </div>
+      </aside>
+      <div class="main">
+        <header class="bar">
+          <div>
+            <h1 id="title">Overview</h1>
+            <p id="sub">Research · Create · Optimize · Scale</p>
+          </div>
+          <div class="actions">
+            <button type="button" class="cmd" id="cmd-btn">⌘K Command</button>
+            <button type="button" class="primary" id="launch-btn">Launch campaign</button>
+          </div>
+        </header>
+        <div id="workspace" class="workspace" tabindex="-1"></div>
+      </div>
+    </div>
+
+    <dialog id="cmd-dialog" aria-labelledby="cmd-label">
+      <h2 id="cmd-label">Command</h2>
+      <input id="cmd-input" type="search" placeholder="Jump to a surface…" autocomplete="off" />
+      <ul id="cmd-list"></ul>
+    </dialog>
+
+    <script src="/static/os.js"></script>
+  </body>
+</html>

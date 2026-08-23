@@ -3,56 +3,145 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Hermes Studios</title>
-    <link rel="stylesheet" href="/static/styles.css" />
+    <title>Hermes OS — AI Media Operating System</title>
+    <meta
+      name="description"
+      content="Hermes OS is the AI media operating system. Research, create, optimize, and scale autonomous campaigns from one console."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/static/landing.css" />
   </head>
   <body>
-    <div class="grain"></div>
-    <header>
-      <p class="mark">Hermes Studios</p>
-      <p class="loc">hermestudios.com</p>
+    <a class="skip" href="#main">Skip to content</a>
+    <div class="gridbg" aria-hidden="true"></div>
+    <header class="top">
+      <a class="brand" href="/">
+        <span class="logo" aria-hidden="true">H</span>
+        <span>
+          <strong>Hermes OS</strong>
+          <small>AI Media Operating System</small>
+        </span>
+      </a>
+      <nav aria-label="Primary">
+        <a href="#product">Product</a>
+        <a href="#loop">Operating loop</a>
+        <a href="/console">Console</a>
+        <a href="/docs">API</a>
+      </nav>
+      <a class="btn" href="/console">Open console</a>
     </header>
-    <main>
-      <h1>Local models.<br />Public door.</h1>
-      <p class="lede">
-        This host is the locked gateway for Hermes Studios: OpenAI-compatible
-        <code>/v1</code>, health, and OpenMontage delivery. Production chat
-        pools sit on NVIDIA vLLM (or a hosted <code>/v1</code>). The studio
-        Mac LM Studio server is fallback only — never a raw localhost proxy.
-      </p>
-      <section class="grid">
-        <article>
-          <h2>Health</h2>
-          <pre id="health">checking…</pre>
-        </article>
-        <article>
-          <h2>Call it</h2>
-          <pre>export OPENAI_BASE_URL=https://hermestudios.com/v1
-export OPENAI_API_KEY=$HERMES_API_KEY
 
-# /v1/chat/completions  /v1/completions  /v1/embeddings  /v1/models</pre>
-        </article>
-        <article>
-          <h2>Ops</h2>
-          <pre>/livez  process up
-/readyz production key present
-/health inference + models</pre>
-        </article>
+    <main id="main">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="logo-lg" aria-hidden="true">H</div>
+        <h1 id="hero-title">This is the Hermes OS console.</h1>
+        <p class="tag">
+          This isn’t a mockup. <em>It’s running right now.</em>
+        </p>
+        <div class="rule" aria-hidden="true"></div>
+        <p class="lede">
+          Research · Create · Optimize · Scale — an autonomous media stack that
+          scans the open web, launches campaigns, and stores causal intelligence
+          instead of files.
+        </p>
+        <div class="cta-row">
+          <a class="btn" href="/console">Enter the console</a>
+          <a class="ghost" href="#product">See the product</a>
+        </div>
+      </section>
+
+      <section id="product" class="section">
+        <p class="kicker">v0.4.0 · Autonomous</p>
+        <h2>One OS for media that compounds</h2>
+        <p class="lede">
+          The product video walks the live console: Overview, Discovery, Knowledge
+          Graph, Campaigns, Agent Orchestra, and the AI Debugger.
+        </p>
+        <div class="tiles">
+          <article>
+            <h3>Overview</h3>
+            <p>Revenue, views, CTR, retention — and a live AI activity feed.</p>
+            <a href="/console#overview">Open</a>
+          </article>
+          <article>
+            <h3>Discovery</h3>
+            <p>Cross-platform opportunity intelligence, not a single YouTube search.</p>
+            <a href="/console#discovery">Open</a>
+          </article>
+          <article>
+            <h3>Knowledge Graph</h3>
+            <p>Living memory of what works. Topic → audience → hooks → scripts.</p>
+            <a href="/console#knowledge">Open</a>
+          </article>
+          <article>
+            <h3>Campaigns</h3>
+            <p>Launch autonomous media campaigns across Shorts, TikTok, and Reels.</p>
+            <a href="/console#campaigns">Open</a>
+          </article>
+          <article>
+            <h3>Agent Orchestra</h3>
+            <p>Live organization event stream. CEO orchestrator plus kernel agents.</p>
+            <a href="/console#orchestra">Open</a>
+          </article>
+          <article>
+            <h3>AI Debugger</h3>
+            <p>Replayable inferences · cost · latency · provider failover.</p>
+            <a href="/console#debugger">Open</a>
+          </article>
+        </div>
+      </section>
+
+      <section id="loop" class="section">
+        <h2>Operating loop</h2>
+        <ol class="pills">
+          <li>Discover</li>
+          <li>Create</li>
+          <li>Publish</li>
+          <li>Learn</li>
+          <li class="on">Improve</li>
+        </ol>
+        <p class="lede">
+          Every publish updates the knowledge graph and evolution weights for the
+          next campaign.
+        </p>
+      </section>
+
+      <section class="section api">
+        <h2>Public door</h2>
+        <p class="lede">
+          hermestudios.com is the locked gateway: OpenAI-compatible
+          <code>/v1</code>, health, and the Hermes OS console.
+        </p>
+        <pre>export OPENAI_BASE_URL=https://hermestudios.com/v1
+export OPENAI_API_KEY=$HERMES_API_KEY</pre>
+        <p class="status" id="health-line">Checking /health…</p>
       </section>
     </main>
+
     <footer>
-      <span>OpenMontage × LM Studio</span>
+      <span>Hermes Studios · hermestudios.com</span>
       <a href="/health">/health</a>
       <a href="/docs">/docs</a>
+      <a href="/console">Console</a>
     </footer>
     <script>
       fetch("/health")
         .then((r) => r.json())
-        .then((data) => {
-          document.getElementById("health").textContent = JSON.stringify(data, null, 2);
+        .then((d) => {
+          const inf = d.inference || {};
+          document.getElementById("health-line").textContent =
+            "Gateway " + (d.ok ? "ok" : "down") +
+            " · backend " + (inf.backend || "unknown") +
+            " · models " + ((inf.models || []).length);
         })
-        .catch((err) => {
-          document.getElementById("health").textContent = String(err);
+        .catch(() => {
+          document.getElementById("health-line").textContent =
+            "Gateway offline — console still works locally.";
         });
     </script>
   </body>
