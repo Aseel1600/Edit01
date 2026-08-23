@@ -177,6 +177,7 @@ stages:
       - atlas_3d
       - fal_3d
       - blender_world
+      - moneyprinter_turbo
       - pixabay_music
       - freesound_music
       - music_gen
@@ -190,6 +191,7 @@ stages:
       - atlas_3d
       - fal_3d
       - blender_world
+      - moneyprinter_turbo
       - pixabay_music
       - freesound_music
       - music_gen
