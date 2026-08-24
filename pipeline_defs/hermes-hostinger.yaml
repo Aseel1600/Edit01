@@ -1,0 +1,182 @@
+name: hermes-hostinger
+version: "1.0"
+description: >-
+  Hermes Hostinger pipeline: run local LM Studio inference (OpenAI-compatible
+  on :1234), expose it through a public Hermes API on a Hostinger domain
+  (hermestudios.com), point Hostinger DNS A records at the VPS, and optionally
+  publish finished OpenMontage renders to YouTube. This is an infrastructure
+  + delivery pipeline, not a video composer — video production still goes
+  through hermes-flywheel or a base pipeline. Stage machine: idea -> preflight
+  -> tunnel -> backend -> dns -> publish -> verify.
+category: custom
+stability: beta
+default_checkpoint_policy: guided
+
+extensions:
+  custom_scripts: true
+  custom_playbooks: false
+  custom_skills: true
+  custom_tools: true
+
+required_skills:
+  - pipelines/hermes-hostinger/executive-producer
+  - pipelines/hermes-hostinger/idea-director
+  - pipelines/hermes-hostinger/preflight-director
+  - pipelines/hermes-hostinger/tunnel-director
+  - pipelines/hermes-hostinger/backend-director
+  - pipelines/hermes-hostinger/dns-director
+  - pipelines/hermes-hostinger/publish-director
+  - pipelines/hermes-hostinger/verify-director
+  - creative/hermes-hostinger
+  - meta/reviewer
+  - meta/checkpoint-protocol
+
+orchestration:
+  mode: executive-producer
+  skill: pipelines/hermes-hostinger/executive-producer
+  budget_default_usd: 0.00
+  max_revisions_per_stage: 2
+  max_send_backs: 2
+  max_wall_time_minutes: 45
+
+metadata:
+  primary_domain: hermestudios.com
+  shorthand_domains:
+    - hermestudio.com
+  alias_domains:
+    - hermestudios.online
+    - hermestudios.org
+    - hermestudioos.com
+  lm_studio:
+    default_base_url: http://127.0.0.1:1234/v1
+    default_model: qwen/qwen3-coder-30b
+    openai_compatible: true
+  inference:
+    scale_configs: infra/hermes-scale
+    planning_session: cse_01PrUJjvaENr4zTMsM1UB4Bb
+    default_backend: vllm
+    default_model: qwen3-30b-a3b
+  backend:
+    service_dir: services/hermes-api
+    public_path: /
+    health_path: /health
+  youtube:
+    default_privacy: unlisted
+
+stages:
+  - name: idea
+    skill: pipelines/hermes-hostinger/idea-director
+    produces: [brief, decision_log]
+    tools_available: []
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - domain_choice
+      - inference_path
+      - auth_model
+      - youtube_scope
+    success_criteria:
+      - Schema-valid brief names the Hostinger domain and LM Studio model
+      - decision_log records domain, inference, and publish choices
+
+  - name: preflight
+    skill: pipelines/hermes-hostinger/preflight-director
+    required_artifacts_in: [brief]
+    produces: [deploy_report]
+    required_tools: [lmstudio]
+    optional_tools: [hostinger_deploy, youtube_upload, moneyprinter_turbo]
+    tools_available: [lmstudio, hostinger_deploy, youtube_upload, moneyprinter_turbo]
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - lm_studio_reachable
+      - hostinger_credentials_or_local_only
+      - youtube_credentials_if_upload_planned
+    success_criteria:
+      - deploy_report.status is planned, degraded, or healthy (never silent-fail)
+      - LM Studio health is recorded even when unreachable
+
+  - name: tunnel
+    skill: pipelines/hermes-hostinger/tunnel-director
+    required_artifacts_in: [deploy_report]
+    produces: [deploy_report]
+    optional_tools: [lmstudio]
+    tools_available: [lmstudio]
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - public_url_is_https
+      - local_port_not_exposed_raw
+      - auth_required_on_public_path
+    success_criteria:
+      - deploy_report.tunnel.public_url is set OR local_only is explicit
+      - Raw :1234 is never advertised as a public endpoint
+
+  - name: backend
+    skill: pipelines/hermes-hostinger/backend-director
+    required_artifacts_in: [deploy_report]
+    produces: [deploy_report]
+    required_tools: [hostinger_deploy]
+    optional_tools: [moneyprinter_turbo]
+    tools_available: [hostinger_deploy, lmstudio, moneyprinter_turbo]
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - docker_compose_valid
+      - domain_target
+      - api_key_required_in_production
+    success_criteria:
+      - Hermes API image/compose is ready
+      - Production auth (HERMES_API_KEY) is configured or blocked with a reason
+
+  - name: dns
+    skill: pipelines/hermes-hostinger/dns-director
+    required_artifacts_in: [deploy_report]
+    produces: [deploy_report]
+    required_tools: [hostinger_deploy]
+    tools_available: [hostinger_deploy]
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - canonical_domain
+      - apex_a_record
+      - www_a_record
+      - nameservers_remain_hostinger
+    success_criteria:
+      - Canonical domain is hermestudios.com (hermestudio.com mapped, not purchased)
+      - A/@ and A/www point at the VPS IPv4 OR dns.status is blocked with a reason
+
+  - name: publish
+    skill: pipelines/hermes-hostinger/publish-director
+    required_artifacts_in: [deploy_report]
+    optional_artifacts_in: [render_report]
+    produces: [publish_log]
+    required_tools: [export_bundle]
+    optional_tools: [youtube_upload]
+    tools_available: [export_bundle, youtube_upload, hostinger_deploy]
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - youtube_privacy
+      - metadata_quality
+      - no_secret_leak_in_description
+    success_criteria:
+      - Schema-valid publish_log
+      - YouTube entry is published, exported, draft, or skipped with reason
+
+  - name: verify
+    skill: pipelines/hermes-hostinger/verify-director
+    required_artifacts_in: [deploy_report, publish_log]
+    produces: [deploy_report]
+    required_tools: [hostinger_deploy]
+    optional_tools: [lmstudio]
+    tools_available: [hostinger_deploy, lmstudio]
+    checkpoint_required: true
+    human_approval_default: true
+    review_focus:
+      - public_health
+      - chat_proxy_auth
+      - domain_tls
+    success_criteria:
+      - Public /health is recorded
+      - Unauthenticated chat completions are rejected in production

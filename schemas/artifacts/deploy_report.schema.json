@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "openmontage/artifacts/deploy_report",
+  "title": "Deploy Report",
+  "description": "Infrastructure status for the Hermes Hostinger pipeline: LM Studio, tunnel, Hostinger backend, and public health.",
+  "type": "object",
+  "required": ["version", "target_domain", "status"],
+  "properties": {
+    "version": { "type": "string", "const": "1.0" },
+    "target_domain": { "type": "string", "minLength": 1 },
+    "status": {
+      "type": "string",
+      "enum": ["planned", "healthy", "degraded", "blocked", "deployed"]
+    },
+    "lm_studio": {
+      "type": "object",
+      "properties": {
+        "base_url": { "type": "string" },
+        "reachable": { "type": "boolean" },
+        "model": { "type": "string" },
+        "models": { "type": "array", "items": { "type": "string" } },
+        "auth_required": { "type": "boolean" }
+      }
+    },
+    "inference": {
+      "type": "object",
+      "properties": {
+        "backend": { "type": "string" },
+        "base_url": { "type": "string" },
+        "reachable": { "type": "boolean" },
+        "phase": { "type": "string" }
+      }
+    },
+    "tunnel": {
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string" },
+        "public_url": { "type": "string" },
+        "status": { "type": "string" },
+        "local_only": { "type": "boolean" }
+      }
+    },
+    "backend": {
+      "type": "object",
+      "properties": {
+        "url": { "type": "string" },
+        "image_ref": { "type": "string" },
+        "compose_path": { "type": "string" },
+        "deployed": { "type": "boolean" },
+        "auth_configured": { "type": "boolean" }
+      }
+    },
+    "dns": {
+      "type": "object",
+      "properties": {
+        "provider": { "type": "string" },
+        "canonical_domain": { "type": "string" },
+        "requested_domain": { "type": "string" },
+        "apex_a": { "type": "array", "items": { "type": "string" } },
+        "www_a": { "type": "array", "items": { "type": "string" } },
+        "target_ipv4": { "type": "string" },
+        "applied": { "type": "boolean" },
+        "status": { "type": "string" }
+      }
+    },
+    "youtube": {
+      "type": "object",
+      "properties": {
+        "configured": { "type": "boolean" },
+        "last_video_id": { "type": "string" },
+        "privacy": { "type": "string" }
+      }
+    },
+    "checks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "ok"],
+        "properties": {
+          "name": { "type": "string" },
+          "ok": { "type": "boolean" },
+          "detail": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "notes": { "type": "string" }
+  },
+  "additionalProperties": false
+}

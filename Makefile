@@ -6,7 +6,7 @@ PIP = $(RUN_PYTHON) -m pip
 
 .DEFAULT_GOAL := setup
 
-.PHONY: setup install install-dev install-gpu test test-contracts lint clean preflight demo demo-list hyperframes-doctor hyperframes-warm venv ensure-venv
+.PHONY: setup install install-dev install-gpu test test-contracts lint clean preflight demo demo-list hyperframes-doctor hyperframes-warm venv ensure-venv hermes-api hermes-preflight hermes-scale-check
 
 # ---- Virtual environment ----
 
@@ -118,6 +118,18 @@ demo: ensure-venv
 
 demo-list: ensure-venv
 	$(RUN_PYTHON) render_demo.py --list
+
+hermes-preflight: ensure-venv
+	$(RUN_PYTHON) scripts/hermes_hostinger.py preflight
+
+hermes-api: ensure-venv
+	$(RUN_PYTHON) scripts/hermes_hostinger.py serve --host 127.0.0.1 --port 8080
+
+hermes-scale-check:
+	docker compose -f services/hermes-api/docker-compose.yml config >/dev/null
+	COMPOSE_PROFILES=tls docker compose -f services/hermes-api/docker-compose.yml config >/dev/null
+	docker compose --env-file infra/hermes-scale/env/inference-nvidia.env.example -f infra/hermes-scale/compose/docker-compose.vllm.yml config >/dev/null
+	docker compose --env-file infra/hermes-scale/env/inference-amd.env.example -f infra/hermes-scale/compose/docker-compose.vllm-amd.yml config >/dev/null
 
 lint: ensure-venv
 	$(RUN_PYTHON) -m py_compile tools/base_tool.py

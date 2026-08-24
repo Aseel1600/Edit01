@@ -1,0 +1,128 @@
+services:
+  hermes-api:
+    build: .
+    image: ${HERMES_IMAGE:-hermes-api:local}
+    ports:
+      - "${HERMES_HOST_PORT:-8091}:8080"
+    environment:
+      PUBLIC_DOMAIN: ${PUBLIC_DOMAIN:-hermestudios.com}
+      LM_STUDIO_BASE_URL: ${LM_STUDIO_BASE_URL:-http://host.docker.internal:1234/v1}
+      LM_STUDIO_API_KEY: ${LM_STUDIO_API_KEY:-lm-studio}
+      LM_STUDIO_MODEL: ${LM_STUDIO_MODEL:-}
+      INFERENCE_BACKEND: ${INFERENCE_BACKEND:-}
+      INFERENCE_BASE_URL: ${INFERENCE_BASE_URL:-}
+      INFERENCE_API_KEY: ${INFERENCE_API_KEY:-}
+      INFERENCE_MODEL: ${INFERENCE_MODEL:-}
+      HERMES_API_KEY: ${HERMES_API_KEY:-}
+      HERMES_REQUIRE_AUTH: ${HERMES_REQUIRE_AUTH:-true}
+      HERMES_MAX_INFLIGHT: ${HERMES_MAX_INFLIGHT:-32}
+      HERMES_INFLIGHT_WAIT_SECONDS: ${HERMES_INFLIGHT_WAIT_SECONDS:-5}
+      HERMES_FLYWHEEL_AUTO: ${HERMES_FLYWHEEL_AUTO:-false}
+      HERMES_FLYWHEEL_SLEEP_SECONDS: ${HERMES_FLYWHEEL_SLEEP_SECONDS:-0.25}
+      HERMES_FLYWHEEL_STORE: ${HERMES_FLYWHEEL_STORE:-/app/data/flywheel.json}
+      HERMES_AGENTS_STORE: ${HERMES_AGENTS_STORE:-/app/data/agents.json}
+      HERMES_AGENT_CONCURRENCY: ${HERMES_AGENT_CONCURRENCY:-3}
+      HERMES_AGENT_INFER_TIMEOUT: ${HERMES_AGENT_INFER_TIMEOUT:-8}
+      HERMES_CAMPAIGN_STORE: ${HERMES_CAMPAIGN_STORE:-/app/data/campaigns.json}
+      HERMES_DB_PATH: ${HERMES_DB_PATH:-/app/data/hermes.db}
+      # Empty by default (SQLite). With --profile postgres set:
+      # DATABASE_URL=postgresql://hermes:hermes@postgres:5432/hermes
+      # Cost: $0 extra on existing VPS 187.77.98.177 vs advertised intro ~$6.49/mo
+      # new Hostinger KVM 1 (paid upfront). Do not buy a KVM. Do not start this
+      # profile on prod until confirmed.
+      DATABASE_URL: ${DATABASE_URL:-}
+      HERMES_RESEARCH_TIMEOUT: ${HERMES_RESEARCH_TIMEOUT:-4}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY:-}
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY:-}
+      STRIPE_WEBHOOK_SECRET: ${STRIPE_WEBHOOK_SECRET:-}
+      STRIPE_PRICE_CAMPAIGN_LAUNCH: ${STRIPE_PRICE_CAMPAIGN_LAUNCH:-}
+      STRIPE_PRICE_CREDIT_PACK: ${STRIPE_PRICE_CREDIT_PACK:-}
+      STRIPE_PRICE_AUTONOMOUS: ${STRIPE_PRICE_AUTONOMOUS:-}
+      STRIPE_PRICE_INFERENCE_METER: ${STRIPE_PRICE_INFERENCE_METER:-}
+      STRIPE_METER_EVENT_NAME: ${STRIPE_METER_EVENT_NAME:-}
+      STRIPE_AUTOMATIC_TAX: ${STRIPE_AUTOMATIC_TAX:-false}
+      HERMES_BILLING_STORE: ${HERMES_BILLING_STORE:-/app/data/billing.json}
+      MONEYPRINTER_ENABLED: ${MONEYPRINTER_ENABLED:-false}
+      MONEYPRINTER_BASE_URL: ${MONEYPRINTER_BASE_URL:-http://moneyprinter:8080}
+      MONEYPRINTER_API_KEY: ${MONEYPRINTER_API_KEY:-}
+      MONEYPRINTER_MODE: ${MONEYPRINTER_MODE:-http}
+      MONEYPRINTER_LANGUAGE: ${MONEYPRINTER_LANGUAGE:-en-US}
+      PYTHONUNBUFFERED: "1"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - hermes_data:/app/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "from urllib.request import urlopen; urlopen('http://127.0.0.1:8080/readyz', timeout=2)",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # Optional. Does not start on default `docker compose up` (not on VPS 187.77.98.177).
+  # Enable later, after cost OK ($0 extra on that box vs ~$6.49/mo new KVM 1 upfront):
+  #   COMPOSE_PROFILES=postgres DATABASE_URL=postgresql://hermes:hermes@postgres:5432/hermes \
+  #     docker compose up -d
+  # Do NOT run `docker compose up postgres` on the VPS until that OK.
+  postgres:
+    profiles: ["postgres"]
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-hermes}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-hermes}
+      POSTGRES_DB: ${POSTGRES_DB:-hermes}
+    volumes:
+      - hermes_pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # Optional. Does not start on default VPS `docker compose up`.
+  # COMPOSE_PROFILES=moneyprinter docker compose up -d moneyprinter
+  # Official image: https://github.com/harry0703/MoneyPrinterTurbo (MIT)
+  moneyprinter:
+    profiles: ["moneyprinter"]
+    image: ${MONEYPRINTER_IMAGE:-ghcr.io/harry0703/moneyprinterturbo:latest}
+    ports:
+      - "${MONEYPRINTER_HOST_PORT:-8088}:8080"
+      - "${MONEYPRINTER_WEBUI_PORT:-8501}:8501"
+    environment:
+      PYTHONUNBUFFERED: "1"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
+
+  caddy:
+    image: caddy:2-alpine
+    profiles: ["tls"]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      CADDY_EMAIL: ${CADDY_EMAIL:-ops@hermestudios.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      hermes-api:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  hermes_data:
+  hermes_pg:
+  caddy_data:
+  caddy_config:

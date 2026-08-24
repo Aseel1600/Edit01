@@ -76,6 +76,12 @@ assert ALL_MANIFESTS, "No pipeline manifests found"
 # an explicit reason. Everything else is required to follow the contract.
 _EXCLUDED_PIPELINES = {
     "framework-smoke": "minimal 2-stage smoke test, no compose stage",
+    "hermes-flywheel": "evolutionary engine: renders THROUGH base pipelines "
+                       "(animated-explainer/cinematic/clip-factory/talking-head), "
+                       "which carry the runtime contract; the flywheel itself has "
+                       "no compose stage of its own",
+    "hermes-hostinger": "infrastructure/delivery pipeline (LM Studio + Hostinger "
+                        "API + YouTube); no video compose stage and no render_runtime",
 }
 
 

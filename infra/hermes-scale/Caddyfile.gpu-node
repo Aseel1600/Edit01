@@ -1,0 +1,11 @@
+# Optional TLS in front of vLLM on the GPU node.
+# Prefer a private network (Tailscale / VPC) and skip public DNS on this host.
+# Hermes on Hostinger should call http://GPU_NODE_PRIVATE_IP:8000/v1
+
+{
+  email you@hermestudios.com
+}
+
+inference.internal {
+  reverse_proxy vllm:8000
+}

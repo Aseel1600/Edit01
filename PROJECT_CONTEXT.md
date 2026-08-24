@@ -101,6 +101,8 @@ Each tool's `agent_skills[]` field bridges Layer 1 → Layer 3. See `skills/INDE
 | `hybrid` | `pipeline_defs/hybrid.yaml` | Source-plus-support hybrid |
 | `avatar-spokesperson` | `pipeline_defs/avatar-spokesperson.yaml` | Avatar presenter |
 | `localization-dub` | `pipeline_defs/localization-dub.yaml` | Localization and dubbing |
+| `hermes-flywheel` | `pipeline_defs/hermes-flywheel.yaml` | Evolutionary content engine |
+| `hermes-hostinger` | `pipeline_defs/hermes-hostinger.yaml` | LM Studio + Hostinger API + YouTube |
 | `framework-smoke` | `pipeline_defs/framework-smoke.yaml` | Test harness |
 
 ## When Building New Pipelines

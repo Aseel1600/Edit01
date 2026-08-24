@@ -1,0 +1,52 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "openmontage/artifacts/video_program",
+  "title": "Video Program",
+  "description": "Fully resolved, backend-specific render program produced by the Video Compiler. Content-addressed assets enable incremental rendering and A/B scene substitution.",
+  "type": "object",
+  "required": ["ir_version", "backend_id", "backend_kind", "quality", "fps", "duration_seconds", "assets", "render_nodes", "content_hash"],
+  "properties": {
+    "ir_version": { "type": "string" },
+    "backend_id": { "type": "string" },
+    "backend_kind": {
+      "type": "string",
+      "enum": ["stub", "diffusion", "wan", "ltx", "hunyuan", "cogvideo", "open_sora", "mochi", "pyramid", "skyreels", "framepack", "commercial"]
+    },
+    "quality": { "type": "string", "enum": ["draft", "standard", "high", "reference"] },
+    "fps": { "type": "integer", "minimum": 1 },
+    "duration_seconds": { "type": "number", "minimum": 0 },
+    "assets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "ref", "content_hash"],
+        "properties": {
+          "kind": { "type": "string" },
+          "ref": { "type": "string" },
+          "content_hash": { "type": "string" },
+          "uri": { "type": "string" },
+          "metadata": { "type": "object" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "render_nodes": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["shot_id", "asset_ref", "backend"],
+        "properties": {
+          "shot_id": { "type": "string" },
+          "asset_ref": { "type": "string" },
+          "backend": { "type": "string" },
+          "params": { "type": "object" },
+          "estimated_seconds": { "type": ["number", "null"] }
+        },
+        "additionalProperties": false
+      }
+    },
+    "manifest": { "type": "object" },
+    "content_hash": { "type": "string" }
+  },
+  "additionalProperties": false
+}
