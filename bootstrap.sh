@@ -29,7 +29,7 @@ set -euo pipefail
 
 OM_DIR="${1:-$(pwd)}"
 VOICE="${VOICE:-en_US-lessac-medium}"
-VOICE_DIR="${VOICE_DIR:-$OM_DIR/.voices}"
+VOICE_DIR="$HOME/.piper/models"
 
 say()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m  [ok] %s\033[0m\n' "$*"; }
