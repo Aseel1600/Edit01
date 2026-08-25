@@ -5,10 +5,15 @@ document.  **Owner:** the Hub publisher owns the implementation and release.
 
 ## Intent
 
-Replace the existing single-asset, Kie-only Studio generation path with
+Replace the existing single-asset, Kie-only Studio generation *workflow* with
 OpenMontage production runs while preserving the Hub as the authenticated,
 manager-only cockpit and the source of record for the user's request history.
 OpenMontage owns pipeline execution, artifacts, review state, and rendering.
+
+This does **not** retire Kie. Kie remains an OmniRoute-backed provider and model
+catalog, including image generation. The cutover changes the Hub Studio
+orchestration path; it does not remove Kie from Hub, OmniRoute, or other image
+and media features.
 
 This is a cutover of the **Generate** workflow, not a deletion of the existing
 media library.  Historical `studio_generations` and `generated_audio` records
@@ -27,8 +32,9 @@ remain readable during and after the cutover.
 
 The old implementation is deliberately not removed in the first release:
 `/root/dev/app_fastapi/routers/studio_generate.py` and
-`/root/dev/app_fastapi/routers/media_studio.py` are still the only callers of
-the legacy Kie dispatcher and library.  The historical media directories are
+`/root/dev/app_fastapi/routers/media_studio.py` remain the legacy Studio callers
+of the Kie-backed generation workflow and library. Kie itself remains available
+to other Hub routes through OmniRoute. The historical media directories are
 dormant and are not a current runnable engine.
 
 ## Target shape
@@ -105,12 +111,14 @@ do not silently reuse the current local `.env` provider keys in production.
    unchanged.  Prove create → project initialized → status visible.
 3. Enable one non-paid/local pipeline end-to-end, then one OmniRoute-routed
    cloud asset path with explicit user approval.
-4. Mark the Kie Generate entry legacy only after production proof.  Do not
-   migrate or delete historical rows; add a legacy badge and redirect new
-   multi-asset work to OpenMontage.
+4. Mark the old Studio Generate entry legacy only after production proof. Do not
+   migrate or delete historical rows; add a legacy badge and direct new
+   multi-asset work to OpenMontage. This does not disable Kie image generation
+   or its model catalog elsewhere in Hub.
 5. Only after a separate retention/export receipt, archive the dormant legacy
-   media stores and remove the Kie-only dispatcher.  That is a later Hub
-   publisher task, not an OpenMontage deployment action.
+   media stores and retire the old *Studio-specific* Kie-only dispatcher path.
+   Do not remove the shared Kie provider integration or its OmniRoute catalog.
+   That is a later Hub publisher task, not an OpenMontage deployment action.
 
 ## Acceptance evidence
 
