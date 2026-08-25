@@ -74,15 +74,15 @@ if [ "$PKG" = apt ]; then
     degrade "Chromium libraries failed to install; Remotion renders may crash"
   fi
 else
+  command -v make >/dev/null 2>&1 || die "make not found. Run: xcode-select --install"
   brew list ffmpeg >/dev/null 2>&1 || brew install ffmpeg
   brew list node   >/dev/null 2>&1 || brew install node   # brew's node includes npm/npx
-  command -v make >/dev/null 2>&1 || die "make not found. Run: xcode-select --install"
   ok "ffmpeg + node installed (macOS ships the Chromium libs Remotion needs, no extra step)"
 fi
 
 # sanity gate before make setup — die with the exact gap, don't let make setup fail confusingly
 command -v make >/dev/null 2>&1 || die "make not found — Debian/Ubuntu: apt-get install make; macOS: xcode-select --install"
-command -v npx  >/dev/null 2>&1 || die "npx not found — Debian/Ubuntu: apt-get install npm; then re-run."
+command -v npx  >/dev/null 2>&1 || die "npx not found — reinstall Node.js from NodeSource (Debian/Ubuntu) or Homebrew (macOS), then re-run."
 NODE_VER="$(node -v 2>/dev/null || echo none)"
 NODE_MAJOR="${NODE_VER#v}"; NODE_MAJOR="${NODE_MAJOR%%.*}"
 case "$NODE_MAJOR" in *[!0-9]*|"") NODE_MAJOR=0;; esac
