@@ -30,11 +30,13 @@ set -euo pipefail
 OM_DIR="${1:-$(pwd)}"
 VOICE="${VOICE:-en_US-lessac-medium}"
 VOICE_DIR="$HOME/.piper/models"
+FAILURES=()
 
 say()  { printf '\n\033[1;36m==> %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m  [ok] %s\033[0m\n' "$*"; }
 warn() { printf '\033[1;33m  [warn] %s\033[0m\n' "$*"; }
 die()  { printf '\033[1;31m  [FAIL] %s\033[0m\n' "$*" >&2; exit 1; }
+degrade() { FAILURES+=("$*"); warn "$*"; }
 
 cd "$OM_DIR"
 [ -f Makefile ] && [ -f render_demo.py ] || die "run this from an OpenMontage checkout (no Makefile/render_demo.py found in $OM_DIR)."
@@ -63,12 +65,14 @@ if [ "$PKG" = apt ]; then
 
   # ---- 2. Chromium headless libraries (gap #3) ----
   say "Chromium headless libraries (undocumented Remotion dependency)"
-  apt_install \
+  if apt_install \
     libnss3 libnspr4 libdbus-1-3 libatk1.0-0 libatk-bridge2.0-0 libcups2 libdrm2 \
     libxkbcommon0 libxcomposite1 libxdamage1 libxfixes3 libxrandr2 libgbm1 \
-    libpango-1.0-0 libcairo2 libasound2 libatspi2.0-0 libxshmfence1 || \
-    warn "some chromium libs failed to install — Remotion renders may crash"
-  ok "chromium libs installed"
+    libpango-1.0-0 libcairo2 libasound2 libatspi2.0-0 libxshmfence1; then
+    ok "chromium libs installed"
+  else
+    degrade "Chromium libraries failed to install; Remotion renders may crash"
+  fi
 else
   brew list ffmpeg >/dev/null 2>&1 || brew install ffmpeg
   brew list node   >/dev/null 2>&1 || brew install node   # brew's node includes npm/npx
@@ -103,9 +107,11 @@ if ls "$VOICE_DIR/$VOICE"* >/dev/null 2>&1; then
 else
   PYTHON_BIN="$OM_DIR/.venv/bin/python"
   [ -x "$PYTHON_BIN" ] || PYTHON_BIN="python3"
-  "$PYTHON_BIN" -m piper.download_voices "$VOICE" --data-dir "$VOICE_DIR" \
-    && ok "voice downloaded to $VOICE_DIR" \
-    || warn "voice download failed — offline \$0 TTS unavailable; cloud TTS still works with keys in .env"
+  if "$PYTHON_BIN" -m piper.download_voices "$VOICE" --data-dir "$VOICE_DIR"; then
+    ok "voice downloaded to $VOICE_DIR"
+  else
+    degrade "Piper voice download failed; offline \$0 TTS is unavailable"
+  fi
 fi
 
 # ---- 5. prove it: zero-key demo render ----
@@ -114,14 +120,23 @@ PYTHON_BIN="$OM_DIR/.venv/bin/python"
 [ -x "$PYTHON_BIN" ] || PYTHON_BIN="python3"
 if "$PYTHON_BIN" render_demo.py --list >/dev/null 2>&1; then
   FIRST_DEMO="$("$PYTHON_BIN" render_demo.py --list 2>/dev/null | awk '/^[[:space:]]+[a-z0-9]/{print $1; exit}' || true)"
-  if [ -n "$FIRST_DEMO" ] && "$PYTHON_BIN" render_demo.py "$FIRST_DEMO" >/dev/null 2>&1; then
+  if [ -z "$FIRST_DEMO" ]; then
+    degrade "Demo list returned no runnable demos"
+  elif "$PYTHON_BIN" render_demo.py "$FIRST_DEMO" >/dev/null 2>&1; then
     ok "demo '$FIRST_DEMO' rendered — render stack is live"
   else
-    warn "demo list works but a render failed — inspect: $PYTHON_BIN render_demo.py $FIRST_DEMO"
+    degrade "Demo '$FIRST_DEMO' failed to render; inspect: $PYTHON_BIN render_demo.py $FIRST_DEMO"
   fi
 else
-  warn "render_demo.py --list failed — check 'make setup' output above"
+  degrade "render_demo.py --list failed; check 'make setup' output above"
 fi
 
 say "Bootstrap complete"
+if [ "${#FAILURES[@]}" -gt 0 ]; then
+  warn "DEGRADED — the following checks failed:"
+  for failure in "${FAILURES[@]}"; do
+    printf '    - %s\n' "$failure"
+  done
+  exit 1
+fi
 ok "READY — add API keys to .env for cloud providers, then open this project in your AI coding assistant."
