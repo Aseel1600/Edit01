@@ -46,7 +46,10 @@ def test_cookies_file_changes_idempotency_key() -> None:
         "format": "video",
         "max_resolution": "720p",
     }
+    inputs_with_cookies = {**inputs, "cookies_file": "/cookies.txt"}
 
-    assert tool.idempotency_key(inputs) != tool.idempotency_key(
-        {**inputs, "cookies_file": "/cookies.txt"}
+    assert tool.idempotency_key(inputs) != tool.idempotency_key(inputs_with_cookies)
+    assert tool.idempotency_key(inputs) == tool.idempotency_key(dict(inputs))
+    assert tool.idempotency_key(inputs_with_cookies) == tool.idempotency_key(
+        dict(inputs_with_cookies)
     )
