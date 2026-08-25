@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
-# Bootstrap a bare Linux server (or macOS box) to verified-render-ready, then prove it
-# with a zero-key demo render. `make setup` + the README cover the desktop happy path;
+# Supported hosts: Debian/Ubuntu with apt-get, and macOS with Homebrew.
+# Other operating systems and package managers are not supported by this script.
+#
+# Bootstrap a supported bare server (or macOS box) to verified-render-ready, then
+# prove it with a zero-key demo render. `make setup` + the README cover the desktop happy path;
 # on a headless server a few things are missing and each one surfaces as its own
 # mid-render failure. This closes those gaps and runs the standard `make setup` for
 # everything else.
@@ -39,7 +42,7 @@ cd "$OM_DIR"
 # ---- 0. detect package manager ----
 if   command -v apt-get >/dev/null 2>&1; then PKG=apt
 elif command -v brew    >/dev/null 2>&1; then PKG=brew
-else die "no apt-get or brew found — install FFmpeg, Node 18+, python3-venv, and (Linux) Chromium libs manually, then re-run."; fi
+else die "unsupported host — this script supports Debian/Ubuntu with apt-get and macOS with Homebrew only."; fi
 SUDO=""; [ "$(id -u)" -ne 0 ] && command -v sudo >/dev/null 2>&1 && SUDO=sudo
 
 apt_install() { DEBIAN_FRONTEND=noninteractive $SUDO apt-get install -y --no-install-recommends "$@"; }
@@ -49,8 +52,13 @@ say "System prerequisites"
 if [ "$PKG" = apt ]; then
   $SUDO apt-get update -qq
   apt_install ffmpeg python3 python3-venv python3-pip make
-  command -v node >/dev/null 2>&1 || apt_install nodejs
-  command -v npm  >/dev/null 2>&1 || apt_install npm   # separate package on Debian (only "suggested" by nodejs); provides npx
+
+  NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || printf '0')"
+  if [ "$NODE_MAJOR" -lt 18 ]; then
+    apt_install ca-certificates curl
+    curl -fsSL https://deb.nodesource.com/setup_22.x | $SUDO bash -
+    apt_install nodejs
+  fi
   ok "ffmpeg + python3-venv + make present; node $(node -v 2>/dev/null || echo missing), npm $(npm -v 2>/dev/null || echo missing)"
 
   # ---- 2. Chromium headless libraries (gap #3) ----
@@ -64,6 +72,7 @@ if [ "$PKG" = apt ]; then
 else
   brew list ffmpeg >/dev/null 2>&1 || brew install ffmpeg
   brew list node   >/dev/null 2>&1 || brew install node   # brew's node includes npm/npx
+  command -v make >/dev/null 2>&1 || die "make not found. Run: xcode-select --install"
   ok "ffmpeg + node installed (macOS ships the Chromium libs Remotion needs, no extra step)"
 fi
 
