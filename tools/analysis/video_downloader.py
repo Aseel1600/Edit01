@@ -40,9 +40,9 @@ class VideoDownloader(BaseTool):
     dependencies = ["python:yt_dlp"]
     install_instructions = (
         "Install yt-dlp: pip install yt-dlp\n"
-        "For YouTube support, also install Deno (JS runtime): "
-        "https://deno.land/#installation\n"
-        "Without Deno, YouTube downloads may fail but other platforms still work."
+        "For YouTube support, also install a JS runtime: Deno "
+        "(https://deno.land/#installation) or Node.js (https://nodejs.org/).\n"
+        "Without Deno or Node.js, YouTube downloads may fail but other platforms still work."
     )
     agent_skills = ["video-download"]
 
@@ -93,7 +93,8 @@ class VideoDownloader(BaseTool):
                 "description": (
                     "Path to a Netscape-format cookies.txt file passed to yt-dlp. "
                     "Needed when the site blocks anonymous requests (e.g. YouTube "
-                    "bot-checks on datacenter IPs)."
+                    "bot-checks on datacenter IPs). Cookie files contain authentication "
+                    "credentials; never commit them (/cookies.txt is gitignored)."
                 ),
             },
         },
