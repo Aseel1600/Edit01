@@ -125,7 +125,7 @@ class VideoDownloader(BaseTool):
         cpu_cores=1, ram_mb=512, vram_mb=0, disk_mb=2000,
         network_required=True,
     )
-    idempotency_key_fields = ["url", "format", "max_resolution"]
+    idempotency_key_fields = ["url", "format", "max_resolution", "cookies_file"]
     side_effects = ["downloads media files to output_dir"]
     resume_support_value = "from_start"
     user_visible_verification = [
