@@ -1,0 +1,16 @@
+[Unit]
+Description=OpenMontage authenticated local runner (127.0.0.1:4751)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/root/openmontage
+Environment=PYTHONUNBUFFERED=1
+EnvironmentFile=/etc/openmontage/runner.env
+UMask=0077
+ExecStart=/root/openmontage/.venv/bin/python -m runner --port 4751
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
