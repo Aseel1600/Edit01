@@ -312,7 +312,11 @@ class RemotionCaptionBurn(BaseTool):
 
         # Build props JSON
         props = {
-            "videoSrc": f"public/talking-head/{video_filename}",
+            # staticFile() resolves relative to remotion-composer/public/, so the
+            # prefix must not be repeated here — Remotion rejects it outright with
+            # "Do not include the public/ prefix when using staticFile()" and the
+            # render dies before a single frame is written.
+            "videoSrc": f"talking-head/{video_filename}",
             "captions": captions,
             "overlays": overlays or [],
             "wordsPerPage": words_per_page,
