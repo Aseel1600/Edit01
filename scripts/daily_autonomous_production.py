@@ -14,7 +14,54 @@ import sys
 import json
 import argparse
 import subprocess
+import os
 from pathlib import Path
+
+
+def generate_varied_cta(story: dict) -> str:
+    """Varied CTA per video — Gemini if key present, else templated. Story exactly 60s, outro after."""
+    title = story.get("title", "")
+    animal = story.get("animal", "wildlife")
+    gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("GOOGLE_GENAI_API_KEY")
+    if gemini_key:
+        try:
+            import requests
+            prompt = f"You are Wild Mechanics Shorts CTA writer. Story: '{title}' ({animal}). Write ONE punchy CTA 10-14 words, varied, tailored to this story, that tells viewers to follow/subscribe to Wild Mechanics. No hashtags, no quotes, just the sentence. Example for Scarface Jaguar: 'Scarface never misses. Follow Wild Mechanics for more apex hunts.'"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
+            payload = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.9, "maxOutputTokens": 40}}
+            r = requests.post(url, json=payload, timeout=10)
+            if r.ok:
+                txt = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip().strip('"').strip("'")
+                txt = txt.splitlines()[0].strip()
+                if 5 < len(txt.split()) < 20 and "follow" in txt.lower():
+                    return txt
+        except Exception as e:
+            print(f"[CTA-Gemini] fallback: {e}")
+    templates = {
+        "jaguar": "Scarface never misses. Follow Wild Mechanics for more apex hunts.",
+        "macaque": "Snow monkeys beat the freeze. Follow Wild Mechanics for more.",
+        "tiger": "The Queen never rests. Follow Wild Mechanics for more jungle reigns.",
+        "cheetah": "Malaika's chase never ends. Follow Wild Mechanics for more.",
+        "wolf": "The pack always returns. Follow Wild Mechanics for more.",
+        "mantis": "The punch is just mechanics. Follow Wild Mechanics for more.",
+        "iguana": "Escape is pure mechanics. Follow Wild Mechanics for more.",
+        "flying fish": "The glide is pure mechanics. Follow Wild Mechanics for more.",
+        "butcher": "The butcher always waits. Follow Wild Mechanics for more.",
+        "dolphin": "Teamwork is mechanics. Follow Wild Mechanics for more ocean hunts.",
+        "butcher_bird": "The butcher's hook waits. Follow Wild Mechanics for more.",
+        "snow leopard": "The ghost never misses. Follow Wild Mechanics for more.",
+        "glass frog": "Invisibility is mechanics. Follow Wild Mechanics for more.",
+    }
+    key = animal.lower()
+    for k, v in templates.items():
+        if k in key:
+            return v
+    generic = [
+        f"{animal} secrets never end. Follow Wild Mechanics for more.",
+        f"Nature's mechanics never stop. Follow Wild Mechanics for more.",
+        f"One wild story, more to come. Follow Wild Mechanics.",
+    ]
+    return generic[hash(title) % len(generic)]
 
 # UTF-8 stdout
 if hasattr(sys.stdout, 'reconfigure'):
@@ -93,9 +140,11 @@ def main():
         )
     print(f"✅ Source footage ready: {source_path}")
 
-    # 2. Render Output or Passthrough — CTA now burned into ALL outputs (0%->0.46% lift)
+    # 2. Render Output — story exactly 60.0s, CTA outro (varied per video) appended after
+    cta_text = generate_varied_cta(story)
+    print(f"📣 CTA: {cta_text}")
     if story.get("passthrough"):
-        print(f"\n⚡ Master + CTA render (passthrough with burned CTA): {source_path.name}")
+        print(f"\n⚡ Master + CTA outro (passthrough): {source_path.name}")
         output_dir = ROOT_DIR / "projects" / story.get("id") / "renders"
         output_dir.mkdir(parents=True, exist_ok=True)
         output_mp4 = output_dir / f"{story.get('id')}_ghost_4_5.mp4"
@@ -107,6 +156,7 @@ def main():
             "--duration", str(story.get("duration", 60.0)),
             "--framing", "ghost-4-5",
             "--output", str(output_mp4),
+            "--cta", cta_text,
         ]
         res = subprocess.run(render_cmd, capture_output=True, text=True)
         if res.returncode != 0 or not output_mp4.exists():
@@ -124,7 +174,7 @@ def main():
             print(f"[ERROR] ASS subtitle file missing: {ass_path}")
             sys.exit(1)
 
-        print(f"\n⚡ Rendering 4:5 Ghost Blur Short: {output_mp4.name}...")
+        print(f"\n⚡ Rendering 4:5 Ghost Blur Short (60s story + CTA outro): {output_mp4.name}...")
         render_cmd = [
             sys.executable,
             str(ROOT_DIR / "scripts" / "create_source_vo_short.py"),
@@ -134,6 +184,7 @@ def main():
             "--ass", str(ass_path),
             "--framing", "ghost-4-5",
             "--output", str(output_mp4),
+            "--cta", cta_text,
         ]
         res = subprocess.run(render_cmd, capture_output=True, text=True)
         if res.returncode != 0 or not output_mp4.exists():
