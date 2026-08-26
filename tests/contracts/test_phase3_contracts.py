@@ -697,6 +697,7 @@ class TestCapabilityMetadata:
             "elevenlabs",
             "fish_audio",
             "fal.ai",
+            "gemini",
             "google_tts",
             "kling_official",
             "openai",
