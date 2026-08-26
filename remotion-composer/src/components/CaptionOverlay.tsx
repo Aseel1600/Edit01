@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import {
   AbsoluteFill,
   Sequence,
@@ -110,23 +111,30 @@ const PageRenderer: React.FC<{
             const isActive = w.startMs <= currentMs && w.endMs > currentMs;
             const isPast = w.endMs <= currentMs;
             return (
-              <span
-                key={`${w.startMs}-${i}`}
-                style={{
-                  // Keep each word unbroken so lines wrap only at word
-                  // boundaries. For space-delimited text this matches the
-                  // previous behavior; for CJK it prevents mid-word breaks.
-                  display: "inline-block",
-                  whiteSpace: "nowrap",
-                  color: isActive ? highlightColor : isPast ? color : `${color}99`,
-                  transition: "none", // CSS transitions forbidden in Remotion
-                  textShadow: isActive
-                    ? `0 0 20px ${highlightColor}66, 0 2px 4px rgba(0,0,0,0.5)`
-                    : "0 2px 4px rgba(0,0,0,0.5)",
-                }}
-              >
-                {w.word}{i < page.words.length - 1 ? wordSeparator : ""}
-              </span>
+              // The separator sits outside the word span on purpose. Inside an
+              // inline-block with white-space: nowrap a trailing space is
+              // collapsed away, which ran every word together ("tellsyouabout").
+              // The parent span uses pre-wrap, so out here the space both
+              // renders and gives the line a legal wrap point.
+              <Fragment key={`${w.startMs}-${i}`}>
+                <span
+                  style={{
+                    // Keep each word unbroken so lines wrap only at word
+                    // boundaries. For space-delimited text this matches the
+                    // previous behavior; for CJK it prevents mid-word breaks.
+                    display: "inline-block",
+                    whiteSpace: "nowrap",
+                    color: isActive ? highlightColor : isPast ? color : `${color}99`,
+                    transition: "none", // CSS transitions forbidden in Remotion
+                    textShadow: isActive
+                      ? `0 0 20px ${highlightColor}66, 0 2px 4px rgba(0,0,0,0.5)`
+                      : "0 2px 4px rgba(0,0,0,0.5)",
+                  }}
+                >
+                  {w.word}
+                </span>
+                {i < page.words.length - 1 ? wordSeparator : ""}
+              </Fragment>
             );
           })}
         </span>
