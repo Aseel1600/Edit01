@@ -78,6 +78,10 @@ VIDEO_GEN_LOCAL_MODEL=       # wan2.2-ti2v-5b, wan2.1-1.3b, wan2.1-14b, hunyuan-
 # COMFYUI (optional overrides; localhost:8188 is the default)
 COMFYUI_SERVER_URL=          # Local ComfyUI server for shared workflows
 COMFYUI_VIDEO_SERVER_URL=    # Optional video-specific ComfyUI server
+
+# COMFY CLOUD (hosted ComfyUI — no server of your own required)
+COMFY_CLOUD_API_KEY=         # Key from https://platform.comfy.org
+COMFYUI_BACKEND=             # local | cloud | auto (default auto = local)
 ```
 
 ---
@@ -1201,6 +1205,51 @@ piper --download-dir ~/.piper/models --model en_US-lessac-medium
 **Available voices:** ~30 English voices plus voices for German, French, Spanish, Italian, and other languages. Lower variety than cloud providers but completely free and offline.
 
 **Quality:** Good for drafts, internal videos, and budget projects. For client-facing narration, use ElevenLabs or Google TTS.
+
+---
+
+### Comfy Cloud — Hosted ComfyUI Backend
+
+**Tools:** `comfyui_image`, `comfyui_video`, `comfyui_music` (same tools, second backend)
+
+**Env vars:** `COMFY_CLOUD_API_KEY` (required), `COMFYUI_BACKEND` (optional)
+
+Comfy Cloud runs the same bundled workflows on hosted GPUs, so no local
+ComfyUI install or model download is needed. Every bundled graph is
+supported: FLUX 2 text-to-image, WAN 2.2 text-to-video and image-to-video,
+and ACE-Step music.
+
+Select it per call with `backend: "cloud"`, or globally with
+`COMFYUI_BACKEND=cloud`:
+
+```bash
+COMFY_CLOUD_API_KEY=your_key_here
+COMFYUI_BACKEND=cloud
+```
+
+**`auto` never picks Comfy Cloud.** Cloud is metered, so it is opt-in only —
+an unreachable local server is reported as a fault rather than silently
+becoming a paid run. `auto` means local.
+
+**Cost:** billed as Comfy Cloud GPU hours, not per image. The bundled
+workflows carry flat per-run estimates (`$0.05` image and music, `$0.25`
+video). Actual billing comes from the workspace usage records; open-weight
+workflows bill GPU time that no per-node estimate covers, so treat the
+estimate as a floor rather than a quote.
+
+**Model differences:** the hosted catalog carries the stock FLUX 2 build
+rather than the NVFP4 quantization the local graph names (that quant targets
+Blackwell-class local hardware). The adapter swaps the filename
+automatically and reports the model that actually ran. WAN 2.2 and ACE-Step
+are byte-identical across both backends.
+
+**Errors worth knowing:** `402` means the workspace is out of credits and
+`429` means the subscription is inactive. Both look like throttling and
+neither is retryable — the tools surface them as explicit blockers.
+
+**End-to-end demo:** `scripts/comfy_cloud_e2e.py` exercises all four bundled
+workflows and composes the results into one video. It defaults to a free dry
+run; `--live` performs real generations.
 
 ---
 
