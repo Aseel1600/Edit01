@@ -37,7 +37,7 @@ audio/
   voices/            # 10 dialogue MP3s (see "Voice lines")
 ```
 
-Run from this directory after placing the assets above:
+Run from this directory (the assets listed above are already included):
 
 ```bash
 pip install pillow numpy imageio-ffmpeg fonttools brotli   # fonttools/brotli only for font conversion
@@ -149,9 +149,11 @@ EOF
 
 ## Notes
 
-- Generated media (stills, voice clips, mix, frames, final MP4) is intentionally
-  **not committed** — the repo ignores `projects/` and `output/` because these
-  artifacts are regenerable from this source plus the prompts above.
+- All assets are **included in this package** — the 12 art stills
+  (`assets/images/`), the chunky fonts (`assets/fonts/`), the 10 voice lines
+  (`audio/voices/`), the full mix (`audio/final_mix.wav`), and the finished
+  render (`foxy-shares.mp4`). You can re-render from scratch or just grab the
+  MP4 directly.
 - `audio.py` ducks the BGM under dialogue and normalizes the master; peak levels
   are fine for social platforms (verified: <0.001% clipped samples after AAC).
 - Re-run `spec.py` after changing any voice clip so the timeline re-derives from

@@ -1,0 +1,370 @@
+{
+  "fps": 30,
+  "width": 1080,
+  "height": 1920,
+  "duration": 44.36,
+  "beats": [
+    {
+      "id": "hook",
+      "type": "hook",
+      "min": 4.2,
+      "accent": "#FF6B35",
+      "images": {
+        "a": "s1_a.png",
+        "b": "s1_b.png",
+        "swap": 2.2
+      },
+      "title": {
+        "text": "FOXY'S BIG BERRY!",
+        "t": 0.4,
+        "dur": 3.8
+      },
+      "captions": [
+        {
+          "text": "A little fox found a GIANT berry!",
+          "t": 1.8,
+          "dur": 2.4,
+          "color": "#FFFFFF"
+        }
+      ],
+      "bubbles": [
+        {
+          "file": "foxy_hook.mp3",
+          "who": "Foxy",
+          "text": "Whoa! The biggest berry ever!",
+          "t": 0.9,
+          "dur": 3.75,
+          "color": "#FFE0B3",
+          "end": 4.65
+        }
+      ],
+      "sfx": [
+        [
+          "pop",
+          0.2
+        ],
+        [
+          "sparkle",
+          2.2
+        ]
+      ],
+      "hearts": false,
+      "start": 0.0,
+      "end": 5.0,
+      "dur": 5.0
+    },
+    {
+      "id": "bunny",
+      "type": "scene",
+      "min": 6.4,
+      "accent": "#FF5C8A",
+      "images": {
+        "a": "s2_a.png",
+        "b": "s2_b.png",
+        "swap": 3.2
+      },
+      "captions": [
+        {
+          "text": "Uh oh... Foxy won't share!",
+          "t": 4.3,
+          "dur": 2.3,
+          "color": "#FFFFFF"
+        }
+      ],
+      "bubbles": [
+        {
+          "file": "bunny_hungry.mp3",
+          "who": "Bunny",
+          "text": "I'm so hungry... one little bite?",
+          "t": 5.4,
+          "dur": 4.86,
+          "color": "#FDE7F3",
+          "end": 10.260000000000002
+        },
+        {
+          "file": "foxy_mine.mp3",
+          "who": "Foxy",
+          "text": "No way! It's mine! All mine!",
+          "t": 8.6,
+          "dur": 4.91,
+          "color": "#FFE0B3",
+          "end": 13.51
+        }
+      ],
+      "sfx": [
+        [
+          "sad",
+          3.6
+        ]
+      ],
+      "hearts": false,
+      "start": 5.0,
+      "end": 13.86,
+      "dur": 8.86
+    },
+    {
+      "id": "stuck",
+      "type": "scene",
+      "min": 6.6,
+      "accent": "#7C5CFF",
+      "images": {
+        "a": "s3_a.png",
+        "b": "s3_b.png",
+        "swap": 3.4
+      },
+      "captions": [
+        {
+          "text": "Uh-oh! The berry is STUCK!",
+          "t": 1.6,
+          "dur": 2.4,
+          "color": "#FFFFFF"
+        }
+      ],
+      "bubbles": [
+        {
+          "file": "foxy_selfish.mp3",
+          "who": "Foxy",
+          "text": "I'll keep it ALL to myself!",
+          "t": 14.26,
+          "dur": 4.07,
+          "color": "#FFE0B3",
+          "end": 18.33
+        },
+        {
+          "file": "hog_help.mp3",
+          "who": "Hedgehog",
+          "text": "Need a hand, Foxy?",
+          "t": 17.46,
+          "dur": 2.15,
+          "color": "#E8F1E3",
+          "end": 19.61
+        }
+      ],
+      "sfx": [
+        [
+          "thud",
+          2.8
+        ],
+        [
+          "boing",
+          3.0
+        ]
+      ],
+      "hearts": false,
+      "start": 13.86,
+      "end": 20.46,
+      "dur": 6.600000000000001
+    },
+    {
+      "id": "realize",
+      "type": "scene",
+      "min": 6.4,
+      "accent": "#FFC43D",
+      "images": {
+        "a": "s4_a.png",
+        "b": "s4_b.png",
+        "swap": 3.4
+      },
+      "captions": [
+        {
+          "text": "Sharing is... FUN!",
+          "t": 4.6,
+          "dur": 2.0,
+          "color": "#FFFFFF"
+        }
+      ],
+      "bubbles": [
+        {
+          "file": "foxy_realize.mp3",
+          "who": "Foxy",
+          "text": "Wait... sharing is... actually fun!",
+          "t": 24.66,
+          "dur": 4.02,
+          "color": "#FFE0B3",
+          "end": 28.68
+        }
+      ],
+      "sfx": [
+        [
+          "whoosh",
+          0.3
+        ],
+        [
+          "ding",
+          4.6
+        ],
+        [
+          "sparkle",
+          5.4
+        ]
+      ],
+      "hearts": true,
+      "start": 20.46,
+      "end": 29.03,
+      "dur": 8.57
+    },
+    {
+      "id": "picnic",
+      "type": "scene",
+      "min": 7.2,
+      "accent": "#2EC4B6",
+      "images": {
+        "a": "s5_a.png",
+        "b": "s5_b.png",
+        "swap": 4.4
+      },
+      "captions": [
+        {
+          "text": "YAY! Friends forever!",
+          "t": 6.0,
+          "dur": 1.4,
+          "color": "#FFFFFF"
+        }
+      ],
+      "bubbles": [
+        {
+          "file": "bunny_thanks.mp3",
+          "who": "Bunny",
+          "text": "Thank you, Foxy!",
+          "t": 29.43,
+          "dur": 2.0700000000000003,
+          "color": "#FDE7F3",
+          "end": 31.5
+        },
+        {
+          "file": "hog_moral.mp3",
+          "who": "Hedgehog",
+          "text": "Friends make everything sweeter!",
+          "t": 31.630000000000003,
+          "dur": 3.06,
+          "color": "#E8F1E3",
+          "end": 34.690000000000005
+        },
+        {
+          "file": "foxy_share.mp3",
+          "who": "Foxy",
+          "text": "Let's share everything!",
+          "t": 33.43,
+          "dur": 2.58,
+          "color": "#FFE0B3",
+          "end": 36.01
+        }
+      ],
+      "sfx": [
+        [
+          "ding",
+          4.4
+        ],
+        [
+          "sparkle",
+          5.2
+        ]
+      ],
+      "hearts": true,
+      "start": 29.03,
+      "end": 36.36,
+      "dur": 7.329999999999998
+    },
+    {
+      "id": "endcard",
+      "type": "endcard",
+      "min": 8.0,
+      "accent": "#FF6B35",
+      "images": {
+        "a": "s6_bg.png",
+        "b": "s6_bg.png",
+        "swap": -1
+      },
+      "title": {
+        "text": "SHARING IS SWEET!",
+        "t": 0.5,
+        "dur": 7.5
+      },
+      "moral": {
+        "text": "Friends make everything sweeter!",
+        "t": 2.4,
+        "dur": 5.4
+      },
+      "chip": {
+        "text": "LIKE  \u00b7  SHARE  \u00b7  SUBSCRIBE",
+        "t": 4.8,
+        "dur": 3.0
+      },
+      "bubbles": [
+        {
+          "file": "foxy_yay.mp3",
+          "who": "Foxy",
+          "text": "Yayyy! Sharing is the best!",
+          "t": 36.96,
+          "dur": 3.63,
+          "color": "#FFE0B3",
+          "end": 40.59
+        }
+      ],
+      "sfx": [
+        [
+          "sparkle",
+          0.4
+        ],
+        [
+          "ding",
+          2.4
+        ]
+      ],
+      "hearts": true,
+      "start": 36.36,
+      "end": 44.36,
+      "dur": 8.0
+    }
+  ],
+  "sfx": [
+    {
+      "name": "pop",
+      "t": 0.2
+    },
+    {
+      "name": "sparkle",
+      "t": 2.2
+    },
+    {
+      "name": "sad",
+      "t": 8.6
+    },
+    {
+      "name": "thud",
+      "t": 16.66
+    },
+    {
+      "name": "boing",
+      "t": 16.86
+    },
+    {
+      "name": "whoosh",
+      "t": 20.76
+    },
+    {
+      "name": "ding",
+      "t": 25.060000000000002
+    },
+    {
+      "name": "sparkle",
+      "t": 25.86
+    },
+    {
+      "name": "ding",
+      "t": 33.43
+    },
+    {
+      "name": "sparkle",
+      "t": 34.230000000000004
+    },
+    {
+      "name": "sparkle",
+      "t": 36.76
+    },
+    {
+      "name": "ding",
+      "t": 38.76
+    }
+  ]
+}
