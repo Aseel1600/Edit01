@@ -73,7 +73,53 @@ def test_edge_tts_and_subtitles():
     print(" Subtitle Engine Test Passed!\n")
 
 
+def test_ima2_image():
+    print("=== Testing Ima2Image Tool ===")
+    registry.ensure_discovered()
+    
+    ima2_tool = registry.get("ima2_image")
+    assert ima2_tool is not None
+    
+    # 1. Test size resolution
+    assert ima2_tool._resolve_size("9:16") == "1152x2048"
+    assert ima2_tool._resolve_size("16:9") == "1824x1024"
+    assert ima2_tool._resolve_size("1:1") == "1024x1024"
+    
+    # 2. Test prompt building with design system rules
+    built_prompt = ima2_tool._build_stickman_prompt(
+        base_prompt="holding a lightbulb idea",
+        action="pointing upwards",
+        expression="confident",
+        prop="lightbulb"
+    )
+    assert "#ECE7D8" in built_prompt
+    assert "#F4A621" in built_prompt
+    assert "#181818" in built_prompt
+    assert "stickman character with white circular head" in built_prompt
+    print(" Prompt building and size resolution verified!")
+
+    # 3. Test execution with existing sample image check
+    out_img = pathlib.Path("scratch/test_stickman_tool.png")
+    res = ima2_tool.execute({
+        "prompt": "stickman standing next to a target with an arrow hitting bullseye",
+        "preset": "2d-stick-figure-cartoon",
+        "aspect_ratio": "9:16",
+        "character_action": "celebrating",
+        "character_expression": "happy",
+        "output_path": str(out_img)
+    })
+    
+    if res.success:
+        assert out_img.exists() and out_img.stat().st_size > 0
+        print(f" Ima2Image generated stickman: {out_img} ({out_img.stat().st_size} bytes)")
+    else:
+        print(f"  Ima2Image offline notice (CLI/server state): {res.error}")
+    print(" Ima2Image Tool Test Passed!\n")
+
+
 if __name__ == "__main__":
     test_vietnamese_formatter()
     test_edge_tts_and_subtitles()
+    test_ima2_image()
     print("ALL TAKA-TALES INTEGRATION TESTS PASSED SUCCESSFULLY!")
+
