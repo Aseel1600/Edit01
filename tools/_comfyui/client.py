@@ -33,7 +33,13 @@ class ComfyUIError(Exception):
 
 
 class ComfyUIClient:
-    """Client for the ComfyUI REST API.
+    """Client for a ComfyUI server you run yourself.
+
+    Comfy Cloud is a *subclass* (``tools._comfyui.cloud_client``), not a
+    branch inside these methods: its protocol differs enough that inlining
+    it would put an ``if is_cloud`` in every request, and the local path is
+    the one most users depend on and the hardest to regression-test. Nothing
+    in this class knows cloud exists.
 
     The protocol is simple and battle-tested:
       1. POST /prompt           → queue a workflow, get a prompt_id
@@ -41,6 +47,10 @@ class ComfyUIClient:
       3. GET  /view?filename=…  → download the generated artifact
       4. POST /upload/image     → stage a local image for I2V workflows
     """
+
+    #: Which transport this client speaks. Subclasses override.
+    backend = "local"
+    is_cloud = False
 
     def __init__(
         self, server_url: str | None = None, capability: str | None = None
@@ -94,6 +104,10 @@ class ComfyUIClient:
             f"ComfyUI server not reachable at {self.server_url}.\n"
             f"Check that ComfyUI is running and the URL is correct."
         )
+
+    def recovery_hint(self, prompt_id: str) -> str:
+        """The request a caller can run by hand to check on a job."""
+        return f"GET {self.server_url}/history/{prompt_id}"
 
     def is_available(self) -> bool:
         """Return True if the ComfyUI server is reachable."""

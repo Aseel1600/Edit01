@@ -27,7 +27,10 @@ from tools.base_tool import (
     ToolTier,
 )
 from tools._comfyui.client import ComfyUIClient, ComfyUIError
+from tools._comfyui.cloud_client import make_client
 from tools._comfyui.metadata import (
+    apply_backend_models,
+    backend_models,
     BUNDLED_MODEL_STACKS,
     COMFYUI_SETUP_OFFER,
     missing_models_payload,
@@ -107,6 +110,7 @@ class ComfyUIVideo(BaseTool):
     install_instructions = (
         "Start a ComfyUI server and set COMFYUI_SERVER_URL "
         "(default http://localhost:8188).\n"
+        "Or use Comfy Cloud instead of running a server: set COMFY_CLOUD_API_KEY (get one at https://platform.comfy.org). A local server takes priority when both are configured; COMFYUI_BACKEND=cloud forces cloud.\n"
         "Bundled local WAN requires WAN 2.2 models and LightX2V LoRAs. Local "
         "MiniMax H3 requires its official model stack and exported API workflow.\n"
         "Gemini Omni, Seedance 2.5, and MiniMax H3 Partner Nodes require a "
@@ -129,7 +133,8 @@ class ComfyUIVideo(BaseTool):
         "reference_image": True,
         "custom_workflow": True,
         "custom_output_node": True,
-        "offline": True,
+        "offline": True,  # local backend; Comfy Cloud is online
+        "comfy_cloud_backend": True,
         "gemini_omni_flash_partner_node": True,
         "seedance_2_5_partner_node": True,
         "minimax_h3_partner_node": True,
@@ -224,6 +229,28 @@ class ComfyUIVideo(BaseTool):
             "generate_audio": {"type": "boolean", "default": True},
             "seed": {"type": "integer", "description": "Random if omitted"},
             "output_path": {"type": "string", "description": "Where to save the video"},
+            "negative_prompt": {
+                "type": "string",
+                "description": (
+                    "Extra terms to suppress, appended to the bundled WAN "
+                    "quality negative (which is kept). WAN 2.2 readily invents "
+                    "people and camera moves that were never asked for; this "
+                    "is how you rule them out."
+                ),
+            },
+            "backend": {
+                "type": "string",
+                "enum": ["local", "cloud", "auto"],
+                "default": "auto",
+                "description": (
+                    "Which ComfyUI to run on. 'auto' (default) uses a local "
+                    "server whenever one is configured — even if a cloud key "
+                    "is also present, since local is free and cloud is "
+                    "metered. With no local server configured, a "
+                    "COMFY_CLOUD_API_KEY selects Comfy Cloud. 'local'/'cloud' "
+                    "force the choice, as does COMFYUI_BACKEND."
+                ),
+            },
             "workflow_json": {
                 "type": "string",
                 "description": "Optional full ComfyUI workflow JSON. Requires output_node.",
@@ -296,8 +323,19 @@ class ComfyUIVideo(BaseTool):
     ]
 
     def __init__(self) -> None:
-        self._client = ComfyUIClient(capability="video")
+        self._clients: dict[str, ComfyUIClient] = {}
         self._last_progress_log = 0.0
+
+    def _client_for(self, backend: str | None = None) -> ComfyUIClient:
+        """Return a client for *backend*, resolving ``auto`` once per key."""
+        key = (backend or "").strip().lower() or "_auto"
+        if key not in self._clients:
+            self._clients[key] = make_client("video", backend)
+        return self._clients[key]
+
+    @property
+    def _client(self) -> ComfyUIClient:
+        return self._client_for(None)
 
     def _log_progress(self, data: dict) -> None:
         """Print a throttled progress line for long video renders.
@@ -391,6 +429,10 @@ class ComfyUIVideo(BaseTool):
 
     def estimate_cost(self, inputs: dict[str, Any]) -> float:
         family = str(inputs.get("model_family", "wan2.2"))
+        if family == "wan2.2" and self._client_for(inputs.get("backend")).is_cloud:
+            # WAN 2.2 is open weights — free on a local GPU, billed as Comfy
+            # Cloud GPU hours. Flat figure for the bundled 4-step graph.
+            return 0.25
         duration = float(inputs.get("duration", 5))
         if family == "gemini_omni_flash":
             return round(0.146 * duration, 4)
@@ -452,10 +494,11 @@ class ComfyUIVideo(BaseTool):
                 ),
             )
 
-        if not self._client.is_available():
+        client = self._client_for(inputs.get("backend"))
+        if not client.is_available():
             return ToolResult(
                 success=False,
-                error=self._client.unavailable_reason(),
+                error=client.unavailable_reason(),
             )
 
         operation = inputs.get("operation", "text_to_video")
@@ -466,7 +509,16 @@ class ComfyUIVideo(BaseTool):
                 if operation == "image_to_video"
                 else _REQUIRED_MODELS_T2V
             )
-            _, missing = self._client.check_models(required)
+            required = backend_models(
+                required,
+                workflow_key=(
+                    "wan22-i2v-4step"
+                    if operation == "image_to_video"
+                    else "wan22-t2v-4step"
+                ),
+                backend=client.backend,
+            )
+            _, missing = client.check_models(required)
             if missing:
                 workflow_key = (
                     "wan22-i2v-4step"
@@ -499,7 +551,7 @@ class ComfyUIVideo(BaseTool):
                 output_node = str(inputs["output_node"])
             elif model_family in partner_nodes:
                 node_class = partner_nodes[model_family]
-                if not self._client.has_node(node_class):
+                if not client.has_node(node_class):
                     raise ComfyUIError(
                         f"ComfyUI server does not expose {node_class}; update ComfyUI "
                         "and enable Partner Nodes. These are hosted API nodes, not offline models."
@@ -508,14 +560,19 @@ class ComfyUIVideo(BaseTool):
                     inputs, seed, output_path, model_family
                 )
             elif operation == "image_to_video":
-                workflow, output_node = self._build_i2v(inputs, seed, output_path)
+                workflow, output_node = self._build_i2v(
+                    inputs, seed, output_path, client=client
+                )
             else:
-                workflow, output_node = self._build_t2v(inputs, seed, output_path)
+                workflow, output_node = self._build_t2v(
+                    inputs, seed, output_path, client=client
+                )
 
             provenance = self._workflow_provenance(
                 inputs, custom_workflow, output_node, operation, workflow, model_family
             )
-            paths = self._client.generate(
+            provenance["backend"] = client.backend
+            paths = client.generate(
                 workflow,
                 output_node=output_node,
                 dest=output_path,
@@ -533,7 +590,7 @@ class ComfyUIVideo(BaseTool):
                     f"running server-side. To recover it without resubmitting, call "
                     f"execute() again with resume_prompt_id={exc.prompt_id!r} "
                     f"(and a longer timeout_seconds if it needs more time), or poll "
-                    f"GET {{COMFYUI_SERVER_URL}}/history/{exc.prompt_id} directly."
+                    f"{client.recovery_hint(exc.prompt_id)} directly."
                 )
             else:
                 error_msg = str(exc)
@@ -593,8 +650,26 @@ class ComfyUIVideo(BaseTool):
     # Workflow builders
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _merge_negative(workflow: dict, node_id: str, extra: str | None) -> dict:
+        """Append caller terms to the workflow's built-in quality negative.
+
+        Replacing it outright would drop the artifact suppression the bundled
+        graph relies on, so the two are joined instead.
+        """
+        if not extra:
+            return workflow
+        base = workflow.get(node_id, {}).get("inputs", {}).get("text", "")
+        joined = f"{base}, {extra}".strip(", ") if base else extra
+        return ComfyUIClient.patch_workflow(workflow, {node_id: {"text": joined}})
+
     def _build_t2v(
-        self, inputs: dict[str, Any], seed: int, output_path: Path
+        self,
+        inputs: dict[str, Any],
+        seed: int,
+        output_path: Path,
+        *,
+        client: ComfyUIClient | None = None,
     ) -> tuple[dict, str]:
         width = inputs.get("width", 832)
         height = inputs.get("height", 480)
@@ -610,10 +685,23 @@ class ComfyUIVideo(BaseTool):
                 "16": {"filename_prefix": output_path.stem},
             },
         )
+        workflow = ComfyUIVideo._merge_negative(
+            workflow, "3", inputs.get("negative_prompt")
+        )
+        workflow = apply_backend_models(
+            workflow,
+            workflow_key="wan22-t2v-4step",
+            backend=(client or self._client).backend,
+        )
         return workflow, _T2V_OUTPUT_NODE
 
     def _build_i2v(
-        self, inputs: dict[str, Any], seed: int, output_path: Path
+        self,
+        inputs: dict[str, Any],
+        seed: int,
+        output_path: Path,
+        *,
+        client: ComfyUIClient | None = None,
     ) -> tuple[dict, str]:
         width = inputs.get("width", 640)
         height = inputs.get("height", 640)
@@ -638,7 +726,9 @@ class ComfyUIVideo(BaseTool):
 
         # Upload to ComfyUI
         upload_name = f"om_{output_path.stem}.png"
-        server_name = self._client.upload_image(Path(ref_path), upload_name)
+        server_name = (client or self._client).upload_image(
+            Path(ref_path), upload_name
+        )
 
         workflow = ComfyUIClient.load_workflow(_WORKFLOWS / "wan22-i2v-4step.json")
         workflow = ComfyUIClient.patch_workflow(
@@ -650,6 +740,14 @@ class ComfyUIVideo(BaseTool):
                 "86": {"noise_seed": seed},
                 "108": {"filename_prefix": output_path.stem},
             },
+        )
+        workflow = ComfyUIVideo._merge_negative(
+            workflow, "89", inputs.get("negative_prompt")
+        )
+        workflow = apply_backend_models(
+            workflow,
+            workflow_key="wan22-i2v-4step",
+            backend=(client or self._client).backend,
         )
         return workflow, _I2V_OUTPUT_NODE
 
@@ -766,6 +864,9 @@ class ComfyUIVideo(BaseTool):
                 "ratio": ratio,
                 "duration": duration,
                 "generate_audio": bool(inputs.get("generate_audio", True)),
+                # Required by the Seedance 2.5 variant; omitting it fails
+                # submit-time validation with "required_input_missing".
+                "output_format": inputs.get("output_format", "mp4"),
             }
         else:
             node_class = "MinimaxHailuo03TextToVideoNode"
@@ -778,10 +879,27 @@ class ComfyUIVideo(BaseTool):
                 "ratio": ratio,
                 "duration": duration,
             }
+        # Partner API nodes cap seed at INT32_MAX, while the local WAN noise
+        # nodes accept the full UINT32 range that random_seed() draws from.
+        # Passing an unclamped seed here fails submit-time validation with
+        # "value_bigger_than_max".
+        partner_seed = seed % 2_147_483_648
+
+        # Partner nodes declare `model` as COMFY_DYNAMICCOMBO_V3: the combo
+        # KEY is the `model` value and its per-variant parameters travel as
+        # sibling `model.<name>` keys. Nesting them in a dict submits fine
+        # but fails at execution with
+        # "execute() missing 1 required positional argument: 'model'".
+        node_inputs: dict[str, Any] = {
+            "model": model.pop("model"),
+            "seed": partner_seed,
+            "watermark": False,
+        }
+        node_inputs.update({f"model.{k}": v for k, v in model.items()})
         workflow = {
             "1": {
                 "class_type": node_class,
-                "inputs": {"model": model, "seed": seed, "watermark": False},
+                "inputs": node_inputs,
             },
             "2": {
                 "class_type": "SaveVideo",

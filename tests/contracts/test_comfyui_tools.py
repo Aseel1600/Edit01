@@ -385,7 +385,7 @@ class TestClientHelpers:
         client = ComfyUIClient("http://comfy.test")
         seen = {}
 
-        def fake_post(url, json=None, timeout=None):
+        def fake_post(url, json=None, timeout=None, headers=None):
             seen.update(json)
             return type("R", (), {
                 "raise_for_status": lambda self: None,
@@ -1303,3 +1303,374 @@ class TestCustomWorkflowSelectorEligibility:
                 "workflow_model_stack",
             ):
                 assert field in props, f"{selector.name} missing {field}"
+
+
+class TestBackendResolution:
+    """A configured local server always wins; a lone cloud key means cloud."""
+
+    @pytest.mark.parametrize(
+        "local_url,cloud_key,expected",
+        [
+            ("http://box:8188", None, "local"),
+            ("http://box:8188", "k", "local"),   # both set -> cloud is ignored
+            (None, "k", "cloud"),
+            (None, None, "local"),
+        ],
+    )
+    def test_auto_resolution_table(self, monkeypatch, local_url, cloud_key, expected):
+        from tools._comfyui.cloud_client import resolve_backend
+
+        monkeypatch.delenv("COMFYUI_BACKEND", raising=False)
+        for var in ("COMFYUI_SERVER_URL", "COMFYUI_IMAGE_SERVER_URL",
+                    "COMFYUI_VIDEO_SERVER_URL", "COMFYUI_MUSIC_SERVER_URL",
+                    "COMFY_CLOUD_API_KEY"):
+            monkeypatch.delenv(var, raising=False)
+        if local_url:
+            monkeypatch.setenv("COMFYUI_SERVER_URL", local_url)
+        if cloud_key:
+            monkeypatch.setenv("COMFY_CLOUD_API_KEY", cloud_key)
+        assert resolve_backend() == expected
+
+    def test_a_per_capability_local_url_also_counts_as_configured(self, monkeypatch):
+        from tools._comfyui.cloud_client import resolve_backend
+
+        monkeypatch.delenv("COMFYUI_BACKEND", raising=False)
+        monkeypatch.delenv("COMFYUI_SERVER_URL", raising=False)
+        monkeypatch.setenv("COMFYUI_VIDEO_SERVER_URL", "http://gpu:8188")
+        monkeypatch.setenv("COMFY_CLOUD_API_KEY", "k")
+        assert resolve_backend() == "local"
+
+    def test_explicit_argument_and_env_override(self, monkeypatch):
+        from tools._comfyui.cloud_client import resolve_backend
+
+        monkeypatch.setenv("COMFYUI_SERVER_URL", "http://box:8188")
+        assert resolve_backend("cloud") == "cloud"
+        monkeypatch.setenv("COMFYUI_BACKEND", "cloud")
+        assert resolve_backend() == "cloud"
+        assert resolve_backend("local") == "local"
+
+    def test_invalid_backend_rejected(self):
+        from tools._comfyui.cloud_client import resolve_backend
+
+        with pytest.raises(ValueError):
+            resolve_backend("gpu-farm")
+
+    def test_factory_returns_the_right_class(self, monkeypatch):
+        from tools._comfyui.client import ComfyUIClient
+        from tools._comfyui.cloud_client import ComfyCloudClient, make_client
+
+        monkeypatch.setenv("COMFY_CLOUD_API_KEY", "k")
+        assert isinstance(make_client("image", "cloud"), ComfyCloudClient)
+        local = make_client("image", "local")
+        assert isinstance(local, ComfyUIClient)
+        assert not isinstance(local, ComfyCloudClient)
+
+
+class TestLocalClientKnowsNothingOfCloud:
+    """The point of the subclass split: the local client is cloud-free."""
+
+    def test_local_client_source_never_mentions_cloud(self):
+        from pathlib import Path
+        import tools._comfyui.client as mod
+
+        source = Path(mod.__file__).read_text().lower()
+        for term in ("comfy_cloud_api_key", "x-api-key", "extra_data",
+                     "cloud.comfy.org", "/api/"):
+            assert term not in source, f"local client references {term!r}"
+
+    def test_local_client_defaults(self, monkeypatch):
+        from tools._comfyui.client import ComfyUIClient
+
+        monkeypatch.setenv("COMFY_CLOUD_API_KEY", "k")
+        client = ComfyUIClient(server_url="http://box:8188")
+        assert client.backend == "local"
+        assert client.is_cloud is False
+        assert client.server_url == "http://box:8188"
+        assert client.recovery_hint("p1") == "GET http://box:8188/history/p1"
+
+
+class TestCloudClient:
+
+    def test_api_prefix_and_auth_header(self, monkeypatch):
+        from tools._comfyui.cloud_client import ComfyCloudClient
+
+        monkeypatch.setenv("COMFY_CLOUD_API_KEY", "k-123")
+        client = ComfyCloudClient()
+        assert client.is_cloud is True
+        assert client.backend == "cloud"
+        assert client.server_url == "https://cloud.comfy.org/api"
+        assert client._headers == {"X-API-Key": "k-123"}
+        assert "/api/jobs/p1" in client.recovery_hint("p1")
+
+    def test_unavailable_without_key(self, monkeypatch):
+        from tools._comfyui.cloud_client import ComfyCloudClient
+
+        monkeypatch.delenv("COMFY_CLOUD_API_KEY", raising=False)
+        client = ComfyCloudClient()
+        assert client.is_available() is False
+        assert "COMFY_CLOUD_API_KEY" in client.unavailable_reason()
+
+    def test_normalizer_maps_job_record_to_local_shape(self):
+        """execution_status IS the local status dict — a rename, not a translation.
+
+        Reading the flat record's top-level `status` yields the bare string
+        "completed", and the caller's status_str == "error" check would
+        never fire.
+        """
+        from tools._comfyui.cloud_client import ComfyCloudClient
+
+        entry = ComfyCloudClient.normalize_job({
+            "status": "completed",
+            "execution_status": {"status_str": "success", "completed": True,
+                                 "messages": [["execution_start", {}]]},
+            "execution_meta": {"215": {"node_id": "215"}},
+            "outputs": {"215": {"audio": [{"filename": "a.mp3",
+                                           "subfolder": "audio",
+                                           "type": "output"}]}},
+        })
+        assert entry["status"]["status_str"] == "success"
+        assert entry["meta"] == {"215": {"node_id": "215"}}
+        assert entry["outputs"]["215"]["audio"][0]["filename"] == "a.mp3"
+
+    def test_normalizer_preserves_failure_signal(self):
+        from tools._comfyui.cloud_client import ComfyCloudClient
+
+        entry = ComfyCloudClient.normalize_job({
+            "status": "completed",
+            "execution_status": {"status_str": "error", "messages": ["boom"]},
+            "outputs": {},
+        })
+        assert entry["status"]["status_str"] == "error"
+
+    @pytest.mark.parametrize("code,needle", [
+        (401, "COMFY_CLOUD_API_KEY"),
+        (402, "out of credits"),
+        (429, "subscription is inactive"),
+    ])
+    def test_billing_and_auth_errors_are_explicit_blockers(self, code, needle):
+        """402 and 429 look like throttling; retrying them can never work."""
+        from tools._comfyui.client import ComfyUIError
+        from tools._comfyui.cloud_client import ComfyCloudClient
+
+        resp = type("R", (), {
+            "status_code": code,
+            "json": lambda self: {"code": "X", "message": "nope"},
+            "text": "nope",
+        })()
+        with pytest.raises(ComfyUIError) as exc:
+            ComfyCloudClient()._raise_for_error(resp)
+        assert needle in str(exc.value)
+
+    def test_failed_job_error_names_the_node(self):
+        from tools._comfyui.cloud_client import describe_cloud_error
+
+        described = describe_cloud_error({"error_message": json.dumps({
+            "exception_message": "Unauthorized: Please login first to use this node.",
+            "node_id": "208", "node_type": "ElevenLabsTextToSpeech",
+        })})
+        assert "ElevenLabsTextToSpeech" in described
+        assert "Unauthorized" in described
+
+    def test_failed_status_is_terminal(self):
+        """'failed' is undocumented but real; polling it forever is a hang."""
+        from tools._comfyui.cloud_client import CLOUD_TERMINAL
+
+        assert "failed" in CLOUD_TERMINAL
+
+    def test_submit_carries_the_partner_credential(self, monkeypatch):
+        """Partner nodes read the key from extra_data, not the header."""
+        from tools._comfyui.cloud_client import ComfyCloudClient
+
+        monkeypatch.setenv("COMFY_CLOUD_API_KEY", "k-777")
+        seen = {}
+
+        def fake_post(url, json=None, timeout=None, headers=None):
+            seen.update(json or {})
+            return type("R", (), {
+                "status_code": 200,
+                "raise_for_status": lambda self: None,
+                "json": lambda self: {"prompt_id": "p1"},
+            })()
+
+        monkeypatch.setattr(
+            "tools._comfyui.cloud_client.requests.post", fake_post)
+        ComfyCloudClient().submit({"1": {"inputs": {}}})
+        assert seen["extra_data"] == {"api_key_comfy_org": "k-777"}
+
+    def test_object_info_is_fetched_once(self, monkeypatch):
+        """Cloud only serves the full ~10MB payload — memoize it."""
+        from tools._comfyui.cloud_client import ComfyCloudClient
+
+        monkeypatch.setenv("COMFY_CLOUD_API_KEY", "k")
+        calls = []
+
+        def fake_get(url, headers=None, timeout=None, params=None):
+            calls.append(url)
+            return type("R", (), {
+                "status_code": 200,
+                "raise_for_status": lambda self: None,
+                "json": lambda self: {"UNETLoader": {"input": {"required": {
+                    "unet_name": [["a.safetensors"]]}}}},
+            })()
+
+        monkeypatch.setattr("tools._comfyui.cloud_client.requests.get", fake_get)
+        client = ComfyCloudClient()
+        client.list_models()
+        client.has_node("UNETLoader")
+        client.check_models(["a.safetensors"])
+        assert all(u.endswith("/api/object_info") for u in calls)
+        assert len(calls) == 1, f"object_info fetched {len(calls)} times"
+
+
+class TestPartnerNodeGraphs:
+    """Partner API nodes have tighter input ranges than the local graphs."""
+
+    def test_partner_seed_is_clamped_to_int32(self):
+        """random_seed() draws UINT32; partner nodes cap at INT32_MAX."""
+        workflow, _ = ComfyUIVideo._build_partner_t2v(
+            {"prompt": "a wave", "duration": 5},
+            4_161_237_130,  # a real UINT32 seed that failed validation
+            Path("out.mp4"),
+            "seedance_2.5",
+        )
+        assert workflow["1"]["inputs"]["seed"] <= 2_147_483_647
+
+    def test_partner_seed_left_alone_when_already_in_range(self):
+        workflow, _ = ComfyUIVideo._build_partner_t2v(
+            {"prompt": "a wave"}, 42, Path("out.mp4"), "seedance_2.5"
+        )
+        assert workflow["1"]["inputs"]["seed"] == 42
+
+    def test_model_uses_flattened_dynamic_combo_keys(self):
+        """COMFY_DYNAMICCOMBO_V3 takes the combo key plus `model.<name>`.
+
+        Nesting the parameters passes submit-time validation and then dies
+        at execution with "missing 1 required positional argument".
+        """
+        workflow, _ = ComfyUIVideo._build_partner_t2v(
+            {"prompt": "a wave"}, 1, Path("o.mp4"), "seedance_2.5"
+        )
+        node = workflow["1"]["inputs"]
+        assert node["model"] == "Seedance 2.5"
+        assert node["model.prompt"] == "a wave"
+        assert not isinstance(node["model"], dict)
+
+    def test_seedance_25_sends_required_output_format(self):
+        workflow, _ = ComfyUIVideo._build_partner_t2v(
+            {"prompt": "a wave"}, 1, Path("o.mp4"), "seedance_2.5"
+        )
+        assert workflow["1"]["inputs"]["model.output_format"] == "mp4"
+
+    def test_every_partner_family_flattens(self):
+        for family in ("gemini_omni_flash", "seedance_2.5", "minimax_h3_api"):
+            workflow, out = ComfyUIVideo._build_partner_t2v(
+                {"prompt": "x"}, 1, Path("o.mp4"), family
+            )
+            node = workflow["1"]["inputs"]
+            assert isinstance(node["model"], str), family
+            assert any(k.startswith("model.") for k in node), family
+            assert out == "2"
+
+
+class TestNegativePrompt:
+
+    def test_appends_rather_than_replaces(self):
+        """The bundled quality negative must survive a caller's additions."""
+        tool = ComfyUIVideo()
+        base, _ = tool._build_t2v({"prompt": "x"}, 1, Path("o.mp4"))
+        stock = base["3"]["inputs"]["text"]
+
+        merged, _ = tool._build_t2v(
+            {"prompt": "x", "negative_prompt": "people, crew"}, 1, Path("o.mp4")
+        )
+        text = merged["3"]["inputs"]["text"]
+        assert text.startswith(stock)
+        assert "people, crew" in text
+
+    def test_optional(self):
+        tool = ComfyUIVideo()
+        a, _ = tool._build_t2v({"prompt": "x"}, 1, Path("o.mp4"))
+        b, _ = tool._build_t2v({"prompt": "x", "negative_prompt": ""}, 1, Path("o.mp4"))
+        assert a["3"]["inputs"]["text"] == b["3"]["inputs"]["text"]
+
+
+class TestBackendSurfaceOnTools:
+
+    def test_tools_expose_backend_input(self):
+        for cls in (ComfyUIImage, ComfyUIVideo, ComfyUIMusic):
+            prop = cls.input_schema["properties"]["backend"]
+            assert prop["enum"] == ["local", "cloud", "auto"]
+            assert prop["default"] == "auto"
+
+    def test_cloud_runs_cost_money_local_is_free(self, monkeypatch):
+        monkeypatch.setenv("COMFY_CLOUD_API_KEY", "k")
+        for cls in (ComfyUIImage, ComfyUIVideo, ComfyUIMusic):
+            tool = cls()
+            assert tool.estimate_cost({"backend": "local"}) == 0.0
+            assert tool.estimate_cost({"backend": "cloud"}) > 0.0
+
+    def test_cloud_swaps_models_the_hosted_catalog_has(self):
+        """Cloud has no NVFP4 build; the graph must name what exists there."""
+        from tools._comfyui.metadata import apply_backend_models, backend_models
+
+        workflow = {
+            "1": {"class_type": "UNETLoader",
+                  "inputs": {"unet_name": "flux2-dev-nvfp4.safetensors"}},
+            "3": {"class_type": "VAELoader",
+                  "inputs": {"vae_name": "flux2-vae.safetensors"}},
+        }
+        patched = apply_backend_models(
+            workflow, workflow_key="flux2-txt2img", backend="cloud")
+        assert patched["1"]["inputs"]["unet_name"] == "flux2-dev.safetensors"
+        assert patched["3"]["inputs"]["vae_name"] == "flux2-vae.safetensors"
+        assert backend_models(["flux2-dev-nvfp4.safetensors"],
+                              workflow_key="flux2-txt2img",
+                              backend="cloud") == ["flux2-dev.safetensors"]
+
+    def test_local_backend_leaves_workflow_untouched(self):
+        from tools._comfyui.metadata import apply_backend_models
+
+        workflow = {"1": {"class_type": "UNETLoader",
+                          "inputs": {"unet_name": "flux2-dev-nvfp4.safetensors"}}}
+        patched = apply_backend_models(
+            workflow, workflow_key="flux2-txt2img", backend="local")
+        assert patched["1"]["inputs"]["unet_name"] == "flux2-dev-nvfp4.safetensors"
+
+
+class TestSetupMetadataMentionsCloud:
+    """AGENT_GUIDE has agents build the setup menu from this metadata.
+
+    If install_instructions only describes standing up a local server, a
+    user with no GPU is told to install ComfyUI and never learns a cloud key
+    is an option — the provider menu would be accurate but incomplete.
+    """
+
+    def test_install_instructions_offer_the_cloud_path(self):
+        for cls in (ComfyUIImage, ComfyUIVideo, ComfyUIMusic):
+            text = cls.install_instructions
+            assert "COMFY_CLOUD_API_KEY" in text, cls.__name__
+            assert "platform.comfy.org" in text, cls.__name__
+            # and must still explain precedence, or users will assume the
+            # key alone switches them over
+            assert "COMFYUI_BACKEND" in text, cls.__name__
+
+    def test_setup_offer_carries_the_hosted_alternative(self):
+        from tools._comfyui.metadata import COMFYUI_SETUP_OFFER
+
+        alt = COMFYUI_SETUP_OFFER["alternative"]
+        assert alt["env_var"] == "COMFY_CLOUD_API_KEY"
+        assert alt["kind"] == "hosted"
+        # Cost honesty is a review-guide requirement for paid providers.
+        assert "metered" in alt["billing"]
+
+    def test_supports_flags_declare_the_cloud_backend(self):
+        for cls in (ComfyUIImage, ComfyUIVideo, ComfyUIMusic):
+            assert cls.supports.get("comfy_cloud_backend") is True, cls.__name__
+
+    def test_local_setup_offer_is_unchanged(self):
+        """The hosted option is additive — it must not displace the local one."""
+        from tools._comfyui.metadata import COMFYUI_SETUP_OFFER
+
+        assert COMFYUI_SETUP_OFFER["kind"] == "local_server"
+        assert COMFYUI_SETUP_OFFER["env_var"] == "COMFYUI_SERVER_URL"
+        assert COMFYUI_SETUP_OFFER["health_check"] == "GET /system_stats"

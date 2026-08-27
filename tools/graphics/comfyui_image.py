@@ -24,9 +24,12 @@ from tools.base_tool import (
     ToolTier,
 )
 from tools._comfyui.client import ComfyUIClient, ComfyUIError
+from tools._comfyui.cloud_client import make_client
 from tools._comfyui.metadata import (
     BUNDLED_MODEL_STACKS,
     COMFYUI_SETUP_OFFER,
+    apply_backend_models,
+    backend_models,
     missing_models_payload,
     model_stack,
     workflow_hash,
@@ -58,6 +61,7 @@ class ComfyUIImage(BaseTool):
     install_instructions = (
         "Start a ComfyUI server and set COMFYUI_SERVER_URL "
         "(default http://localhost:8188).\n"
+        "Or use Comfy Cloud instead of running a server: set COMFY_CLOUD_API_KEY (get one at https://platform.comfy.org). A local server takes priority when both are configured; COMFYUI_BACKEND=cloud forces cloud.\n"
         "See https://github.com/comfyanonymous/ComfyUI for setup.\n"
         "Running a separate ComfyUI instance for images? Set COMFYUI_IMAGE_SERVER_URL "
         "instead -- it takes priority over COMFYUI_SERVER_URL for this tool only."
@@ -70,7 +74,8 @@ class ComfyUIImage(BaseTool):
         "custom_size": True,
         "custom_workflow": True,
         "custom_output_node": True,
-        "offline": True,
+        "offline": True,  # local backend; Comfy Cloud is online
+        "comfy_cloud_backend": True,
     }
     best_for = [
         "local GPU generation without API costs",
@@ -95,6 +100,27 @@ class ComfyUIImage(BaseTool):
             "guidance": {"type": "number", "default": 3.5},
             "seed": {"type": "integer", "description": "Random if omitted"},
             "output_path": {"type": "string", "description": "Where to save the image"},
+            "timeout_seconds": {
+                "type": "integer",
+                "default": 600,
+                "description": (
+                    "How long to wait for the job before raising. Matches "
+                    "comfyui_video / comfyui_music, which already expose this."
+                ),
+            },
+            "backend": {
+                "type": "string",
+                "enum": ["local", "cloud", "auto"],
+                "default": "auto",
+                "description": (
+                    "Which ComfyUI to run on. 'auto' (default) uses a local "
+                    "server whenever one is configured — even if a cloud key "
+                    "is also present, since local is free and cloud is "
+                    "metered. With no local server configured, a "
+                    "COMFY_CLOUD_API_KEY selects Comfy Cloud. 'local'/'cloud' "
+                    "force the choice, as does COMFYUI_BACKEND."
+                ),
+            },
             "workflow_json": {
                 "type": "string",
                 "description": "Optional full ComfyUI workflow JSON. Requires output_node.",
@@ -135,17 +161,39 @@ class ComfyUIImage(BaseTool):
     user_visible_verification = ["Inspect generated image for quality and prompt adherence"]
 
     def __init__(self) -> None:
-        self._client = ComfyUIClient(capability="image")
+        self._clients: dict[str, ComfyUIClient] = {}
+
+    def _client_for(self, backend: str | None = None) -> ComfyUIClient:
+        """Return a client for *backend*, resolving ``auto`` once per key."""
+        key = (backend or "").strip().lower() or "_auto"
+        if key not in self._clients:
+            self._clients[key] = make_client("image", backend)
+        return self._clients[key]
+
+    @property
+    def _client(self) -> ComfyUIClient:
+        return self._client_for(None)
+
+    def _required_models(self, client: ComfyUIClient) -> list[str]:
+        return backend_models(
+            _REQUIRED_MODELS, workflow_key="flux2-txt2img", backend=client.backend
+        )
 
     def get_status(self) -> ToolStatus:
-        if not self._client.is_available():
+        client = self._client
+        if not client.is_available():
             return ToolStatus.UNAVAILABLE
-        _, missing = self._client.check_models(_REQUIRED_MODELS)
+        _, missing = client.check_models(self._required_models(client))
         if missing:
             return ToolStatus.DEGRADED
         return ToolStatus.AVAILABLE
 
     def estimate_cost(self, inputs: dict[str, Any]) -> float:
+        # Local GPU time is free. Comfy Cloud bills the run as GPU hours;
+        # this is a documented flat figure for the bundled FLUX 2 graph, not
+        # a quote for arbitrary workflows.
+        if self._client_for(inputs.get("backend")).is_cloud:
+            return 0.05
         return 0.0
 
     def estimate_runtime(self, inputs: dict[str, Any]) -> float:
@@ -168,14 +216,15 @@ class ComfyUIImage(BaseTool):
                 ),
             )
 
-        if not self._client.is_available():
+        client = self._client_for(inputs.get("backend"))
+        if not client.is_available():
             return ToolResult(
                 success=False,
-                error=self._client.unavailable_reason(),
+                error=client.unavailable_reason(),
             )
 
         if not custom_workflow:
-            _, missing = self._client.check_models(_REQUIRED_MODELS)
+            _, missing = client.check_models(self._required_models(client))
             if missing:
                 return ToolResult(
                     success=False,
@@ -213,13 +262,20 @@ class ComfyUIImage(BaseTool):
                     "10": {"steps": steps, "width": width, "height": height},
                     "13": {"filename_prefix": output_path.stem},
                 })
+                workflow = apply_backend_models(
+                    workflow, workflow_key="flux2-txt2img", backend=client.backend
+                )
                 output_node = "13"
 
             provenance = self._workflow_provenance(
                 inputs, custom_workflow, output_node, workflow
             )
-            paths = self._client.generate(
-                workflow, output_node=output_node, dest=output_path, timeout=600,
+            provenance["backend"] = client.backend
+            paths = client.generate(
+                workflow,
+                output_node=output_node,
+                dest=output_path,
+                timeout=int(inputs.get("timeout_seconds", 600)),
             )
 
         except ComfyUIError as exc:
@@ -227,7 +283,7 @@ class ComfyUIImage(BaseTool):
         except Exception as exc:
             return ToolResult(success=False, error=f"ComfyUI image generation failed: {exc}")
 
-        model_name = self._model_name(inputs, custom_workflow)
+        model_name = self._model_name(inputs, custom_workflow, client.backend)
         return ToolResult(
             success=True,
             data={
@@ -243,7 +299,7 @@ class ComfyUIImage(BaseTool):
                 "workflow_provenance": provenance,
             },
             artifacts=[str(p) for p in paths],
-            cost_usd=0.0,
+            cost_usd=self.estimate_cost(inputs),
             duration_seconds=round(time.time() - start, 2),
             seed=seed,
             model=model_name,
@@ -256,9 +312,13 @@ class ComfyUIImage(BaseTool):
         return ComfyUIClient.load_workflow(Path(inputs["workflow_path"]))
 
     @staticmethod
-    def _model_name(inputs: dict[str, Any], custom_workflow: bool) -> str:
+    def _model_name(
+        inputs: dict[str, Any], custom_workflow: bool, backend: str = "local"
+    ) -> str:
         if not custom_workflow:
-            return "flux2-dev-nvfp4"
+            # Cloud runs the stock bf16 build, not the NVFP4 quant the local
+            # graph names — report what actually ran, not what was requested.
+            return "flux2-dev" if backend == "cloud" else "flux2-dev-nvfp4"
         return (
             inputs.get("workflow_model")
             or inputs.get("model")

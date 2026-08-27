@@ -18,6 +18,27 @@ COMFYUI_SETUP_OFFER: dict[str, Any] = {
         "free local video generation through ComfyUI workflows",
         "community workflow_json/workflow_path execution",
     ],
+    # Comfy Cloud is the alternative to standing a server up at all. It is a
+    # 1-minute env-var fix with no GPU, but it is metered — surfaced here so
+    # the provider menu can offer it rather than only telling users to
+    # install ComfyUI.
+    "alternative": {
+        "kind": "hosted",
+        "name": "Comfy Cloud",
+        "fix_complexity": "1-minute env-var, no local GPU",
+        "env_var": "COMFY_CLOUD_API_KEY",
+        "signup_url": "https://platform.comfy.org",
+        "billing": "metered — Comfy Cloud GPU hours plus any paid API nodes",
+        "precedence": (
+            "A configured local server wins; set COMFYUI_BACKEND=cloud to "
+            "force cloud when both are present."
+        ),
+        "what_it_unlocks": [
+            "the same bundled FLUX 2 / WAN 2.2 / ACE-Step workflows on hosted GPUs",
+            "no model downloads and no local GPU requirement",
+            "partner API nodes (ElevenLabs, Kling, Veo, Recraft, ...)",
+        ],
+    },
     # Optional: point image/video generation at separate ComfyUI instances
     # (e.g. different GPUs). Each overrides COMFYUI_SERVER_URL for its own
     # tool only; single-server setups can ignore this entirely.
@@ -224,6 +245,47 @@ BUNDLED_MODEL_STACKS: dict[str, list[dict[str, Any]]] = {
         },
     ],
 }
+
+
+#: Model filenames that differ between a self-hosted ComfyUI and Comfy Cloud.
+#: Keyed by bundled workflow, then ``local name -> cloud name``.
+CLOUD_MODEL_OVERRIDES: dict[str, dict[str, str]] = {
+    # The bundled graph asks for the NVFP4 quantization, which exists for
+    # Blackwell-class local hardware. The hosted catalog carries the stock
+    # bf16 build instead; everything else in the stack is identical.
+    "flux2-txt2img": {
+        "flux2-dev-nvfp4.safetensors": "flux2-dev.safetensors",
+    },
+}
+
+
+def backend_models(required: list[str], *, workflow_key: str, backend: str) -> list[str]:
+    """Translate a bundled workflow's required-model list for *backend*."""
+    if backend != "cloud":
+        return list(required)
+    overrides = CLOUD_MODEL_OVERRIDES.get(workflow_key, {})
+    return [overrides.get(name, name) for name in required]
+
+
+def apply_backend_models(
+    workflow: dict[str, Any], *, workflow_key: str, backend: str
+) -> dict[str, Any]:
+    """Rewrite model filenames in *workflow* to match *backend*.
+
+    Mutates and returns *workflow*. A no-op for the local backend and for
+    any workflow with no registered differences.
+    """
+    if backend != "cloud":
+        return workflow
+    overrides = CLOUD_MODEL_OVERRIDES.get(workflow_key, {})
+    if not overrides:
+        return workflow
+    for node in workflow.values():
+        inputs = node.get("inputs", {}) if isinstance(node, dict) else {}
+        for key, value in inputs.items():
+            if isinstance(value, str) and value in overrides:
+                inputs[key] = overrides[value]
+    return workflow
 
 
 def workflow_hash(workflow: dict[str, Any]) -> str:

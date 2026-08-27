@@ -30,6 +30,7 @@ from tools.base_tool import (
     ToolTier,
 )
 from tools._comfyui.client import ComfyUIClient, ComfyUIError
+from tools._comfyui.cloud_client import make_client
 from tools._comfyui.metadata import (
     BUNDLED_MODEL_STACKS,
     COMFYUI_SETUP_OFFER,
@@ -60,6 +61,7 @@ class ComfyUIMusic(BaseTool):
     install_instructions = (
         "Start a ComfyUI server and set COMFYUI_SERVER_URL "
         "(default http://localhost:8188).\n"
+        "Or use Comfy Cloud instead of running a server: set COMFY_CLOUD_API_KEY (get one at https://platform.comfy.org). A local server takes priority when both are configured; COMFYUI_BACKEND=cloud forces cloud.\n"
         "Requires ace_step_v1_3.5b.safetensors in ComfyUI's checkpoints "
         "directory for the bundled workflow.\n"
         "Running a separate ComfyUI instance for music? Set "
@@ -74,7 +76,8 @@ class ComfyUIMusic(BaseTool):
         "lyrics": True,
         "custom_workflow": True,
         "custom_output_node": True,
-        "offline": True,
+        "offline": True,  # local backend; Comfy Cloud is online
+        "comfy_cloud_backend": True,
     }
     best_for = [
         "local GPU music generation without API costs",
@@ -114,6 +117,19 @@ class ComfyUIMusic(BaseTool):
             "lyrics_strength": {"type": "number", "default": 0.99},
             "seed": {"type": "integer", "description": "Random if omitted"},
             "output_path": {"type": "string", "description": "Where to save the audio"},
+            "backend": {
+                "type": "string",
+                "enum": ["local", "cloud", "auto"],
+                "default": "auto",
+                "description": (
+                    "Which ComfyUI to run on. 'auto' (default) uses a local "
+                    "server whenever one is configured — even if a cloud key "
+                    "is also present, since local is free and cloud is "
+                    "metered. With no local server configured, a "
+                    "COMFY_CLOUD_API_KEY selects Comfy Cloud. 'local'/'cloud' "
+                    "force the choice, as does COMFYUI_BACKEND."
+                ),
+            },
             "workflow_json": {
                 "type": "string",
                 "description": "Optional full ComfyUI workflow JSON. Requires output_node.",
@@ -162,18 +178,33 @@ class ComfyUIMusic(BaseTool):
     user_visible_verification = ["Listen to generated audio for mood, genre accuracy, and quality"]
 
     def __init__(self) -> None:
-        self._client = ComfyUIClient(capability="music")
+        self._clients: dict[str, ComfyUIClient] = {}
         self._last_progress_log = 0.0
 
+    def _client_for(self, backend: str | None = None) -> ComfyUIClient:
+        """Return a client for *backend*, resolving ``auto`` once per key."""
+        key = (backend or "").strip().lower() or "_auto"
+        if key not in self._clients:
+            self._clients[key] = make_client("music", backend)
+        return self._clients[key]
+
+    @property
+    def _client(self) -> ComfyUIClient:
+        return self._client_for(None)
+
     def get_status(self) -> ToolStatus:
-        if not self._client.is_available():
+        client = self._client
+        if not client.is_available():
             return ToolStatus.UNAVAILABLE
-        _, missing = self._client.check_models(_REQUIRED_MODELS)
+        _, missing = client.check_models(_REQUIRED_MODELS)
         if missing:
             return ToolStatus.DEGRADED
         return ToolStatus.AVAILABLE
 
     def estimate_cost(self, inputs: dict[str, Any]) -> float:
+        # ACE-Step is open weights: free locally, GPU-billed on Comfy Cloud.
+        if self._client_for(inputs.get("backend")).is_cloud:
+            return 0.05
         return 0.0
 
     def estimate_runtime(self, inputs: dict[str, Any]) -> float:
@@ -206,11 +237,12 @@ class ComfyUIMusic(BaseTool):
                 ),
             )
 
-        if not self._client.is_available():
-            return ToolResult(success=False, error=self._client.unavailable_reason())
+        client = self._client_for(inputs.get("backend"))
+        if not client.is_available():
+            return ToolResult(success=False, error=client.unavailable_reason())
 
         if not custom_workflow:
-            _, missing = self._client.check_models(_REQUIRED_MODELS)
+            _, missing = client.check_models(_REQUIRED_MODELS)
             if missing:
                 return ToolResult(
                     success=False,
@@ -255,7 +287,8 @@ class ComfyUIMusic(BaseTool):
                 output_node = "10"
 
             provenance = self._workflow_provenance(inputs, custom_workflow, output_node, workflow)
-            paths = self._client.generate(
+            provenance["backend"] = client.backend
+            paths = client.generate(
                 workflow,
                 output_node=output_node,
                 dest=output_path,
@@ -273,7 +306,7 @@ class ComfyUIMusic(BaseTool):
                     f"running server-side. To recover it without resubmitting, call "
                     f"execute() again with resume_prompt_id={exc.prompt_id!r} "
                     f"(and a longer timeout_seconds if it needs more time), or poll "
-                    f"GET {{COMFYUI_SERVER_URL}}/history/{exc.prompt_id} directly."
+                    f"{client.recovery_hint(exc.prompt_id)} directly."
                 )
             else:
                 error_msg = str(exc)
@@ -288,7 +321,7 @@ class ComfyUIMusic(BaseTool):
             data={
                 "provider": "comfyui",
                 "model": model_name,
-                "prompt": inputs["prompt"],
+                "prompt": inputs.get("prompt", ""),
                 "lyrics": inputs.get("lyrics", ""),
                 "duration_seconds": duration,
                 "output": str(paths[0]),
@@ -296,7 +329,7 @@ class ComfyUIMusic(BaseTool):
                 "workflow_provenance": provenance,
             },
             artifacts=[str(p) for p in paths],
-            cost_usd=0.0,
+            cost_usd=self.estimate_cost(inputs),
             duration_seconds=round(time.time() - start, 2),
             seed=seed,
             model=model_name,
