@@ -18,6 +18,27 @@ COMFYUI_SETUP_OFFER: dict[str, Any] = {
         "free local video generation through ComfyUI workflows",
         "community workflow_json/workflow_path execution",
     ],
+    # Comfy Cloud is the alternative to standing a server up at all. It is a
+    # 1-minute env-var fix with no GPU, but it is metered — surfaced here so
+    # the provider menu can offer it rather than only telling users to
+    # install ComfyUI.
+    "alternative": {
+        "kind": "hosted",
+        "name": "Comfy Cloud",
+        "fix_complexity": "1-minute env-var, no local GPU",
+        "env_var": "COMFY_CLOUD_API_KEY",
+        "signup_url": "https://platform.comfy.org",
+        "billing": "metered — Comfy Cloud GPU hours plus any paid API nodes",
+        "precedence": (
+            "A configured local server wins; set COMFYUI_BACKEND=cloud to "
+            "force cloud when both are present."
+        ),
+        "what_it_unlocks": [
+            "the same bundled FLUX 2 / WAN 2.2 / ACE-Step workflows on hosted GPUs",
+            "no model downloads and no local GPU requirement",
+            "partner API nodes (ElevenLabs, Kling, Veo, Recraft, ...)",
+        ],
+    },
     # Optional: point image/video generation at separate ComfyUI instances
     # (e.g. different GPUs). Each overrides COMFYUI_SERVER_URL for its own
     # tool only; single-server setups can ignore this entirely.

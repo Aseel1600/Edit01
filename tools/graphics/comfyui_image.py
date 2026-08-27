@@ -61,6 +61,7 @@ class ComfyUIImage(BaseTool):
     install_instructions = (
         "Start a ComfyUI server and set COMFYUI_SERVER_URL "
         "(default http://localhost:8188).\n"
+        "Or use Comfy Cloud instead of running a server: set COMFY_CLOUD_API_KEY (get one at https://platform.comfy.org). A local server takes priority when both are configured; COMFYUI_BACKEND=cloud forces cloud.\n"
         "See https://github.com/comfyanonymous/ComfyUI for setup.\n"
         "Running a separate ComfyUI instance for images? Set COMFYUI_IMAGE_SERVER_URL "
         "instead -- it takes priority over COMFYUI_SERVER_URL for this tool only."
@@ -73,7 +74,8 @@ class ComfyUIImage(BaseTool):
         "custom_size": True,
         "custom_workflow": True,
         "custom_output_node": True,
-        "offline": True,
+        "offline": True,  # local backend; Comfy Cloud is online
+        "comfy_cloud_backend": True,
     }
     best_for = [
         "local GPU generation without API costs",

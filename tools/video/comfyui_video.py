@@ -110,6 +110,7 @@ class ComfyUIVideo(BaseTool):
     install_instructions = (
         "Start a ComfyUI server and set COMFYUI_SERVER_URL "
         "(default http://localhost:8188).\n"
+        "Or use Comfy Cloud instead of running a server: set COMFY_CLOUD_API_KEY (get one at https://platform.comfy.org). A local server takes priority when both are configured; COMFYUI_BACKEND=cloud forces cloud.\n"
         "Bundled local WAN requires WAN 2.2 models and LightX2V LoRAs. Local "
         "MiniMax H3 requires its official model stack and exported API workflow.\n"
         "Gemini Omni, Seedance 2.5, and MiniMax H3 Partner Nodes require a "
@@ -132,7 +133,8 @@ class ComfyUIVideo(BaseTool):
         "reference_image": True,
         "custom_workflow": True,
         "custom_output_node": True,
-        "offline": True,
+        "offline": True,  # local backend; Comfy Cloud is online
+        "comfy_cloud_backend": True,
         "gemini_omni_flash_partner_node": True,
         "seedance_2_5_partner_node": True,
         "minimax_h3_partner_node": True,

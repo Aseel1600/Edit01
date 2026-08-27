@@ -61,6 +61,7 @@ class ComfyUIMusic(BaseTool):
     install_instructions = (
         "Start a ComfyUI server and set COMFYUI_SERVER_URL "
         "(default http://localhost:8188).\n"
+        "Or use Comfy Cloud instead of running a server: set COMFY_CLOUD_API_KEY (get one at https://platform.comfy.org). A local server takes priority when both are configured; COMFYUI_BACKEND=cloud forces cloud.\n"
         "Requires ace_step_v1_3.5b.safetensors in ComfyUI's checkpoints "
         "directory for the bundled workflow.\n"
         "Running a separate ComfyUI instance for music? Set "
@@ -75,7 +76,8 @@ class ComfyUIMusic(BaseTool):
         "lyrics": True,
         "custom_workflow": True,
         "custom_output_node": True,
-        "offline": True,
+        "offline": True,  # local backend; Comfy Cloud is online
+        "comfy_cloud_backend": True,
     }
     best_for = [
         "local GPU music generation without API costs",

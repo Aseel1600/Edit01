@@ -1635,3 +1635,42 @@ class TestBackendSurfaceOnTools:
         patched = apply_backend_models(
             workflow, workflow_key="flux2-txt2img", backend="local")
         assert patched["1"]["inputs"]["unet_name"] == "flux2-dev-nvfp4.safetensors"
+
+
+class TestSetupMetadataMentionsCloud:
+    """AGENT_GUIDE has agents build the setup menu from this metadata.
+
+    If install_instructions only describes standing up a local server, a
+    user with no GPU is told to install ComfyUI and never learns a cloud key
+    is an option — the provider menu would be accurate but incomplete.
+    """
+
+    def test_install_instructions_offer_the_cloud_path(self):
+        for cls in (ComfyUIImage, ComfyUIVideo, ComfyUIMusic):
+            text = cls.install_instructions
+            assert "COMFY_CLOUD_API_KEY" in text, cls.__name__
+            assert "platform.comfy.org" in text, cls.__name__
+            # and must still explain precedence, or users will assume the
+            # key alone switches them over
+            assert "COMFYUI_BACKEND" in text, cls.__name__
+
+    def test_setup_offer_carries_the_hosted_alternative(self):
+        from tools._comfyui.metadata import COMFYUI_SETUP_OFFER
+
+        alt = COMFYUI_SETUP_OFFER["alternative"]
+        assert alt["env_var"] == "COMFY_CLOUD_API_KEY"
+        assert alt["kind"] == "hosted"
+        # Cost honesty is a review-guide requirement for paid providers.
+        assert "metered" in alt["billing"]
+
+    def test_supports_flags_declare_the_cloud_backend(self):
+        for cls in (ComfyUIImage, ComfyUIVideo, ComfyUIMusic):
+            assert cls.supports.get("comfy_cloud_backend") is True, cls.__name__
+
+    def test_local_setup_offer_is_unchanged(self):
+        """The hosted option is additive — it must not displace the local one."""
+        from tools._comfyui.metadata import COMFYUI_SETUP_OFFER
+
+        assert COMFYUI_SETUP_OFFER["kind"] == "local_server"
+        assert COMFYUI_SETUP_OFFER["env_var"] == "COMFYUI_SERVER_URL"
+        assert COMFYUI_SETUP_OFFER["health_check"] == "GET /system_stats"
