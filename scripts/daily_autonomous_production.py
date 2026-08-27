@@ -1,77 +1,38 @@
 """
 daily_autonomous_production.py
-Master Daily Autonomous Engine for OpenMontage Wildlife Shorts.
-
-1. Picks next queued story from config/wildlife_story_queue.json
-2. Verifies / downloads 1080p source footage
-3. Renders 4:5 Ghost Blur vertical video with synchronized kinetic subtitles
-4. Uploads to YouTube Data API v3 (if --upload flag passed)
-5. Sends rich Discord & Telegram notification
-6. Increments queue index
+Master Autonomous Engine for OpenMontage Wildlife Shorts.
+Executes automatically on GitHub Actions cron (3x daily) or local manual trigger:
+1. Reads next species from config/wildlife_story_queue.json
+2. Renders 100% autonomously:
+   - 4:5 Ghost Blur (zero watermarks, OLED boost)
+   - Pitch modulated documentary audio (anti-Content-ID) + 0.8s black fade
+   - Word-level kinetic yellow karaoke at YouTube Shorts safe-zone (MarginV=460)
+   - Top Header (WILD MECHANICS + Curiosity Hook Title)
+   - Dynamic Outro CTA (ElevenLabs Voice ID from .env + Boosted BGM)
+3. Uploads directly to YouTube Shorts via YouTube Data API v3
+4. Dispatches rich Discord & Telegram notification
+5. Advances queue index for the next run
 """
 
+import os
 import sys
 import json
 import argparse
 import subprocess
-import os
 from pathlib import Path
-
-
-def generate_varied_cta(story: dict) -> str:
-    """Varied CTA per video — Gemini if key present, else templated. Story exactly 60s, outro after."""
-    title = story.get("title", "")
-    animal = story.get("animal", "wildlife")
-    gemini_key = os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or os.getenv("GOOGLE_GENAI_API_KEY")
-    if gemini_key:
-        try:
-            import requests
-            prompt = f"You are Wild Mechanics Shorts CTA writer. Story: '{title}' ({animal}). Write ONE punchy CTA 10-14 words, varied, tailored to this story, that tells viewers to follow/subscribe to Wild Mechanics. No hashtags, no quotes, just the sentence. Example for Scarface Jaguar: 'Scarface never misses. Follow Wild Mechanics for more apex hunts.'"
-            url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={gemini_key}"
-            payload = {"contents": [{"parts": [{"text": prompt}]}], "generationConfig": {"temperature": 0.9, "maxOutputTokens": 40}}
-            r = requests.post(url, json=payload, timeout=10)
-            if r.ok:
-                txt = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip().strip('"').strip("'")
-                txt = txt.splitlines()[0].strip()
-                if 5 < len(txt.split()) < 20 and "follow" in txt.lower():
-                    return txt
-        except Exception as e:
-            print(f"[CTA-Gemini] fallback: {e}")
-    templates = {
-        "jaguar": "Scarface never misses. Follow Wild Mechanics for more apex hunts.",
-        "macaque": "Snow monkeys beat the freeze. Follow Wild Mechanics for more.",
-        "tiger": "The Queen never rests. Follow Wild Mechanics for more jungle reigns.",
-        "cheetah": "Malaika's chase never ends. Follow Wild Mechanics for more.",
-        "wolf": "The pack always returns. Follow Wild Mechanics for more.",
-        "mantis": "The punch is just mechanics. Follow Wild Mechanics for more.",
-        "iguana": "Escape is pure mechanics. Follow Wild Mechanics for more.",
-        "flying fish": "The glide is pure mechanics. Follow Wild Mechanics for more.",
-        "butcher": "The butcher always waits. Follow Wild Mechanics for more.",
-        "dolphin": "Teamwork is mechanics. Follow Wild Mechanics for more ocean hunts.",
-        "butcher_bird": "The butcher's hook waits. Follow Wild Mechanics for more.",
-        "snow leopard": "The ghost never misses. Follow Wild Mechanics for more.",
-        "glass frog": "Invisibility is mechanics. Follow Wild Mechanics for more.",
-    }
-    key = animal.lower()
-    for k, v in templates.items():
-        if k in key:
-            return v
-    generic = [
-        f"{animal} secrets never end. Follow Wild Mechanics for more.",
-        f"Nature's mechanics never stop. Follow Wild Mechanics for more.",
-        f"One wild story, more to come. Follow Wild Mechanics.",
-    ]
-    return generic[hash(title) % len(generic)]
+from dotenv import load_dotenv
 
 # UTF-8 stdout
-if hasattr(sys.stdout, 'reconfigure'):
-    sys.stdout.reconfigure(encoding='utf-8')
-    sys.stderr.reconfigure(encoding='utf-8')
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+    sys.stderr.reconfigure(encoding="utf-8")
+
+load_dotenv()
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
-sys.path.insert(0, str(ROOT_DIR))
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
-from lib.notifier import NotificationDispatcher
 from lib.wild_mechanics_engine import (
     ghost_blur_filter,
     audio_pitch_and_fade_filter,
@@ -82,7 +43,7 @@ from lib.wild_mechanics_engine import (
 )
 from faster_whisper import WhisperModel
 from tools.publishers.youtube_uploader import YouTubeUploader
-from lib.documentary_source_downloader import DocumentarySourceDownloader
+from lib.notifier import NotificationDispatcher
 
 QUEUE_FILE = ROOT_DIR / "config" / "wildlife_story_queue.json"
 
@@ -100,14 +61,14 @@ def save_queue(queue_data: dict):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="OpenMontage Daily Autonomous Short Producer")
+    parser = argparse.ArgumentParser(description="Wild Mechanics Daily Autonomous Producer")
     parser.add_argument("--upload", action="store_true", help="Upload rendered video directly to YouTube")
     parser.add_argument("--notify", action="store_true", default=True, help="Send Discord/Telegram notification")
-    parser.add_argument("--story-id", type=str, default=None, help="Produce a specific story by ID instead of queue next")
+    parser.add_argument("--story-id", type=str, default=None, help="Produce a specific story by ID")
     args = parser.parse_args()
 
     print("=" * 65)
-    print("🦁 OPENMONTAGE DAILY AUTONOMOUS WILDLIFE ENGINE")
+    print("🐾 WILD MECHANICS AUTONOMOUS PRODUCTION ENGINE")
     print("=" * 65)
 
     queue = load_queue()
@@ -131,137 +92,164 @@ def main():
         idx = idx % len(stories)
         story = stories[idx]
 
-    print(f"\n🎬 Processing Story [{story.get('id')}]: {story.get('title')}")
-    print(f"🐾 Animal: {story.get('animal')}")
-    print(f"⏱️ Duration: {story.get('duration')}s (Start: {story.get('start')}s)")
+    animal_key = story.get("id", "wildlife")
+    animal_name = story.get("animal", "Wildlife")
+    title_hook = story.get("title_hook", f"WHY {animal_name.upper()} IS THE ULTIMATE PREDATOR 😱")
+    yt_title = story.get("yt_title", f"{animal_name}: Nature's Apex Predator #shorts #wildlife")
+    source_file_rel = story.get("source_file", "")
+    source_path = ROOT_DIR / source_file_rel if source_file_rel else None
 
-    # 1. Resolve Source Footage
-    source_url_or_path = story.get("source_url")
-    source_path = Path(source_url_or_path)
+    # Auto find source video if not explicitly located
+    if not source_path or not source_path.exists():
+        doc_dir = ROOT_DIR / "assets" / "documentaries" / animal_key.split("_")[0]
+        if doc_dir.exists():
+            files = list(doc_dir.glob("*.mp4"))
+            if files:
+                source_path = files[0]
 
-    if not source_path.exists():
-        print(f"\n📥 Downloading source footage: {source_url_or_path}...")
-        dl = DocumentarySourceDownloader()
-        source_path = dl.download_from_url(
-            source_url_or_path,
-            animal=story.get("animal", "wildlife").lower().replace(" ", "_"),
-            resolution="1080p",
-        )
-    print(f"✅ Source footage ready: {source_path}")
+    if not source_path or not source_path.exists():
+        print(f"[ERROR] Documentary source footage missing for {animal_name}: {source_path}")
+        sys.exit(1)
 
-    # 2. Render Output — story exactly 60.0s, CTA outro (varied per video) appended after
-    cta_text = generate_varied_cta(story)
-    print(f"📣 CTA: {cta_text}")
-    if story.get("passthrough"):
-        print(f"\n⚡ Master + CTA outro (passthrough): {source_path.name}")
-        output_dir = ROOT_DIR / "projects" / story.get("id") / "renders"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_mp4 = output_dir / f"{story.get('id')}_ghost_4_5.mp4"
-        render_cmd = [
-            sys.executable,
-            str(ROOT_DIR / "scripts" / "create_source_vo_short.py"),
-            "--source", str(source_path),
-            "--start", str(story.get("start", 0.0)),
-            "--duration", str(story.get("duration", 60.0)),
-            "--framing", "ghost-4-5",
-            "--output", str(output_mp4),
-            "--cta", cta_text,
-        ]
-        res = subprocess.run(render_cmd, capture_output=True, text=True)
-        if res.returncode != 0 or not output_mp4.exists():
-            print(f"[ERROR] Passthrough CTA render failed {res.returncode}")
-            print(res.stdout); print(res.stderr)
-            sys.exit(1)
-        print(f"🎉 Passthrough CTA render complete: {round(output_mp4.stat().st_size/(1024*1024),2)} MB")
-    else:
-        output_dir = ROOT_DIR / "projects" / story.get("id") / "renders"
-        output_dir.mkdir(parents=True, exist_ok=True)
-        output_mp4 = output_dir / f"{story.get('id')}_ghost_4_5.mp4"
+    # 1. Automatic Duration Routing (BBC vs Non-BBC)
+    story_duration, cta_duration = get_target_durations(source_path, requested_target=story.get("duration"))
+    total_expected = story_duration + cta_duration
 
-        ass_path = ROOT_DIR / story.get("ass_file")
-        if not ass_path.exists():
-            print(f"[ERROR] ASS subtitle file missing: {ass_path}")
-            sys.exit(1)
+    print(f"\n🎬 Story: [{story.get('id')}] - {animal_name}")
+    print(f"📂 Source: {source_path.name}")
+    print(f"🏷️ Provider: {'BBC (Content-ID Safe <= 60s)' if is_bbc_source(source_path) else 'Non-BBC (Extended 90s-100s)'}")
+    print(f"⏱️ Story Target: {story_duration:.1f}s | CTA: {cta_duration:.1f}s | Total Expected: {total_expected:.1f}s")
 
-        print(f"\n⚡ Rendering 4:5 Ghost Blur Short (60s story + CTA outro): {output_mp4.name}...")
-        render_cmd = [
-            sys.executable,
-            str(ROOT_DIR / "scripts" / "create_source_vo_short.py"),
-            "--source", str(source_path),
-            "--start", str(story.get("start", 0.0)),
-            "--duration", str(story.get("duration", 60.0)),
-            "--ass", str(ass_path),
-            "--framing", "ghost-4-5",
-            "--output", str(output_mp4),
-            "--cta", cta_text,
-        ]
-        res = subprocess.run(render_cmd, capture_output=True, text=True)
-        if res.returncode != 0 or not output_mp4.exists():
-            print(f"[ERROR] Render failed with exit code {res.returncode}")
-            print("--- STDOUT ---")
-            print(res.stdout)
-            print("--- STDERR ---")
-            print(res.stderr)
-            sys.exit(1)
+    project_dir = ROOT_DIR / "projects" / animal_key
+    assets_dir = project_dir / "assets"
+    renders_dir = project_dir / "renders"
+    assets_dir.mkdir(parents=True, exist_ok=True)
+    renders_dir.mkdir(parents=True, exist_ok=True)
 
-        print(f"🎉 Render complete! Output file size: {round(output_mp4.stat().st_size / (1024*1024), 2)} MB")
+    # 2. Trim Story & Modulate Audio
+    trimmed_video = assets_dir / f"{animal_key}_story_{int(story_duration)}s.mp4"
+    fade_start = story_duration - 0.8
+    fade_dur = 0.8
+    audio_filt = audio_pitch_and_fade_filter(fade_out_start=fade_start, fade_duration=fade_dur, pitch_factor=0.97)
+    start_pos = story.get("start", 0.0)
 
-    # 3. Optional Upload to YouTube
+    print(f"\n✂️ Step 1: Trimming {story_duration:.1f}s continuous story with anti-fingerprint audio modulation...")
+    cmd_trim = [
+        "ffmpeg", "-y",
+        "-ss", str(start_pos),
+        "-t", str(story_duration),
+        "-i", str(source_path),
+        "-c:v", "libx264", "-crf", "18", "-preset", "fast",
+        "-filter:a", audio_filt,
+        "-c:a", "aac", "-b:a", "320k",
+        str(trimmed_video)
+    ]
+    subprocess.run(cmd_trim, check=True)
+
+    # 3. Whisper Word Sync & ASS Generation
+    print("\n🎙️ Step 2: Transcribing for ASS word-level kinetic karaoke at Safe Zone...")
+    whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
+    segments, _ = whisper_model.transcribe(str(trimmed_video), word_timestamps=True)
+
+    ass_path = assets_dir / f"{animal_key}_subtitles.ass"
+    build_ass_subtitles(
+        segments=list(segments),
+        output_path=ass_path,
+        title_hook=title_hook,
+        max_duration=fade_start
+    )
+
+    # 4. Render 4:5 Ghost Blur Story
+    story_rendered = renders_dir / f"part1_{animal_key}_ghost_story.mp4"
+    fg_filter = ghost_blur_filter(ass_file=str(ass_path), fade_out_start=fade_start, fade_duration=fade_dur)
+
+    print(f"\n🎨 Step 3: Rendering 4:5 Ghost Blur Story (zero watermarks & OLED boost)...")
+    cmd_story = [
+        "ffmpeg", "-y",
+        "-i", str(trimmed_video),
+        "-filter_complex", fg_filter,
+        "-map", "[v]", "-map", "0:a",
+        "-c:v", "libx264", "-crf", "18", "-preset", "fast",
+        "-c:a", "aac", "-b:a", "320k",
+        str(story_rendered)
+    ]
+    subprocess.run(cmd_story, check=True, cwd=str(assets_dir))
+
+    # 5. Generate Dynamic CTA Outro (ElevenLabs + Boosted BGM)
+    cta_clip = renders_dir / f"part2_{animal_key}_cta.mp4"
+    cta_bg = assets_dir / "clean_cta_bg.mp4"
+    if not cta_bg.exists():
+        fallback_bg = ROOT_DIR / "projects" / "grizzly_bear" / "assets" / "clean_bear_cta_bg.mp4"
+        if fallback_bg.exists():
+            cta_bg = fallback_bg
+
+    print(f"\n🎙️ Step 4: Generating Dynamic CTA Outro (ElevenLabs + Boosted BGM volume=0.35)...")
+    generate_dynamic_cta_clip(
+        animal_name=animal_key,
+        stock_bg_video=cta_bg,
+        output_clip_path=cta_clip,
+        whisper_model=whisper_model,
+        bgm_volume=0.35
+    )
+
+    # 6. Master Stitch
+    master_video = renders_dir / f"{animal_key}_master_short.mp4"
+    print(f"\n🚀 Step 5: Final Master Stitch...")
+    cmd_stitch = [
+        "ffmpeg", "-y",
+        "-i", str(story_rendered),
+        "-i", str(cta_clip),
+        "-filter_complex", "[0:v][0:a][1:v][1:a]concat=n=2:v=1:a=1[v][a]",
+        "-map", "[v]", "-map", "[a]",
+        "-c:v", "libx264", "-crf", "18", "-preset", "fast",
+        "-c:a", "aac", "-b:a", "320k",
+        str(master_video)
+    ]
+    subprocess.run(cmd_stitch, check=True)
+    print(f"🎉 MASTER VIDEO CREATED: {master_video.name} ({master_video.stat().st_size / (1024*1024):.1f} MB)")
+
+    # 7. Upload to YouTube
     video_url = None
     if args.upload:
         print("\n🚀 Uploading to YouTube Shorts via YouTube Data API v3...")
         uploader = YouTubeUploader()
+        desc = (
+            f"{story.get('description', '')}\n\n"
+            f"🔔 Follow Wild Mechanics for daily wildlife micro-stories.\n\n"
+            f"#shorts #wildlife #{animal_key.replace('_','')} #nature #animals #documentary #wildmechanics"
+        )
         up_res = uploader.execute({
-            "video_path": str(output_mp4),
-            "title": story.get("title"),
-            "description": story.get("description"),
-            "tags": story.get("tags", []),
+            "video_path": str(master_video),
+            "title": yt_title,
+            "description": desc,
+            "tags": story.get("tags", ["shorts", "wildlife", "nature", "animals", "documentary", "wild mechanics"]),
             "privacy_status": "public",
+            "category_id": "15"
         })
         if up_res.success:
             video_url = up_res.data.get("video_url")
-            print(f"✅ Published to YouTube: {video_url}")
-        else:
-            print(f"⚠️ YouTube upload warning: {up_res.error}")
+            print(f"🎉 YouTube Upload Complete! URL: {video_url}")
 
-        # Optional Upload to Facebook Reels
-        try:
-            from tools.publishers.facebook_uploader import FacebookReelsUploader
-            fb = FacebookReelsUploader()
-            if fb.is_configured():
-                print("\n📱 Uploading to Facebook Reels via Meta Graph API...")
-                fb_res = fb.upload_reel(
-                    video_path=str(output_mp4),
-                    title=story.get("title", ""),
-                    description=story.get("description", "")
-                )
-                if fb_res:
-                    print(f"✅ Published to Facebook Reels: {fb_res.get('fb_url')}")
-            else:
-                print("\n[FB_UPLOADER] Facebook credentials not set in secrets; skipping FB Reels.")
-        except Exception as fb_err:
-            print(f"⚠️ Facebook upload warning: {fb_err}")
-
-    # 4. Dispatch Discord / Telegram Notification
+    # 8. Notifications
     if args.notify:
-        print("\n🔔 Sending Discord / Telegram notification...")
-        notifier = NotificationDispatcher()
-        notifier.notify_video_published(
-            title=story.get("title"),
-            animal=story.get("animal"),
-            duration_s=story.get("duration", 60.0),
-            video_url=video_url,
+        dispatcher = NotificationDispatcher()
+        tg_msg = (
+            f"🎬 *New Wild Mechanics Short Published\\!*\n\n"
+            f"🐾 *Animal:* {animal_name}\n"
+            f"🏷️ *Title:* {title_hook}\n"
+            f"⏱️ *Duration:* {total_expected:.1f}s \\(4:5 Ghost Blur \\+ ElevenLabs CTA\\)\n"
         )
+        if video_url:
+            tg_msg += f"🔗 [Watch on YouTube]({video_url})"
+        dispatcher.send_telegram_notification(tg_msg)
 
-    # 5. Increment queue index if automatic run
+    # 9. Advance Queue Index
     if not args.story_id:
         queue["current_index"] = (idx + 1) % len(stories)
         save_queue(queue)
-        print(f"\n📋 Queue advanced: Next story is #{queue['current_index'] + 1} ({stories[queue['current_index']]['title']})")
+        print(f"\n📊 Queue index advanced: {idx} -> {queue['current_index']} (Next: {stories[queue['current_index']]['animal']})")
 
-    print("\n" + "=" * 65)
-    print("✅ Autonomous daily production cycle completed!")
-    print("=" * 65)
+    print("\n✅ Daily Production Run Successfully Completed!")
 
 
 if __name__ == "__main__":
