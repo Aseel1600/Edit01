@@ -72,6 +72,15 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT_DIR))
 
 from lib.notifier import NotificationDispatcher
+from lib.wild_mechanics_engine import (
+    ghost_blur_filter,
+    audio_pitch_and_fade_filter,
+    build_ass_subtitles,
+    generate_dynamic_cta_clip,
+    is_bbc_source,
+    get_target_durations
+)
+from faster_whisper import WhisperModel
 from tools.publishers.youtube_uploader import YouTubeUploader
 from lib.documentary_source_downloader import DocumentarySourceDownloader
 

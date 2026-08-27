@@ -2,40 +2,124 @@
   "current_index": 0,
   "stories": [
     {
-      "id": "jaguar_caiman_hunt",
-      "animal": "Jaguar",
-      "title": "Scarface: The Crocodile Hunter | Jaguar #shorts #wildlife #nature",
-      "description": "Scarface, a 100kg male jaguar, stalks caimans in the Pantanal river. The top apex predator of South America in a clash of titans.\n\n#jaguar #wildlife #predators #animals #nature #shorts",
-      "source_url": "https://github.com/Baithang2002/auto-short/releases/download/v1.0-assets/jaguar_comic_60s.mp4",
-      "start": 0.0,
-      "duration": 60.0,
-      "passthrough": true,
-      "tags": [
-        "shorts",
-        "jaguar",
-        "wildlife",
-        "predators",
-        "nature",
-        "pantanal"
-      ]
-    },
-    {
       "id": "cheetah_malaika_hunt",
       "animal": "Cheetah",
-      "title": "Malaika's Impossible Hunt | Cheetah #shorts #wildlife #nature",
-      "description": "Malaika the cheetah mother must make a kill nearly every day to feed her 4 cubs in the Maasai Mara. BBC The Hunt Ep 1.\n\n#cheetah #wildlife #safari #nature #animals #shorts",
-      "source_url": "https://github.com/Baithang2002/auto-short/releases/download/v1.0-assets/cheetah_hunt_source_01.mp4",
+      "title_hook": "WHY CHEETAHS SPRINT AT 120 KM/H BUT STILL LOSE 🤯",
+      "yt_title": "Why Cheetahs Sprint At 120 KM/H But Can Still Lose 🤯 #shorts #wildlife",
+      "description": "Malaika the cheetah mother pushes the physiological limits of land speed in the Maasai Mara. Discover the brutal energy trade-off of the savanna's fastest sprinter!\n\n🔔 Follow Wild Mechanics for daily wildlife micro-stories and predator breakdowns.\n\n#shorts #wildlife #cheetah #nature #animals #documentary #wildmechanics #predator #speed",
+      "source_file": "assets/documentaries/cheetah/bbc_cheetah_hunt_source_01.mp4",
       "start": 0.0,
-      "duration": 60.0,
-      "header_banner": "MALAIKA'S HUNT | MOTHER CHEETAH",
-      "ass_file": "projects/cheetah/renders/cheetah_malaika.ass",
+      "duration": 57.0,
       "tags": [
         "shorts",
         "cheetah",
         "wildlife",
-        "safari",
         "nature",
-        "animals"
+        "documentary",
+        "animals",
+        "wild mechanics",
+        "predator",
+        "safari"
+      ]
+    },
+    {
+      "id": "great_grey_owl_snow_radar",
+      "animal": "Great Grey Owl",
+      "title_hook": "HOW THIS BIRD HEARS THROUGH 2 FEET OF SNOW 🦉",
+      "yt_title": "How This Bird Hears Heartbeats Under 2 Feet of Snow 🦉 #shorts #wildlife",
+      "description": "The Great Grey Owl possesses an asymmetrical facial disc acting as an acoustic satellite dish, detecting tiny vole heartbeats beneath frozen snow.\n\n🔔 Follow Wild Mechanics for daily wildlife micro-stories.\n\n#shorts #wildlife #owl #nature #animals #documentary #wildmechanics #bird #winter",
+      "source_file": "assets/documentaries/great_grey_owl/bbc_great_grey_owl_doc_source_01.mp4",
+      "start": 0.0,
+      "duration": 57.0,
+      "tags": [
+        "shorts",
+        "great grey owl",
+        "owl",
+        "wildlife",
+        "nature",
+        "documentary",
+        "animals",
+        "wild mechanics"
+      ]
+    },
+    {
+      "id": "wolf_pack_flank",
+      "animal": "Wolf",
+      "title_hook": "THE DEADLIEST COORDINATED PACK HUNT ON EARTH 🐺",
+      "yt_title": "The Deadliest Coordinated Pack Hunt on Earth 🐺 #shorts #wildlife",
+      "description": "Witness the tactical genius and stamina warfare of a wolf pack closing the trap on huge prey in the frozen wilderness.\n\n🔔 Follow Wild Mechanics for daily predator mechanics.\n\n#shorts #wildlife #wolf #wolves #nature #animals #documentary #wildmechanics",
+      "source_file": "assets/documentaries/wolf/bbc_wolf_doc_source_01.mp4",
+      "start": 0.0,
+      "duration": 57.0,
+      "tags": [
+        "shorts",
+        "wolf",
+        "wolves",
+        "pack hunt",
+        "wildlife",
+        "nature",
+        "animals",
+        "wild mechanics"
+      ]
+    },
+    {
+      "id": "great_white_shark_breach",
+      "animal": "Great White Shark",
+      "title_hook": "WHY SHARKS SENSE A SINGLE DROP OF BLOOD 2 MILES AWAY 🦈",
+      "yt_title": "Why Sharks Sense A Single Drop of Blood 2 Miles Away 🦈 #shorts #wildlife",
+      "description": "Armed with electrosensory pores and explosive vertical breach propulsion, the Great White Shark dominates the open ocean depths.\n\n🔔 Follow Wild Mechanics for more ocean apex predators.\n\n#shorts #wildlife #shark #greatwhiteshark #nature #animals #documentary #wildmechanics #ocean",
+      "source_file": "assets/documentaries/great_white_shark/bbc_great_white_shark_doc_source_01.mp4",
+      "start": 0.0,
+      "duration": 57.0,
+      "tags": [
+        "shorts",
+        "great white shark",
+        "shark",
+        "wildlife",
+        "ocean",
+        "nature",
+        "animals",
+        "wild mechanics"
+      ]
+    },
+    {
+      "id": "peregrine_falcon_dive",
+      "animal": "Peregrine Falcon",
+      "title_hook": "THE ONLY LIVING ANIMAL FASTER THAN A BULLET 🦅",
+      "yt_title": "The Only Living Animal Faster Than A Bullet 🦅 #shorts #wildlife",
+      "description": "Reaching terminal velocity exceeding 390 km/h in a gravity stoop, the Peregrine Falcon is Earth's ultimate kinetic missile.\n\n🔔 Follow Wild Mechanics for more biological superpower breakdowns.\n\n#shorts #wildlife #falcon #peregrinefalcon #bird #nature #animals #documentary #wildmechanics",
+      "source_file": "assets/documentaries/peregrine_falcon/bbc_peregrine_falcon_doc_source_01.mp4",
+      "start": 0.0,
+      "duration": 57.0,
+      "tags": [
+        "shorts",
+        "peregrine falcon",
+        "falcon",
+        "speed",
+        "wildlife",
+        "nature",
+        "animals",
+        "wild mechanics"
+      ]
+    },
+    {
+      "id": "orca_wave_wash",
+      "animal": "Orca",
+      "title_hook": "HOW KILLER WHALES CREATE ARTIFICIAL TSUNAMIS 🌊",
+      "yt_title": "How Killer Whales Create Artificial Tsunamis 🌊 #shorts #wildlife",
+      "description": "In Antarctica, transient orca pods synchronize their swimming to generate hydro-wave walls that wash seals off ice floes.\n\n🔔 Follow Wild Mechanics for more ocean titan intelligence.\n\n#shorts #wildlife #orca #killerwhale #nature #animals #documentary #wildmechanics #ocean",
+      "source_file": "assets/documentaries/orca/bbc_orca_doc_source_01.mp4",
+      "start": 0.0,
+      "duration": 57.0,
+      "tags": [
+        "shorts",
+        "orca",
+        "killer whale",
+        "antarctica",
+        "wildlife",
+        "nature",
+        "animals",
+        "wild mechanics"
       ]
     }
   ]
