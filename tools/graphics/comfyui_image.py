@@ -23,7 +23,8 @@ from tools.base_tool import (
     ToolStatus,
     ToolTier,
 )
-from tools._comfyui.client import ComfyUIClient, ComfyUIError, resolve_backend
+from tools._comfyui.client import ComfyUIClient, ComfyUIError
+from tools._comfyui.cloud_client import make_client
 from tools._comfyui.metadata import (
     BUNDLED_MODEL_STACKS,
     COMFYUI_SETUP_OFFER,
@@ -99,7 +100,7 @@ class ComfyUIImage(BaseTool):
             "output_path": {"type": "string", "description": "Where to save the image"},
             "timeout_seconds": {
                 "type": "integer",
-                "default": 900,
+                "default": 600,
                 "description": (
                     "How long to wait for the job before raising. Matches "
                     "comfyui_video / comfyui_music, which already expose this."
@@ -110,10 +111,12 @@ class ComfyUIImage(BaseTool):
                 "enum": ["local", "cloud", "auto"],
                 "default": "auto",
                 "description": (
-                    "Which ComfyUI to run on. 'auto' (default) means local — it "
-                    "never picks Comfy Cloud on its own, because Cloud is "
-                    "metered. Pass 'cloud' (or set COMFYUI_BACKEND=cloud) to opt "
-                    "in; that needs COMFY_CLOUD_API_KEY."
+                    "Which ComfyUI to run on. 'auto' (default) uses a local "
+                    "server whenever one is configured — even if a cloud key "
+                    "is also present, since local is free and cloud is "
+                    "metered. With no local server configured, a "
+                    "COMFY_CLOUD_API_KEY selects Comfy Cloud. 'local'/'cloud' "
+                    "force the choice, as does COMFYUI_BACKEND."
                 ),
             },
             "workflow_json": {
@@ -162,9 +165,7 @@ class ComfyUIImage(BaseTool):
         """Return a client for *backend*, resolving ``auto`` once per key."""
         key = (backend or "").strip().lower() or "_auto"
         if key not in self._clients:
-            self._clients[key] = ComfyUIClient(
-                capability="image", backend=resolve_backend(backend)
-            )
+            self._clients[key] = make_client("image", backend)
         return self._clients[key]
 
     @property
@@ -272,7 +273,7 @@ class ComfyUIImage(BaseTool):
                 workflow,
                 output_node=output_node,
                 dest=output_path,
-                timeout=int(inputs.get("timeout_seconds", 900)),
+                timeout=int(inputs.get("timeout_seconds", 600)),
             )
 
         except ComfyUIError as exc:

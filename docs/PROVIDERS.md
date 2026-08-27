@@ -83,7 +83,7 @@ COMFYUI_MUSIC_SERVER_URL=    # Optional music-specific ComfyUI server
 
 # COMFY CLOUD (hosted ComfyUI — no server of your own required)
 COMFY_CLOUD_API_KEY=         # Key from https://platform.comfy.org
-COMFYUI_BACKEND=             # local | cloud | auto (default auto = local)
+COMFYUI_BACKEND=             # local | cloud | auto (default auto; local wins when both are set)
 ```
 
 ---
@@ -1229,9 +1229,20 @@ COMFY_CLOUD_API_KEY=your_key_here
 COMFYUI_BACKEND=cloud
 ```
 
-**`auto` never picks Comfy Cloud.** Cloud is metered, so it is opt-in only —
-an unreachable local server is reported as a fault rather than silently
-becoming a paid run. `auto` means local.
+**A configured local server always wins.** `auto` resolves by what is set:
+
+| `COMFYUI_SERVER_URL` | `COMFY_CLOUD_API_KEY` | backend |
+|---|---|---|
+| set | — | local |
+| set | set | **local** — the cloud key is ignored |
+| — | set | cloud |
+| — | — | local |
+
+Cloud is metered and a local server is not, so once someone has stood one up,
+silently billing them for a hosted run would be the wrong default: an
+unreachable local server is a fault to report, not a reason to spend. With no
+local server configured, a cloud key is an unambiguous statement of intent.
+Set `COMFYUI_BACKEND=cloud` (or pass `backend: "cloud"`) to force cloud anyway.
 
 **Cost:** billed as Comfy Cloud GPU hours, not per image. The bundled
 workflows carry flat per-run estimates (`$0.05` image and music, `$0.25`

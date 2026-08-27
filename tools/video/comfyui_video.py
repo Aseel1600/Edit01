@@ -26,7 +26,8 @@ from tools.base_tool import (
     ToolStatus,
     ToolTier,
 )
-from tools._comfyui.client import ComfyUIClient, ComfyUIError, resolve_backend
+from tools._comfyui.client import ComfyUIClient, ComfyUIError
+from tools._comfyui.cloud_client import make_client
 from tools._comfyui.metadata import (
     apply_backend_models,
     backend_models,
@@ -240,10 +241,12 @@ class ComfyUIVideo(BaseTool):
                 "enum": ["local", "cloud", "auto"],
                 "default": "auto",
                 "description": (
-                    "Which ComfyUI to run on. 'auto' (default) means local — it "
-                    "never picks Comfy Cloud on its own, because Cloud is "
-                    "metered. Pass 'cloud' (or set COMFYUI_BACKEND=cloud) to opt "
-                    "in; that needs COMFY_CLOUD_API_KEY."
+                    "Which ComfyUI to run on. 'auto' (default) uses a local "
+                    "server whenever one is configured — even if a cloud key "
+                    "is also present, since local is free and cloud is "
+                    "metered. With no local server configured, a "
+                    "COMFY_CLOUD_API_KEY selects Comfy Cloud. 'local'/'cloud' "
+                    "force the choice, as does COMFYUI_BACKEND."
                 ),
             },
             "workflow_json": {
@@ -325,9 +328,7 @@ class ComfyUIVideo(BaseTool):
         """Return a client for *backend*, resolving ``auto`` once per key."""
         key = (backend or "").strip().lower() or "_auto"
         if key not in self._clients:
-            self._clients[key] = ComfyUIClient(
-                capability="video", backend=resolve_backend(backend)
-            )
+            self._clients[key] = make_client("video", backend)
         return self._clients[key]
 
     @property

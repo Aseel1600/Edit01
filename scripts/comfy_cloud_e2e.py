@@ -41,7 +41,7 @@ from lib.env_loader import load_env  # noqa: E402
 load_env(ROOT)
 
 from lib.checkpoint import init_project  # noqa: E402
-from tools._comfyui.client import resolve_backend  # noqa: E402
+from tools._comfyui.cloud_client import resolve_backend  # noqa: E402
 from tools.tool_registry import registry  # noqa: E402
 
 
