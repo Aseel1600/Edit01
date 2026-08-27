@@ -18,6 +18,64 @@ from typing import Any, Callable
 import requests
 
 
+CLOUD_BASE_URL = "https://cloud.comfy.org"
+
+#: Terminal values of ``GET /api/job/{id}/status`` on Comfy Cloud.
+#: ``failed`` is not in the published list but is what the API actually
+#: returns for a node that raised — omitting it would poll a dead job until
+#: the caller's timeout.
+_CLOUD_TERMINAL = {
+    "success",
+    "error",
+    "failed",
+    "non_retryable_error",
+    "lost",
+    "cancelled",
+}
+
+
+def _describe_cloud_error(payload: dict) -> str:
+    """Extract a readable cause from a failed Comfy Cloud job status payload.
+
+    ``error_message`` is a JSON *string* holding the node id, node type and
+    exception. Falls back to the raw text when it isn't parseable.
+    """
+    raw = payload.get("error_message")
+    if not raw:
+        return ""
+    try:
+        detail = json.loads(raw) if isinstance(raw, str) else raw
+    except (ValueError, TypeError):
+        return str(raw)[:300]
+    node = detail.get("node_type") or detail.get("node_id")
+    message = str(detail.get("exception_message", "")).strip()
+    return f"Node {node}: {message}" if node else message[:300]
+
+
+def resolve_backend(explicit: str | None = None) -> str:
+    """Resolve which ComfyUI backend to use: ``"local"`` or ``"cloud"``.
+
+    Order of precedence:
+
+    1. an explicit ``backend`` argument (``"local"`` / ``"cloud"``),
+    2. the ``COMFYUI_BACKEND`` env var (same values, plus ``"auto"``),
+    3. ``auto`` — always local.
+
+    ``auto`` never selects cloud. Cloud is metered, so choosing it must be
+    a deliberate act: an unreachable local server is a fault to report, not
+    a reason to start spending the user's credits. Opt in per call with
+    ``backend="cloud"``, or globally with ``COMFYUI_BACKEND=cloud``.
+    """
+    choice = (explicit or os.environ.get("COMFYUI_BACKEND") or "auto").strip().lower()
+    if choice in ("local", "cloud"):
+        return choice
+    if choice != "auto":
+        raise ValueError(
+            f"Invalid backend {choice!r}. Expected 'local', 'cloud', or 'auto'."
+        )
+    return "local"
+
+
 class ComfyUIError(Exception):
     """Raised when ComfyUI returns an error or times out.
 
@@ -43,7 +101,10 @@ class ComfyUIClient:
     """
 
     def __init__(
-        self, server_url: str | None = None, capability: str | None = None
+        self,
+        server_url: str | None = None,
+        capability: str | None = None,
+        backend: str | None = None,
     ) -> None:
         """*capability*, if given (e.g. ``"image"``, ``"video"``), lets a
         per-capability env var (``COMFYUI_{CAPABILITY}_SERVER_URL``) point
@@ -51,18 +112,44 @@ class ComfyUIClient:
         video generation are split across separate servers/GPUs. Falls back
         to the shared ``COMFYUI_SERVER_URL`` when the capability-specific
         var isn't set, so single-server setups need no extra configuration.
+
+        *backend* selects the transport: ``"local"`` (a ComfyUI server you
+        run) or ``"cloud"`` (Comfy Cloud, authenticated with
+        ``COMFY_CLOUD_API_KEY``). Pass ``None`` to take the value verbatim
+        without auto-resolution -- callers that want ``auto`` should call
+        :func:`resolve_backend` first. Cloud puts the ``/api`` prefix into
+        ``server_url``, so every route below is shared between backends.
         """
         self.capability = capability
         self._capability_env_var = (
             f"COMFYUI_{capability.upper()}_SERVER_URL" if capability else None
         )
-        resolved = (
-            server_url or self._capability_url() or os.environ.get("COMFYUI_SERVER_URL")
-        )
-        self.server_url = (resolved or "http://localhost:8188").rstrip("/")
+        self.backend = (backend or "local").strip().lower()
+        self._headers: dict[str, str] = {}
+        self._object_info_cache: dict[str, Any] | None = None
+
+        if self.backend == "cloud":
+            base = (
+                os.environ.get("COMFY_CLOUD_BASE_URL") or CLOUD_BASE_URL
+            ).rstrip("/")
+            self.server_url = f"{base}/api"
+            api_key = os.environ.get("COMFY_CLOUD_API_KEY", "")
+            if api_key:
+                self._headers = {"X-API-Key": api_key}
+        else:
+            resolved = (
+                server_url
+                or self._capability_url()
+                or os.environ.get("COMFYUI_SERVER_URL")
+            )
+            self.server_url = (resolved or "http://localhost:8188").rstrip("/")
         # Scopes websocket execution events to this client (see wait_ws) and
         # is echoed back on /prompt so the server targets messages to us.
         self.client_id = str(uuid.uuid4())
+
+    @property
+    def is_cloud(self) -> bool:
+        return self.backend == "cloud"
 
     def _capability_url(self) -> str | None:
         if self._capability_env_var:
@@ -80,6 +167,16 @@ class ComfyUIClient:
 
     def unavailable_reason(self) -> str:
         """Human-readable explanation of why the server can't be reached."""
+        if self.is_cloud:
+            if not os.environ.get("COMFY_CLOUD_API_KEY"):
+                return (
+                    "Comfy Cloud selected but COMFY_CLOUD_API_KEY is not set.\n"
+                    "Get a key at https://platform.comfy.org and add it to .env."
+                )
+            return (
+                f"Comfy Cloud not reachable at {self.server_url}.\n"
+                "Check the key is valid and the workspace subscription is active."
+            )
         env_var_hint = self._capability_env_var or "COMFYUI_SERVER_URL"
         if self._capability_env_var:
             env_var_hint += " (or the shared COMFYUI_SERVER_URL)"
@@ -96,12 +193,54 @@ class ComfyUIClient:
         )
 
     def is_available(self) -> bool:
-        """Return True if the ComfyUI server is reachable."""
+        """Return True if the ComfyUI backend is reachable."""
+        # Cloud has no /system_stats; /api/user is the cheap authenticated ping.
+        probe = "/user" if self.is_cloud else "/system_stats"
+        if self.is_cloud and not os.environ.get("COMFY_CLOUD_API_KEY"):
+            return False
         try:
-            resp = requests.get(f"{self.server_url}/system_stats", timeout=5)
+            resp = requests.get(
+                f"{self.server_url}{probe}", headers=self._headers, timeout=10
+            )
             return resp.status_code == 200
         except Exception:
             return False
+
+    # ------------------------------------------------------------------
+    # Errors
+    # ------------------------------------------------------------------
+
+    def _raise_for_cloud_error(self, resp: requests.Response) -> None:
+        """Turn a Comfy Cloud error response into a ComfyUIError.
+
+        Cloud uses two envelope shapes: validation errors return
+        ``{"error": {"message", "type"}}`` while auth/billing errors return
+        ``{"code", "message"}``. 402 and 429 both look like throttling and
+        are not -- retrying either can never succeed, so they are surfaced
+        as explicit blockers.
+        """
+        if resp.status_code < 400:
+            return
+        try:
+            body = resp.json()
+        except Exception:
+            body = {}
+        detail = (
+            (body.get("error") or {}).get("message")
+            if isinstance(body.get("error"), dict)
+            else None
+        ) or body.get("message") or resp.text[:300]
+
+        hints = {
+            401: "COMFY_CLOUD_API_KEY is missing or invalid.",
+            402: "Comfy Cloud workspace is out of credits — add credits to continue.",
+            429: "Comfy Cloud subscription is inactive — reactivate it to continue.",
+        }
+        hint = hints.get(resp.status_code)
+        msg = f"Comfy Cloud HTTP {resp.status_code}: {detail}"
+        if hint:
+            msg = f"{msg}\n{hint}"
+        raise ComfyUIError(msg)
 
     # ------------------------------------------------------------------
     # Model discovery
@@ -130,11 +269,7 @@ class ComfyUIClient:
         result: dict[str, list[str]] = {}
         for node_class, (field, group) in node_to_key.items():
             try:
-                resp = requests.get(
-                    f"{self.server_url}/object_info/{node_class}", timeout=10
-                )
-                resp.raise_for_status()
-                data = resp.json()
+                data = self._object_info(node_class)
                 options = (
                     data.get(node_class, {})
                     .get("input", {})
@@ -146,6 +281,30 @@ class ComfyUIClient:
             except Exception:
                 result[group] = []
         return result
+
+    def _object_info(self, node_class: str) -> dict:
+        """Return ``{node_class: definition}`` for *node_class*.
+
+        Local ComfyUI serves a per-node route. Comfy Cloud does not -- it
+        404s ``/object_info/{node_class}`` and only answers the full
+        ``/api/object_info``, which is ~10 MB across ~3,700 node classes.
+        Fetch that once per client and slice it.
+        """
+        if not self.is_cloud:
+            resp = requests.get(
+                f"{self.server_url}/object_info/{node_class}", timeout=10
+            )
+            resp.raise_for_status()
+            return resp.json()
+
+        if self._object_info_cache is None:
+            resp = requests.get(
+                f"{self.server_url}/object_info", headers=self._headers, timeout=180
+            )
+            self._raise_for_cloud_error(resp)
+            self._object_info_cache = resp.json()
+        cache = self._object_info_cache or {}
+        return {node_class: cache[node_class]} if node_class in cache else {}
 
     def check_models(self, required: list[str]) -> tuple[list[str], list[str]]:
         """Check which of *required* model filenames are available.
@@ -163,11 +322,7 @@ class ComfyUIClient:
     def has_node(self, node_class: str) -> bool:
         """Return whether the connected server exposes a node class."""
         try:
-            response = requests.get(
-                f"{self.server_url}/object_info/{node_class}", timeout=10
-            )
-            response.raise_for_status()
-            return node_class in response.json()
+            return node_class in self._object_info(node_class)
         except Exception:
             return False
 
@@ -177,11 +332,30 @@ class ComfyUIClient:
 
     def submit(self, workflow: dict) -> str:
         """Queue a workflow for execution.  Returns the ``prompt_id``."""
+        payload: dict[str, Any] = {
+            "prompt": workflow,
+            "client_id": self.client_id,
+        }
+        if self.is_cloud:
+            # Partner API nodes (ElevenLabs, Kling, Veo, Recraft, ...) run
+            # inside the graph but bill through the Comfy account, and they
+            # read the credential from extra_data — not the request header.
+            # Without this they fail at execution with "Unauthorized: Please
+            # login first to use this node."
+            key = os.environ.get("COMFY_CLOUD_API_KEY")
+            if key:
+                payload["extra_data"] = {"api_key_comfy_org": key}
+
         resp = requests.post(
             f"{self.server_url}/prompt",
-            json={"prompt": workflow, "client_id": self.client_id},
+            json=payload,
+            headers=self._headers,
             timeout=30,
         )
+        if self.is_cloud:
+            # Cloud rejects invalid graphs and auth/billing problems with
+            # envelopes that carry no node_errors — map them first.
+            self._raise_for_cloud_error(resp)
         try:
             data = resp.json()
         except ValueError:
@@ -215,14 +389,80 @@ class ComfyUIClient:
             f"The job is very likely still running on the ComfyUI server "
             f"(local/custom workflows on modest GPUs routinely exceed the "
             f"client wait) — it was not cancelled. Poll "
-            f"GET {{server_url}}/history/{prompt_id} directly, or call "
+            f"{self.recovery_hint(prompt_id)} directly, or call "
             f"generate()/execute() again with a longer timeout and this "
             f"prompt_id to resume waiting without resubmitting.",
             prompt_id=prompt_id,
         )
 
+    def recovery_hint(self, prompt_id: str) -> str:
+        """The request a caller can run by hand to check on a job.
+
+        Backend-specific: cloud has no ``/history`` route, so telling a cloud
+        user to poll it sends them somewhere that 404s.
+        """
+        if self.is_cloud:
+            return f"GET {self.server_url}/jobs/{prompt_id} (with X-API-Key)"
+        return f"GET {self.server_url}/history/{prompt_id}"
+
+    @staticmethod
+    def _normalize_cloud_job(job: dict) -> dict:
+        """Map a Comfy Cloud ``/api/jobs/{id}`` record to the local shape.
+
+        The flat record's top-level ``status`` is a bare string
+        (``"completed"``), but ``execution_status`` beside it is already the
+        local ``{status_str, completed, messages}`` dict -- so this is a
+        rename, not a translation. Without it, the caller's
+        ``status_str == "error"`` check reads every failure as a success.
+        """
+        return {
+            "outputs": job.get("outputs", {}),
+            "status": job.get("execution_status", {}),
+            "meta": job.get("execution_meta", {}),
+        }
+
+    def _cloud_history_entry(self, prompt_id: str) -> dict | None:
+        """Cloud equivalent of :meth:`_history_entry`.
+
+        Local ComfyUI treats "a history entry exists" as "the job is done".
+        Cloud publishes explicit states, and a queued job already has a
+        record -- so the terminal state must be read before the outputs.
+        """
+        resp = requests.get(
+            f"{self.server_url}/job/{prompt_id}/status",
+            headers=self._headers,
+            timeout=20,
+        )
+        self._raise_for_cloud_error(resp)
+        payload = resp.json()
+        state = str(payload.get("status", ""))
+        if state not in _CLOUD_TERMINAL:
+            return None
+        if state != "success":
+            # A failed job has no execution_status at all — the detail lives
+            # in error_message on this payload, as a JSON string. Surface the
+            # node and exception rather than a bare "job failed".
+            raise ComfyUIError(
+                f"Comfy Cloud job {state}. {_describe_cloud_error(payload)}".strip(),
+                prompt_id=prompt_id,
+            )
+
+        job = requests.get(
+            f"{self.server_url}/jobs/{prompt_id}", headers=self._headers, timeout=30
+        )
+        self._raise_for_cloud_error(job)
+        entry = self._normalize_cloud_job(job.json())
+        status = entry.get("status", {})
+        if status.get("status_str") == "error":
+            raise ComfyUIError(
+                f"Execution error: {status.get('messages', [])}", prompt_id=prompt_id
+            )
+        return entry
+
     def _history_entry(self, prompt_id: str) -> dict | None:
         """Return a completed history entry, or ``None`` while it is absent."""
+        if self.is_cloud:
+            return self._cloud_history_entry(prompt_id)
         resp = requests.get(f"{self.server_url}/history/{prompt_id}", timeout=10)
         resp.raise_for_status()
         entry = resp.json().get(prompt_id)
@@ -357,6 +597,12 @@ class ComfyUIClient:
         fallback gets whatever's left of *timeout*, not a fresh budget, so a
         mid-wait websocket drop can't double the caller's worst-case wait.
         """
+        # Cloud's websocket needs token auth and a different event contract;
+        # REST polling is already the supported fallback path, so cloud takes
+        # it directly rather than carrying a second websocket implementation.
+        if self.is_cloud:
+            return self.poll(prompt_id, timeout=timeout, interval=interval)
+
         started = time.time()
         try:
             return self.wait_ws(
@@ -383,8 +629,23 @@ class ComfyUIClient:
                 "subfolder": subfolder,
                 "type": folder_type,
             },
+            headers=self._headers,
+            # Cloud answers with a 302 to a short-lived signed storage URL
+            # that must be fetched WITHOUT the auth header, so the redirect
+            # is followed by hand rather than by requests.
+            allow_redirects=not self.is_cloud,
             timeout=120,
         )
+        if self.is_cloud and resp.status_code in (301, 302, 303, 307, 308):
+            location = resp.headers.get("Location")
+            if not location:
+                raise ComfyUIError(
+                    f"Comfy Cloud returned {resp.status_code} for {filename} "
+                    "with no Location header."
+                )
+            resp = requests.get(location, timeout=300)
+        elif self.is_cloud:
+            self._raise_for_cloud_error(resp)
         resp.raise_for_status()
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_bytes(resp.content)
@@ -399,8 +660,11 @@ class ComfyUIClient:
             resp = requests.post(
                 f"{self.server_url}/upload/image",
                 files={"image": (name, f, "image/png")},
-                timeout=30,
+                headers=self._headers,
+                timeout=60,
             )
+        if self.is_cloud:
+            self._raise_for_cloud_error(resp)
         resp.raise_for_status()
         return resp.json()["name"]
 

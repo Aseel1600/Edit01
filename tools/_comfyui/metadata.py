@@ -226,6 +226,47 @@ BUNDLED_MODEL_STACKS: dict[str, list[dict[str, Any]]] = {
 }
 
 
+#: Model filenames that differ between a self-hosted ComfyUI and Comfy Cloud.
+#: Keyed by bundled workflow, then ``local name -> cloud name``.
+CLOUD_MODEL_OVERRIDES: dict[str, dict[str, str]] = {
+    # The bundled graph asks for the NVFP4 quantization, which exists for
+    # Blackwell-class local hardware. The hosted catalog carries the stock
+    # bf16 build instead; everything else in the stack is identical.
+    "flux2-txt2img": {
+        "flux2-dev-nvfp4.safetensors": "flux2-dev.safetensors",
+    },
+}
+
+
+def backend_models(required: list[str], *, workflow_key: str, backend: str) -> list[str]:
+    """Translate a bundled workflow's required-model list for *backend*."""
+    if backend != "cloud":
+        return list(required)
+    overrides = CLOUD_MODEL_OVERRIDES.get(workflow_key, {})
+    return [overrides.get(name, name) for name in required]
+
+
+def apply_backend_models(
+    workflow: dict[str, Any], *, workflow_key: str, backend: str
+) -> dict[str, Any]:
+    """Rewrite model filenames in *workflow* to match *backend*.
+
+    Mutates and returns *workflow*. A no-op for the local backend and for
+    any workflow with no registered differences.
+    """
+    if backend != "cloud":
+        return workflow
+    overrides = CLOUD_MODEL_OVERRIDES.get(workflow_key, {})
+    if not overrides:
+        return workflow
+    for node in workflow.values():
+        inputs = node.get("inputs", {}) if isinstance(node, dict) else {}
+        for key, value in inputs.items():
+            if isinstance(value, str) and value in overrides:
+                inputs[key] = overrides[value]
+    return workflow
+
+
 def workflow_hash(workflow: dict[str, Any]) -> str:
     """Return a stable hash of the final workflow JSON submitted to ComfyUI."""
     payload = json.dumps(workflow, sort_keys=True, separators=(",", ":"))
