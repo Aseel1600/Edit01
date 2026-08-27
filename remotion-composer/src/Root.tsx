@@ -39,6 +39,22 @@ export interface ThemeConfig {
 }
 
 export const THEMES: Record<string, ThemeConfig> = {
+  "bold-cyber": {
+    primaryColor: "#F59E0B",
+    accentColor: "#FACC15",
+    backgroundColor: "#030712",
+    surfaceColor: "#0F172A",
+    textColor: "#F8FAFC",
+    mutedTextColor: "#94A3B8",
+    headingFont: "Space Grotesk",
+    bodyFont: "Space Grotesk",
+    monoFont: "Fira Code",
+    chartColors: ["#F59E0B", "#FACC15", "#38BDF8", "#EC4899", "#10B981"],
+    springConfig: { damping: 14, stiffness: 90, mass: 1 },
+    transitionDuration: 0.3,
+    captionHighlightColor: "#FACC15",
+    captionBackgroundColor: "rgba(3, 7, 18, 0.85)",
+  },
   "clean-professional": {
     primaryColor: "#2563EB",
     accentColor: "#F59E0B",
@@ -142,6 +158,21 @@ export const Root: React.FC = () => {
         fps={30}
         width={1920}
         height={1080}
+        defaultProps={{
+          cuts: [],
+          overlays: [],
+          captions: [],
+          audio: {},
+        }}
+        calculateMetadata={calculateMetadata}
+      />
+      <Composition
+        id="ExplainerPortrait"
+        component={Explainer}
+        durationInFrames={30 * 60}
+        fps={30}
+        width={1080}
+        height={1920}
         defaultProps={{
           cuts: [],
           overlays: [],
