@@ -78,6 +78,8 @@ VIDEO_GEN_LOCAL_MODEL=       # wan2.2-ti2v-5b, wan2.1-1.3b, wan2.1-14b, hunyuan-
 # COMFYUI (optional overrides; localhost:8188 is the default)
 COMFYUI_SERVER_URL=          # Local ComfyUI server for shared workflows
 COMFYUI_VIDEO_SERVER_URL=    # Optional video-specific ComfyUI server
+COMFYUI_IMAGE_SERVER_URL=    # Optional image-specific ComfyUI server
+COMFYUI_MUSIC_SERVER_URL=    # Optional music-specific ComfyUI server
 
 # COMFY CLOUD (hosted ComfyUI — no server of your own required)
 COMFY_CLOUD_API_KEY=         # Key from https://platform.comfy.org
