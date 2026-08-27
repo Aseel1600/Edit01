@@ -29,19 +29,112 @@ def is_bbc_source(file_path: Path | str) -> bool:
     name = Path(file_path).name.lower()
     return "bbc" in name or name.startswith("bbc_")
 
-def get_target_durations(file_path: Path | str, requested_target: Optional[float] = None) -> tuple[float, float]:
+def get_target_durations(file_path: Path | str, requested_target: Optional[float] = None) -> tuple[float, float, float]:
     """
-    Returns (story_target_s, cta_target_s) based on BBC vs Non-BBC rules:
-    - BBC Source: Story = 57.0s, CTA = 3.0s (Total = 60.0s, strictly avoids >60s Content-ID block)
-    - Non-BBC Source: Story = 92.0s - 95.0s, CTA = 3.0s (Total = 95.0s - 98.0s)
+    Returns (hook_target_s, story_target_s, cta_target_s) based on 3-Act Cold Hook standard:
+    - BBC Source: Hook = 3.2s, Story = 53.3s, CTA = 2.3s (Total = 58.8s, strictly < 60.0s Shorts safe)
+    - Non-BBC Source: Hook = 3.2s, Story = 90.0s, CTA = 2.3s (Total = 95.5s)
     """
+    hook_s = 3.2
+    cta_s = 2.3
     if is_bbc_source(file_path):
-        story_s = 57.0 if requested_target is None or requested_target > 58.0 else requested_target
-        cta_s = 3.0
+        story_s = 53.3 if requested_target is None or requested_target > 55.0 else requested_target
     else:
-        story_s = 95.0 if requested_target is None else requested_target
-        cta_s = 3.0
-    return story_s, cta_s
+        story_s = 90.0 if requested_target is None else requested_target
+    return hook_s, story_s, cta_s
+
+
+def generate_cold_hook_clip(
+    doc_source: Path,
+    hook_voice_text: str,
+    output_clip_path: Path,
+    hook_cut_start: float = 67.5,
+    hook_cut_duration: float = 3.20,
+    bgm_track: Optional[Path] = None,
+) -> Path:
+    """
+    Renders Act 1: Cold Action Teaser Hook (0.0s - 3.2s):
+    - Peak climax slow-motion footage extracted from the documentary
+    - ElevenLabs curiosity hook voiceover
+    - Bold Electric Yellow curiosity question
+    - 4:5 Ghost Blur framing
+    """
+    eleven_key = os.environ.get("ELEVENLABS_API_KEY")
+    eleven_voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "3zYzgGucDBahVReFU64R")
+    
+    temp_dir = output_clip_path.parent / "temp_hook"
+    temp_dir.mkdir(parents=True, exist_ok=True)
+    hook_voice = temp_dir / "hook_voice.mp3"
+    hook_raw = temp_dir / "hook_raw.mp4"
+    hook_ass = temp_dir / "hook.ass"
+    
+    # 1. Synthesize Voice
+    headers = {"xi-api-key": eleven_key, "Content-Type": "application/json"}
+    data = {
+        "text": hook_voice_text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {"stability": 0.45, "similarity_boost": 0.8}
+    }
+    res = requests.post(f"https://api.elevenlabs.io/v1/text-to-speech/{eleven_voice_id}", json=data, headers=headers)
+    if res.status_code == 200:
+        hook_voice.write_bytes(res.content)
+    
+    # 2. Cut Climax Snippet
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-ss", str(hook_cut_start),
+        "-t", str(hook_cut_duration),
+        "-i", str(doc_source),
+        "-c:v", "libx264", "-crf", "18", "-preset", "fast",
+        "-an",
+        str(hook_raw)
+    ], check=True)
+    
+    # 3. Subtitles
+    ass_content = f"""[Script Info]
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: HookBadge,Impact,64,&H0000FFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,2,0,1,6,3,8,20,20,165,1
+Style: HookSub,Impact,62,&H00FFFFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,5,2,2,40,40,460,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 1,0:00:00.00,0:00:03.20,HookBadge,,0,0,0,,{{\\fad(150,150)}}{hook_voice_text.upper()}
+Dialogue: 0,0:00:00.00,0:00:03.20,HookSub,,0,0,0,,{hook_voice_text.upper()}
+"""
+    hook_ass.write_text(ass_content, encoding="utf-8")
+    
+    if bgm_track is None or not Path(bgm_track).exists():
+        bgm_track = ROOT_DIR / "assets" / "audio" / "bgm" / "nature_suspense_bgm.wav"
+        
+    hook_filter = (
+        "[0:v]split=2[bg][fg];"
+        "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=30:5,eq=brightness=-0.08:saturation=1.15[bgblur];"
+        "[fg]scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350:(iw-1080)/2:(ih-1350)/2,eq=saturation=1.12:contrast=1.04:brightness=-0.02[fg45];"
+        "[bgblur][fg45]overlay=0:285[base];"
+        f"[base]ass='{hook_ass.name}'[v];"
+        "[2:a]volume=0.30,afade=t=in:st=0.0:d=0.3[bgm];"
+        "[1:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[a]"
+    )
+    
+    subprocess.run([
+        "ffmpeg", "-y",
+        "-i", str(hook_raw),
+        "-i", str(hook_voice),
+        "-i", str(bgm_track),
+        "-filter_complex", hook_filter,
+        "-map", "[v]", "-map", "[a]",
+        "-c:v", "libx264", "-crf", "18", "-preset", "fast",
+        "-c:a", "aac", "-b:a", "320k",
+        "-t", str(hook_cut_duration),
+        str(output_clip_path)
+    ], check=True, cwd=str(temp_dir))
+    
+    return output_clip_path
 
 # -------------------------------------------------------------
 # 1. 4:5 GHOST BLUR FILTERGRAPH

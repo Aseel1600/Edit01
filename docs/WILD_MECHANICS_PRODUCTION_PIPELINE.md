@@ -26,25 +26,28 @@
 
 ## 📌 2. Duration Policy & Minimum Thresholds
 
-### 1. Source Footage Ingestion & BBC Naming Standard
+### 1. The 3-Act Cold Hook Architecture (Mandatory for ALL Videos)
 
 > [!IMPORTANT]
-> **Strict Duration & Source Tagging Mandate:**
-> To prevent automated YouTube Content-ID claims/blocks, all downloaded footage MUST explicitly declare its provider via filename prefix:
+> **Strict Retention & Safe-Duration Rule:**
+> Every Wild Mechanics video must follow the 3-Act retention arc to stop the scroll in the first 3 seconds while remaining strictly within Shorts duration limits:
 > 
-> * **BBC Footage (`bbc_*.mp4`):**
->   * **Naming Pattern:** `assets/documentaries/<animal>/bbc_<title>_source_01.mp4`
->   * **Story Duration:** Strictly **$57.0\text{s} - 58.0\text{s}$** ($< 60\text{s}$ continuous footage threshold).
->   * **Outro CTA:** **$2.5\text{s} - 3.0\text{s}$** (ElevenLabs voiceover + boosted BGM).
->   * **Total Master Short:** Exactly **$60.0\text{s} - 61.0\text{s}$**.
->
-> * **Non-BBC Footage (`nonbbc_*.mp4` / Love Nature / NatGeo / Smithsonian):**
->   * **Naming Pattern:** `assets/documentaries/<animal>/nonbbc_<title>_source_01.mp4`
->   * **Story Duration:** **$87.0\text{s} - 95.0\text{s}$** (unhurried narrative arc).
->   * **Outro CTA:** **$2.5\text{s} - 3.0\text{s}$**.
->   * **Total Master Short:** **$90.0\text{s} - 98.0\text{s}$**.
->
-> **The pipeline automatically inspects the filename and applies the exact duration threshold without manual intervention.**
+> 1. **Act 1: Cold Action Teaser Hook ($0.0\text{s} – 3.2\text{s}$):**
+>    * **Visual:** Opens immediately on the most explosive climactic strike/action slow-motion shot extracted from the climax of the documentary.
+>    * **Audio:** Custom ElevenLabs curiosity hook question (*"Why do salmon leap directly into a hungry bear's mouth?"*) + sub-bass whoosh impact.
+>    * **Subtitles:** Centered bold Electric Yellow curiosity question.
+> 
+> 2. **Act 2: Main Narrative Build-up ($3.2\text{s} – 56.5\text{s}$ for BBC / $3.2\text{s} – 93.0\text{s}$ for Non-BBC):**
+>    * **Visual:** Continuous 4:5 Ghost Blur framing of the authentic documentary story.
+>    * **Audio:** Original documentary narrator with anti-fingerprint pitch modulation ($0.97$).
+>    * **Pacing:** Natural sentence completion followed by a **$0.8\text{s}$ smooth black fade-out**.
+> 
+> 3. **Act 3: Snappy Outro CTA ($56.5\text{s} – 58.8\text{s}$):**
+>    * **Visual:** Topic-matched animal stock video.
+>    * **Audio:** ElevenLabs voiceover (*"Follow Wild Mechanics for more."*) + Boosted Background Music (`volume=0.35`).
+>    * **Subtitles:** Kinetic bursts: `FOLLOW` $\to$ `WILD MECHANICS` $\to$ `FOR MORE.`
+> 
+> **Total Master Duration for BBC Clips:** Exactly **`58.80s`** (Guaranteed $< 60.00\text{s}$ in container metadata to prevent Content-ID blocks).
 
 ### ✂️ C. Smart Trimming (AI Sentence Boundaries & Duration Snapping):
 * **Sentence Boundary Detection:** Uses Whisper word-level timestamps to detect natural punctuation periods (`.`, `!`, `?`) and speech pauses ($>350\text{ms}$).

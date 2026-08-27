@@ -38,6 +38,7 @@ from lib.wild_mechanics_engine import (
     audio_pitch_and_fade_filter,
     build_ass_subtitles,
     generate_dynamic_cta_clip,
+    generate_cold_hook_clip,
     is_bbc_source,
     get_target_durations
 )
