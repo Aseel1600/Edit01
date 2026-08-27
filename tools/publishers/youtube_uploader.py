@@ -146,6 +146,16 @@ class YouTubeUploader(BaseTool):
             video_url = f"https://youtube.com/shorts/{video_id}"
             print(f"[YOUTUBE UPLOAD] Video published successfully: {video_url}")
 
+            # Upload Custom Thumbnail if provided
+            thumbnail_path = inputs.get("thumbnail_path")
+            if thumbnail_path and Path(thumbnail_path).exists():
+                try:
+                    thumb_media = MediaFileUpload(str(thumbnail_path), mimetype="image/jpeg")
+                    youtube.thumbnails().set(videoId=video_id, media_body=thumb_media).execute()
+                    print(f"[YOUTUBE UPLOAD] Custom High-CTR Thumbnail set: {thumbnail_path}")
+                except Exception as te:
+                    print(f"[YOUTUBE UPLOAD] Thumbnail upload note: {te}")
+
             return ToolResult(
                 success=True,
                 data={

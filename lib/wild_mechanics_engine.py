@@ -136,6 +136,26 @@ Dialogue: 0,0:00:00.00,0:00:03.20,HookSub,,0,0,0,,{hook_voice_text.upper()}
     
     return output_clip_path
 
+
+def extract_high_ctr_thumbnail(video_path: Path, output_thumb_path: Path, timestamp_s: float = 1.5) -> Path:
+    """
+    Extracts a high-CTR 1080x1920 thumbnail from the Cold Hook frame:
+    - High contrast (+12%) & saturation (+28%) boost for vivid colors
+    - Unsharp mask filter for crisp detail on mobile feeds
+    - High JPEG quality
+    """
+    cmd = [
+        "ffmpeg", "-y",
+        "-ss", str(timestamp_s),
+        "-i", str(video_path),
+        "-vf", "scale=1080:1920,eq=contrast=1.12:saturation=1.28:brightness=-0.02,unsharp=5:5:1.0:5:5:0.0",
+        "-vframes", "1",
+        "-q:v", "2",
+        str(output_thumb_path)
+    ]
+    subprocess.run(cmd, check=True)
+    return output_thumb_path
+
 # -------------------------------------------------------------
 # 1. 4:5 GHOST BLUR FILTERGRAPH
 # -------------------------------------------------------------

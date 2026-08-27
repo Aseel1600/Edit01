@@ -106,10 +106,20 @@
 
 ---
 
-## 🔍 7. Production Quality Assurance (QA) Checklist
+## 🖼️ 7. Automated High-CTR Thumbnail Architecture
 
-* [ ] **Total Duration Check:** Is the master video $\ge 61.0\text{s}$? (If $< 60.0\text{s}$, the render fails QA and must be re-rendered).
+* **Climax Frame Extraction ($1.5\text{s}$):** Automatically captures the peak action freeze-frame from the Cold Hook (e.g. airborne prey leap or predator strike).
+* **OLED Visual Enhancement:** Applies unsharp masking (`unsharp=5:5:1.0:5:5:0.0`), $+28\%$ saturation boost, and $+12\%$ dynamic contrast to ensure crisp, vivid visibility on mobile screens.
+* **Curiosity Typography Integration:** Automatically embeds the Electric Yellow curiosity hook title with thick contrast borders.
+* **Direct YouTube API Upload:** Calls `youtube.thumbnails().set(videoId, media_body)` immediately upon video publication to lock in the high-CTR thumbnail.
+
+---
+
+## 🔍 8. Production Quality Assurance (QA) Checklist
+
+* [ ] **Strict Duration Check:** Is the master video strictly within the Shorts window ($58.5\text{s} - 59.0\text{s}$ for BBC to avoid Content-ID blocks)?
+* [ ] **Cold Hook Check:** Does the video open immediately on an explosive action shot + curiosity question in the first 3 seconds?
+* [ ] **High-CTR Thumbnail Check:** Is the high-contrast climax thumbnail generated and uploaded to YouTube?
 * [ ] **Header Breathing Room:** Is the title cleanly positioned above the 4:5 boundary without touching the edge? ($Y=165$ vs video $Y=285$).
 * [ ] **Subtitle Safe Zone:** Are subtitles positioned high enough ($Y \approx 1460$) to avoid YouTube Shorts bottom UI?
-* [ ] **Curiosity Title Check:** Does the title evoke strong curiosity rather than presenting a dry fact?
 * [ ] **Watermark Check:** Are all broadcaster logos 100% cropped out in the 4:5 viewbox?

@@ -39,6 +39,7 @@ from lib.wild_mechanics_engine import (
     build_ass_subtitles,
     generate_dynamic_cta_clip,
     generate_cold_hook_clip,
+    extract_high_ctr_thumbnail,
     is_bbc_source,
     get_target_durations
 )
@@ -209,7 +210,11 @@ def main():
     subprocess.run(cmd_stitch, check=True)
     print(f"🎉 MASTER VIDEO CREATED: {master_video.name} ({master_video.stat().st_size / (1024*1024):.1f} MB)")
 
-    # 7. Upload to YouTube
+    # 7. Extract High-CTR Thumbnail & Upload to YouTube
+    thumb_path = renders_dir / f"{animal_key}_thumbnail.jpg"
+    extract_high_ctr_thumbnail(master_video, thumb_path, timestamp_s=1.5)
+    print(f"🖼️ High-CTR Thumbnail Generated: {thumb_path.name}")
+
     video_url = None
     if args.upload:
         print("\n🚀 Uploading to YouTube Shorts via YouTube Data API v3...")
@@ -225,7 +230,8 @@ def main():
             "description": desc,
             "tags": story.get("tags", ["shorts", "wildlife", "nature", "animals", "documentary", "wild mechanics"]),
             "privacy_status": "public",
-            "category_id": "15"
+            "category_id": "15",
+            "thumbnail_path": str(thumb_path)
         })
         if up_res.success:
             video_url = up_res.data.get("video_url")
