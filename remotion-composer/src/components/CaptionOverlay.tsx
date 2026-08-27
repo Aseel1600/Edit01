@@ -67,7 +67,7 @@ const PageRenderer: React.FC<{
   wordSeparator: string;
 }> = ({ page, fontSize, color, highlightColor, backgroundColor, fontFamily, wordSeparator }) => {
   const frame = useCurrentFrame();
-  const { fps } = useVideoConfig();
+  const { fps, height } = useVideoConfig();
 
   const currentMs = page.startMs + (frame / fps) * 1000;
 
@@ -83,7 +83,7 @@ const PageRenderer: React.FC<{
       style={{
         justifyContent: "flex-end",
         alignItems: "center",
-        paddingBottom: 80,
+        paddingBottom: height > 1200 ? 320 : 80,
       }}
     >
       <div
@@ -100,10 +100,14 @@ const PageRenderer: React.FC<{
         <span
           style={{
             fontSize,
-            fontWeight: 700,
+            fontWeight: 800,
             fontFamily,
             lineHeight: 1.4,
-            whiteSpace: "pre-wrap",
+            display: "flex",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            alignItems: "center",
+            gap: "0.3em",
           }}
         >
           {page.words.map((w, i) => {
@@ -113,19 +117,17 @@ const PageRenderer: React.FC<{
               <span
                 key={`${w.startMs}-${i}`}
                 style={{
-                  // Keep each word unbroken so lines wrap only at word
-                  // boundaries. For space-delimited text this matches the
-                  // previous behavior; for CJK it prevents mid-word breaks.
                   display: "inline-block",
                   whiteSpace: "nowrap",
-                  color: isActive ? highlightColor : isPast ? color : `${color}99`,
-                  transition: "none", // CSS transitions forbidden in Remotion
+                  color: isActive ? highlightColor : isPast ? "#FFFFFF" : "rgba(255, 255, 255, 0.6)",
+                  transform: isActive ? "scale(1.12)" : "scale(1)",
                   textShadow: isActive
-                    ? `0 0 20px ${highlightColor}66, 0 2px 4px rgba(0,0,0,0.5)`
-                    : "0 2px 4px rgba(0,0,0,0.5)",
+                    ? `0 0 25px ${highlightColor}, 0 2px 8px rgba(0,0,0,0.9)`
+                    : "0 2px 6px rgba(0,0,0,0.8)",
+                  transition: "none",
                 }}
               >
-                {w.word}{i < page.words.length - 1 ? wordSeparator : ""}
+                {w.word}
               </span>
             );
           })}

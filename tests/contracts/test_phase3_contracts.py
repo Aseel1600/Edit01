@@ -699,6 +699,8 @@ class TestCapabilityMetadata:
             "fal.ai",
             "google_tts",
             "kling_official",
+            "microsoft_edge",
+            "omnivoice",
             "openai",
             "piper",
         }

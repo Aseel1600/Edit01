@@ -6,9 +6,12 @@ __pycache__/
 dist/
 build/
 
-# Local model downloads (e.g. Piper TTS voices, fetched at runtime — not source)
+# Local model downloads & cloned tools
 *.onnx
 *.onnx.json
+tools/OmniVoice
+voices/
+docs/nam-kien-thuc/
 
 # Test/IDE
 .pytest_cache/
