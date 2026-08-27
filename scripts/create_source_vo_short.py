@@ -133,8 +133,9 @@ def render_source_vo_short(
     # CTA now appended as centered outro card with voice (bottom 250px hidden by Shorts UI — winners used end-card voice)
     # Drawtext CTA removed; outro concat appended after main render
 
-    # Anti-Content-ID acoustic fingerprint scrambler + EBU R128 loudness
-    audio_filter = "asetrate=44100*1.02,atempo=0.98,highpass=f=60,lowpass=f=16000,loudnorm=I=-14:TP=-1.5:LRA=11"
+    # Audio: EBU R128 loudness only — anti-Content-ID scrambler (asetrate/atempo) removed to keep captions synced with VO (was causing desync)
+    # For BBC sources that need anti-CID, re-enable via --audio-filter scrambler flag (ponytail: YAGNI until needed)
+    audio_filter = "highpass=f=60,lowpass=f=16000,loudnorm=I=-14:TP=-1.5:LRA=11"
 
     cmd = [
         "ffmpeg", "-y",
@@ -220,7 +221,40 @@ def render_source_vo_short(
             line1_esc = line1.replace(":", "\\:").replace("'", "\\'").replace("%", "\\%")
             line2_esc = line2.replace(":", "\\:").replace("'", "\\'").replace("%", "\\%")
             outro_v = output_path.with_suffix(".cta_outro.mp4")
-            vf_outro = f"drawtext=text='{line1_esc}'{font_arg}:fontsize=72:fontcolor=white:borderw=4:bordercolor=black:x=(w-text_w)/2:y=(h-text_h)/2-70,drawtext=text='{line2_esc}'{font_arg}:fontsize=64:fontcolor=#FFE066:borderw=3:bordercolor=black:x=(w-text_w)/2:y=(h-text_h)/2+70"
+            # Proper high-converting CTA: varied line + pulsing badge/emojis via cta_builder
+            try:
+                import sys as _sys
+                _sys.path.insert(0, str(ROOT_DIR))
+                from tools.video.cta_builder import generate_cta_ass_snippet
+                cta_snippet = generate_cta_ass_snippet(duration=outro_dur, channel_name="WILD MECHANICS", animal_name="owl", cta_start_offset=outro_dur)
+            except Exception as _e:
+                print(f"[CTA] cta_builder import failed: {_e}, using fallback")
+                cta_snippet = ""
+            outro_ass = output_path.with_suffix(".cta_outro.ass")
+            # Build outro ASS with centered varied CTA + high-converting overlay
+            outro_ass_content = f"""[Script Info]
+Title: CTA Outro
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: OutroMain,Impact,72,&H00FFFFFF,&H00000000,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,4,0,5,60,60,520,1
+Style: OutroSub,Impact,64,&H00FFFF00,&H00000000,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,3,0,5,60,60,400,1
+Style: CTABadge,Impact,44,&H00FFFFFF,&H00000000,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,0,5,60,60,150,1
+Style: CTASubtext,Impact,38,&H00FFFFFF,&H00000000,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,0,5,60,60,120,1
+Style: CTAPointer,Impact,42,&H00FFFFFF,&H00000000,&H00000000,&H80000000,0,0,0,0,100,100,0,0,1,2,0,5,60,60,80,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:{outro_dur:.2f},OutroMain,,0,0,0,,{line1_esc}
+Dialogue: 0,0:00:00.00,0:00:{outro_dur:.2f},OutroSub,,0,0,0,,{line2_esc}
+{cta_snippet}
+"""
+            outro_ass.write_text(outro_ass_content, encoding="utf-8")
+            vf_outro = f"ass='{outro_ass.as_posix().replace(':', chr(92)+':').replace(chr(39), chr(92)+chr(39))}'"
             # Try stock clip from Pexels/Pixabay for visual CTR
             stock_clip = None
             cta_query = "wildlife jaguar"  # generic, daily pipeline passes animal-specific query
