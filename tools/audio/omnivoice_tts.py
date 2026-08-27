@@ -9,6 +9,8 @@ from __future__ import annotations
 import os
 import pathlib
 import platform
+import re
+import shutil
 import subprocess
 import sys
 import time
@@ -148,6 +150,7 @@ class OmniVoiceTTS(BaseTool):
             return env_py
 
         candidates = [
+            pathlib.Path("/Users/huutq/Desktop/WorkingSpace/Taka/taka-tales/env/bin/python"),
             pathlib.Path(sys.executable),
             pathlib.Path(".venv/bin/python"),
             pathlib.Path("env/bin/python"),
@@ -233,60 +236,132 @@ class OmniVoiceTTS(BaseTool):
                 if ref_audio_path:
                     break
 
-        cmd = [
-            python_exe,
-            "-m", "omnivoice.cli.infer",
-            "--model", "k2-fsa/OmniVoice",
-            "--text", text,
-            "--language", language,
-            "--output", str(out_path),
-        ]
+        # Split multi-sentence text to prevent OmniVoice duration truncation
+        import re
+        sentences = [s.strip() for s in re.split(r'(?<=[.!?\n])\s+', text) if s.strip()]
+        if not sentences:
+            sentences = [text]
 
-        if ref_audio_path:
-            cmd += ["--ref_audio", str(ref_audio_path)]
-            if ref_text:
-                cmd += ["--ref_text", str(ref_text)]
-        elif voice_instruct:
-            cmd += ["--instruct", str(voice_instruct)]
+        sub_env = os.environ.copy()
+        sub_env["PYTHONPATH"] = str(omni_dir)
 
-        if speed != 1.0:
-            cmd += ["--speed", str(speed)]
+        if len(sentences) == 1:
+            cmd = [
+                python_exe,
+                "-m", "omnivoice.cli.infer",
+                "--model", "k2-fsa/OmniVoice",
+                "--text", sentences[0],
+                "--language", language,
+                "--output", str(out_path),
+            ]
+            if ref_audio_path:
+                cmd += ["--ref_audio", str(ref_audio_path)]
+                if ref_text:
+                    cmd += ["--ref_text", str(ref_text)]
+            elif voice_instruct:
+                cmd += ["--instruct", str(voice_instruct)]
+            if speed != 1.0:
+                cmd += ["--speed", str(speed)]
 
-        try:
-            sub_env = os.environ.copy()
-            sub_env["PYTHONPATH"] = str(omni_dir)
-            print(f"[OmniVoiceTTS] Running CLI: {' '.join(cmd)}")
-            proc = subprocess.run(
-                cmd,
-                check=True,
-                capture_output=True,
-                text=True,
-                env=sub_env,
-                cwd=str(omni_dir),
-                timeout=180,
-            )
-            file_size = out_path.stat().st_size if out_path.exists() else 0
-            return ToolResult(
-                success=True,
-                data={
-                    "output_path": str(out_path),
-                    "file_size_bytes": file_size,
-                    "ref_audio_path": ref_audio_path,
-                    "voice_instruct": voice_instruct,
-                    "character_count": len(text),
-                    "formatted_text": text,
-                },
-                artifacts=[str(out_path)],
-                cost_usd=0.0,
-                duration_seconds=time.time() - t0,
-            )
-        except Exception as e:
-            print(f"[OmniVoiceTTS] Execution failed: {e}. Falling back to Edge-TTS...")
-            edge_tool = EdgeTTS()
-            return edge_tool.execute({
-                **inputs,
-                "text": text,
-                "language": language,
-                "output_path": str(out_path.with_suffix(".mp3")),
-                "format_vietnamese": False,
-            })
+            try:
+                print(f"[OmniVoiceTTS] Running CLI: {' '.join(cmd)}")
+                subprocess.run(
+                    cmd,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    env=sub_env,
+                    cwd=str(omni_dir),
+                    timeout=180,
+                )
+            except Exception as e:
+                print(f"[OmniVoiceTTS] Execution failed: {e}. Falling back to Edge-TTS...")
+                edge_tool = EdgeTTS()
+                return edge_tool.execute({
+                    **inputs,
+                    "text": text,
+                    "language": language,
+                    "output_path": str(out_path.with_suffix(".mp3")),
+                    "format_vietnamese": False,
+                })
+        else:
+            temp_dir = out_path.parent / f"_omni_temp_{int(time.time()*1000)}"
+            temp_dir.mkdir(parents=True, exist_ok=True)
+            part_files = []
+            try:
+                for idx, sent in enumerate(sentences):
+                    part_wav = temp_dir / f"part_{idx:03d}.wav"
+                    cmd = [
+                        python_exe,
+                        "-m", "omnivoice.cli.infer",
+                        "--model", "k2-fsa/OmniVoice",
+                        "--text", sent,
+                        "--language", language,
+                        "--output", str(part_wav),
+                    ]
+                    if ref_audio_path:
+                        cmd += ["--ref_audio", str(ref_audio_path)]
+                        if ref_text:
+                            cmd += ["--ref_text", str(ref_text)]
+                    elif voice_instruct:
+                        cmd += ["--instruct", str(voice_instruct)]
+                    if speed != 1.0:
+                        cmd += ["--speed", str(speed)]
+
+                    print(f"[OmniVoiceTTS] Synthesizing sentence [{idx+1}/{len(sentences)}]: {sent}")
+                    subprocess.run(
+                        cmd,
+                        check=True,
+                        capture_output=True,
+                        text=True,
+                        env=sub_env,
+                        cwd=str(omni_dir),
+                        timeout=180,
+                    )
+                    if part_wav.exists() and part_wav.stat().st_size > 0:
+                        part_files.append(part_wav)
+
+                if not part_files:
+                    raise RuntimeError("No audio chunks generated by OmniVoice.")
+
+                # Concatenate with FFmpeg
+                concat_list = temp_dir / "concat.txt"
+                with open(concat_list, "w", encoding="utf-8") as f:
+                    for pf in part_files:
+                        f.write(f"file '{pf.resolve()}'\n")
+
+                ext = out_path.suffix.lower()
+                c_args = ["-c:a", "libmp3lame", "-q:a", "2"] if ext == ".mp3" else ["-c:a", "pcm_s16le"]
+                subprocess.run(
+                    ["ffmpeg", "-y", "-f", "concat", "-safe", "0", "-i", str(concat_list), *c_args, str(out_path)],
+                    check=True,
+                    capture_output=True,
+                )
+                file_size = out_path.stat().st_size if out_path.exists() else 0
+                return ToolResult(
+                    success=True,
+                    data={
+                        "output_path": str(out_path),
+                        "file_size_bytes": file_size,
+                        "ref_audio_path": ref_audio_path,
+                        "voice_instruct": voice_instruct,
+                        "character_count": len(text),
+                        "sentence_count": len(sentences),
+                        "formatted_text": text,
+                    },
+                    artifacts=[str(out_path)],
+                    cost_usd=0.0,
+                    duration_seconds=time.time() - t0,
+                )
+            except Exception as e:
+                print(f"[OmniVoiceTTS] Chunked execution failed: {e}. Falling back to Edge-TTS...")
+                edge_tool = EdgeTTS()
+                return edge_tool.execute({
+                    **inputs,
+                    "text": text,
+                    "language": language,
+                    "output_path": str(out_path.with_suffix(".mp3")),
+                    "format_vietnamese": False,
+                })
+            finally:
+                shutil.rmtree(temp_dir, ignore_errors=True)
