@@ -128,14 +128,27 @@ def main():
     assets_dir.mkdir(parents=True, exist_ok=True)
     renders_dir.mkdir(parents=True, exist_ok=True)
 
-    # 2. Trim Story & Modulate Audio
+    # 2. Render Act 1: Cold Action Hook (3.0s with authentic audio, NO TTS)
+    hook_rendered = renders_dir / f"part1_{animal_key}_hook.mp4"
+    start_pos = story.get("start", 0.0)
+    hook_start = story.get("hook_start", start_pos + 15.0)
+    print(f"\n🎬 Step 1: Rendering Act 1 Cold Action Hook ({hook_target_s:.1f}s with authentic audio, NO TTS)...")
+    generate_cold_hook_clip(
+        doc_source=source_path,
+        hook_title_text=title_hook,
+        output_clip_path=hook_rendered,
+        hook_cut_start=hook_start,
+        hook_cut_duration=hook_target_s,
+        pitch_factor=0.97
+    )
+
+    # 3. Trim Story & Modulate Audio
     trimmed_video = assets_dir / f"{animal_key}_story_{int(story_duration)}s.mp4"
     fade_start = story_duration - 0.8
     fade_dur = 0.8
     audio_filt = audio_pitch_and_fade_filter(fade_out_start=fade_start, fade_duration=fade_dur, pitch_factor=0.97)
-    start_pos = story.get("start", 0.0)
 
-    print(f"\n✂️ Step 1: Trimming {story_duration:.1f}s continuous story with anti-fingerprint audio modulation...")
+    print(f"\n✂️ Step 2: Trimming {story_duration:.1f}s continuous story with anti-fingerprint audio modulation...")
     cmd_trim = [
         "ffmpeg", "-y",
         "-ss", str(start_pos),
@@ -148,8 +161,8 @@ def main():
     ]
     subprocess.run(cmd_trim, check=True)
 
-    # 3. Whisper Word Sync & ASS Generation
-    print("\n🎙️ Step 2: Transcribing for ASS word-level kinetic karaoke at Safe Zone...")
+    # 4. Whisper Word Sync & ASS Generation
+    print("\n🎙️ Step 3: Transcribing for ASS word-level kinetic karaoke at Safe Zone...")
     whisper_model = WhisperModel("base", device="cpu", compute_type="int8")
     segments, _ = whisper_model.transcribe(str(trimmed_video), word_timestamps=True)
 
@@ -161,11 +174,11 @@ def main():
         max_duration=fade_start
     )
 
-    # 4. Render 4:5 Ghost Blur Story
-    story_rendered = renders_dir / f"part1_{animal_key}_ghost_story.mp4"
+    # 5. Render Act 2: 4:5 Ghost Blur Story
+    story_rendered = renders_dir / f"part2_{animal_key}_ghost_story.mp4"
     fg_filter = ghost_blur_filter(ass_file=str(ass_path), fade_out_start=fade_start, fade_duration=fade_dur)
 
-    print(f"\n🎨 Step 3: Rendering 4:5 Ghost Blur Story (zero watermarks & OLED boost)...")
+    print(f"\n🎨 Step 4: Rendering Act 2 4:5 Ghost Blur Story (zero watermarks & OLED boost)...")
     cmd_story = [
         "ffmpeg", "-y",
         "-i", str(trimmed_video),
@@ -177,31 +190,25 @@ def main():
     ]
     subprocess.run(cmd_story, check=True, cwd=str(assets_dir))
 
-    # 5. Generate Dynamic CTA Outro (ElevenLabs + Boosted BGM)
-    cta_clip = renders_dir / f"part2_{animal_key}_cta.mp4"
-    cta_bg = assets_dir / "clean_cta_bg.mp4"
-    if not cta_bg.exists():
-        fallback_bg = ROOT_DIR / "projects" / "grizzly_bear" / "assets" / "clean_bear_cta_bg.mp4"
-        if fallback_bg.exists():
-            cta_bg = fallback_bg
-
-    print(f"\n🎙️ Step 4: Generating Dynamic CTA Outro (ElevenLabs + Boosted BGM volume=0.35)...")
+    # 6. Render Act 3: Dynamic CTA Outro (Volume-Matched ElevenLabs + Boosted BGM)
+    cta_rendered = renders_dir / f"part3_{animal_key}_cta.mp4"
+    print(f"\n📣 Step 5: Rendering Act 3 Outro CTA ({cta_target_s:.1f}s with volume-matched ElevenLabs VO & BGM)...")
     generate_dynamic_cta_clip(
-        animal_name=animal_key,
-        stock_bg_video=cta_bg,
-        output_clip_path=cta_clip,
-        whisper_model=whisper_model,
-        bgm_volume=0.35
+        animal_name=story.get("animal", animal_key),
+        output_clip_path=cta_rendered,
+        duration_s=cta_target_s,
+        clean_stock_bg=story.get("clean_stock_bg")
     )
 
-    # 6. Master Stitch
-    master_video = renders_dir / f"{animal_key}_master_short.mp4"
-    print(f"\n🚀 Step 5: Final Master Stitch...")
+    # 7. Master Concat Stitch
+    master_video = renders_dir / f"{animal_key}_1m01s_master.mp4"
+    print("\n🚀 Step 6: Concat Stitching (Act 1 Hook + Act 2 Story + Act 3 CTA)...")
     cmd_stitch = [
         "ffmpeg", "-y",
+        "-i", str(hook_rendered),
         "-i", str(story_rendered),
-        "-i", str(cta_clip),
-        "-filter_complex", "[0:v][0:a][1:v][1:a]concat=n=2:v=1:a=1[v][a]",
+        "-i", str(cta_rendered),
+        "-filter_complex", "[0:v][0:a][1:v][1:a][2:v][2:a]concat=n=3:v=1:a=1[v][a]",
         "-map", "[v]", "-map", "[a]",
         "-c:v", "libx264", "-crf", "18", "-preset", "fast",
         "-c:a", "aac", "-b:a", "320k",

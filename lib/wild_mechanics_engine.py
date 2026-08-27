@@ -31,14 +31,14 @@ def is_bbc_source(file_path: Path | str) -> bool:
 
 def get_target_durations(file_path: Path | str, requested_target: Optional[float] = None) -> tuple[float, float, float]:
     """
-    Returns (hook_target_s, story_target_s, cta_target_s) based on 3-Act Cold Hook standard:
-    - BBC Source: Hook = 3.2s, Story = 53.3s, CTA = 2.3s (Total = 58.8s, strictly < 60.0s Shorts safe)
-    - Non-BBC Source: Hook = 3.2s, Story = 90.0s, CTA = 2.3s (Total = 95.5s)
+    Returns (hook_target_s, story_target_s, cta_target_s) matching channel benchmarks (1:01 minute):
+    - BBC Source: Hook = 3.0s, Story = 55.5s, CTA = 2.5s (Total = 61.0s - 61.2s, exactly 1:01 on YouTube)
+    - Non-BBC Source: Hook = 3.0s, Story = 90.0s, CTA = 2.5s (Total = 95.5s)
     """
-    hook_s = 3.2
-    cta_s = 2.3
+    hook_s = 3.0
+    cta_s = 2.5
     if is_bbc_source(file_path):
-        story_s = 53.3 if requested_target is None or requested_target > 55.0 else requested_target
+        story_s = 55.5 if requested_target is None or requested_target > 58.0 else requested_target
     else:
         story_s = 90.0 if requested_target is None else requested_target
     return hook_s, story_s, cta_s
@@ -46,51 +46,38 @@ def get_target_durations(file_path: Path | str, requested_target: Optional[float
 
 def generate_cold_hook_clip(
     doc_source: Path,
-    hook_voice_text: str,
+    hook_title_text: str,
     output_clip_path: Path,
-    hook_cut_start: float = 67.5,
-    hook_cut_duration: float = 3.20,
-    bgm_track: Optional[Path] = None,
+    hook_cut_start: float = 35.0,
+    hook_cut_duration: float = 3.00,
+    pitch_factor: float = 0.97
 ) -> Path:
     """
-    Renders Act 1: Cold Action Teaser Hook (0.0s - 3.2s):
-    - Peak climax slow-motion footage extracted from the documentary
-    - ElevenLabs curiosity hook voiceover
-    - Bold Electric Yellow curiosity question
+    Renders Act 1: Cold Action Teaser Hook (0.0s - 3.0s):
+    - High-intensity clash / strike action shot extracted from footage
+    - Authentic documentary roaring / river audio with pitch modulation (NO AI TTS on hook!)
+    - Top branding header + Electric Yellow curiosity hook title
     - 4:5 Ghost Blur framing
     """
-    eleven_key = os.environ.get("ELEVENLABS_API_KEY")
-    eleven_voice_id = os.environ.get("ELEVENLABS_VOICE_ID", "3zYzgGucDBahVReFU64R")
-    
     temp_dir = output_clip_path.parent / "temp_hook"
     temp_dir.mkdir(parents=True, exist_ok=True)
-    hook_voice = temp_dir / "hook_voice.mp3"
     hook_raw = temp_dir / "hook_raw.mp4"
     hook_ass = temp_dir / "hook.ass"
     
-    # 1. Synthesize Voice
-    headers = {"xi-api-key": eleven_key, "Content-Type": "application/json"}
-    data = {
-        "text": hook_voice_text,
-        "model_id": "eleven_multilingual_v2",
-        "voice_settings": {"stability": 0.45, "similarity_boost": 0.8}
-    }
-    res = requests.post(f"https://api.elevenlabs.io/v1/text-to-speech/{eleven_voice_id}", json=data, headers=headers)
-    if res.status_code == 200:
-        hook_voice.write_bytes(res.content)
-    
-    # 2. Cut Climax Snippet
-    subprocess.run([
+    # 1. Cut Climax Action Snippet with Authentic Audio & Pitch Modulation
+    cmd_cut = [
         "ffmpeg", "-y",
         "-ss", str(hook_cut_start),
         "-t", str(hook_cut_duration),
         "-i", str(doc_source),
         "-c:v", "libx264", "-crf", "18", "-preset", "fast",
-        "-an",
+        "-filter:a", f"asetrate=48000*{pitch_factor},atempo=1/{pitch_factor},loudnorm=I=-14:TP=-1.5:LRA=11",
+        "-c:a", "aac", "-b:a", "320k",
         str(hook_raw)
-    ], check=True)
+    ]
+    subprocess.run(cmd_cut, check=True)
     
-    # 3. Subtitles
+    # 2. Subtitles / Top Header
     ass_content = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -98,41 +85,28 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: HookBadge,Impact,64,&H0000FFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,2,0,1,6,3,8,20,20,165,1
-Style: HookSub,Impact,62,&H00FFFFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,5,2,2,40,40,460,1
+Style: TopBrand,Arial,38,&H00FFFFFF,&H00FFFFFF,&H00000000,&H80000000,-1,0,0,0,100,100,3,0,1,3,2,8,20,20,105,1
+Style: TopTitle,Impact,52,&H0000FFFF,&H0000FFFF,&H00000000,&H80000000,-1,0,0,0,100,100,1,0,1,5,3,8,20,20,165,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-Dialogue: 1,0:00:00.00,0:00:03.20,HookBadge,,0,0,0,,{{\\fad(150,150)}}{hook_voice_text.upper()}
-Dialogue: 0,0:00:00.00,0:00:03.20,HookSub,,0,0,0,,{hook_voice_text.upper()}
+Dialogue: 1,0:00:00.00,0:00:03.00,TopBrand,,0,0,0,,{{\\fad(100,100)}}WILD MECHANICS
+Dialogue: 1,0:00:00.00,0:00:03.00,TopTitle,,0,0,0,,{{\\fad(100,100)}}{hook_title_text.upper()}
 """
     hook_ass.write_text(ass_content, encoding="utf-8")
     
-    if bgm_track is None or not Path(bgm_track).exists():
-        bgm_track = ROOT_DIR / "assets" / "audio" / "bgm" / "nature_suspense_bgm.wav"
-        
-    hook_filter = (
-        "[0:v]split=2[bg][fg];"
-        "[bg]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,boxblur=30:5,eq=brightness=-0.08:saturation=1.15[bgblur];"
-        "[fg]scale=1080:1350:force_original_aspect_ratio=increase,crop=1080:1350:(iw-1080)/2:(ih-1350)/2,eq=saturation=1.12:contrast=1.04:brightness=-0.02[fg45];"
-        "[bgblur][fg45]overlay=0:285[base];"
-        f"[base]ass='{hook_ass.name}'[v];"
-        "[2:a]volume=0.30,afade=t=in:st=0.0:d=0.3[bgm];"
-        "[1:a][bgm]amix=inputs=2:duration=first:dropout_transition=2[a]"
-    )
-    
-    subprocess.run([
+    hook_filter = ghost_blur_filter(ass_file=str(hook_ass))
+    cmd_render = [
         "ffmpeg", "-y",
         "-i", str(hook_raw),
-        "-i", str(hook_voice),
-        "-i", str(bgm_track),
         "-filter_complex", hook_filter,
-        "-map", "[v]", "-map", "[a]",
+        "-map", "[v]", "-map", "0:a",
         "-c:v", "libx264", "-crf", "18", "-preset", "fast",
         "-c:a", "aac", "-b:a", "320k",
-        "-t", str(hook_cut_duration),
         str(output_clip_path)
-    ], check=True, cwd=str(temp_dir))
+    ]
+    subprocess.run(cmd_render, check=True, cwd=str(temp_dir))
+    return output_clip_path
     
     return output_clip_path
 
