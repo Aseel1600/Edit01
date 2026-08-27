@@ -97,6 +97,14 @@ class ComfyUIImage(BaseTool):
             "guidance": {"type": "number", "default": 3.5},
             "seed": {"type": "integer", "description": "Random if omitted"},
             "output_path": {"type": "string", "description": "Where to save the image"},
+            "timeout_seconds": {
+                "type": "integer",
+                "default": 900,
+                "description": (
+                    "How long to wait for the job before raising. Matches "
+                    "comfyui_video / comfyui_music, which already expose this."
+                ),
+            },
             "backend": {
                 "type": "string",
                 "enum": ["local", "cloud", "auto"],
@@ -261,7 +269,10 @@ class ComfyUIImage(BaseTool):
             )
             provenance["backend"] = client.backend
             paths = client.generate(
-                workflow, output_node=output_node, dest=output_path, timeout=900,
+                workflow,
+                output_node=output_node,
+                dest=output_path,
+                timeout=int(inputs.get("timeout_seconds", 900)),
             )
 
         except ComfyUIError as exc:
