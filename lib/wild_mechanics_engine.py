@@ -24,6 +24,25 @@ load_dotenv()
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
+def is_bbc_source(file_path: Path | str) -> bool:
+    """Detects if a media file is from BBC based on filename prefix/tag."""
+    name = Path(file_path).name.lower()
+    return "bbc" in name or name.startswith("bbc_")
+
+def get_target_durations(file_path: Path | str, requested_target: Optional[float] = None) -> tuple[float, float]:
+    """
+    Returns (story_target_s, cta_target_s) based on BBC vs Non-BBC rules:
+    - BBC Source: Story = 57.0s, CTA = 3.0s (Total = 60.0s, strictly avoids >60s Content-ID block)
+    - Non-BBC Source: Story = 92.0s - 95.0s, CTA = 3.0s (Total = 95.0s - 98.0s)
+    """
+    if is_bbc_source(file_path):
+        story_s = 57.0 if requested_target is None or requested_target > 58.0 else requested_target
+        cta_s = 3.0
+    else:
+        story_s = 95.0 if requested_target is None else requested_target
+        cta_s = 3.0
+    return story_s, cta_s
+
 # -------------------------------------------------------------
 # 1. 4:5 GHOST BLUR FILTERGRAPH
 # -------------------------------------------------------------

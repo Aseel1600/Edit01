@@ -26,16 +26,25 @@
 
 ## 📌 2. Duration Policy & Minimum Thresholds
 
-### 🅰️ BBC Documentary Clips (Strict 61s – 63s Total):
-* **Main Story Arc:** Must run for exactly **$58.0\text{s} – 60.0\text{s}$** of continuous authentic documentary footage with pitch-altered original audio (Cold Hook + Full Subject Hunt Arc).
-* **Appended Outro CTA:** **$+ 2.0\text{s} – 3.0\text{s}$** dedicated dynamic Outro CTA with custom AI voiceover tailored to the video's topic.
-* **Total Master Duration:** Must be **$61.0\text{s} – 63.0\text{s}$** total master length (**never under 60.0s**).
-* **Content ID Protection Mechanism:** Continuous raw BBC documentary audio strictly cuts off at $\le 60.0\text{s}$ and transitions into fresh stock video + AI voiceover. This breaks continuous audio fingerprint matching and guarantees 100% global clearance with zero worldwide blocks.
+### 1. Source Footage Ingestion & BBC Naming Standard
 
-### 🅱️ Non-BBC Clips: Smithsonian / Love Nature / Discovery / Terra Mater (72s – 88s Total):
-* **Main Story Arc:** **$70.0\text{s} – 85.0\text{s}$** to deliver the full narrative build-up and climactic strike without rushing or cutting off speech.
-* **Appended Outro CTA:** **$+ 2.0\text{s} – 3.0\text{s}$** dedicated dynamic Outro CTA.
-* **Total Master Duration:** **$72.0\text{s} – 88.0\text{s}$** total master length.
+> [!IMPORTANT]
+> **Strict Duration & Source Tagging Mandate:**
+> To prevent automated YouTube Content-ID claims/blocks, all downloaded footage MUST explicitly declare its provider via filename prefix:
+> 
+> * **BBC Footage (`bbc_*.mp4`):**
+>   * **Naming Pattern:** `assets/documentaries/<animal>/bbc_<title>_source_01.mp4`
+>   * **Story Duration:** Strictly **$57.0\text{s} - 58.0\text{s}$** ($< 60\text{s}$ continuous footage threshold).
+>   * **Outro CTA:** **$2.5\text{s} - 3.0\text{s}$** (ElevenLabs voiceover + boosted BGM).
+>   * **Total Master Short:** Exactly **$60.0\text{s} - 61.0\text{s}$**.
+>
+> * **Non-BBC Footage (`nonbbc_*.mp4` / Love Nature / NatGeo / Smithsonian):**
+>   * **Naming Pattern:** `assets/documentaries/<animal>/nonbbc_<title>_source_01.mp4`
+>   * **Story Duration:** **$87.0\text{s} - 95.0\text{s}$** (unhurried narrative arc).
+>   * **Outro CTA:** **$2.5\text{s} - 3.0\text{s}$**.
+>   * **Total Master Short:** **$90.0\text{s} - 98.0\text{s}$**.
+>
+> **The pipeline automatically inspects the filename and applies the exact duration threshold without manual intervention.**
 
 ### ✂️ C. Smart Trimming (AI Sentence Boundaries & Duration Snapping):
 * **Sentence Boundary Detection:** Uses Whisper word-level timestamps to detect natural punctuation periods (`.`, `!`, `?`) and speech pauses ($>350\text{ms}$).

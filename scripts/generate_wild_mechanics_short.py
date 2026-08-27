@@ -38,7 +38,9 @@ from lib.wild_mechanics_engine import (
     ghost_blur_filter,
     audio_pitch_and_fade_filter,
     build_ass_subtitles,
-    generate_dynamic_cta_clip
+    generate_dynamic_cta_clip,
+    is_bbc_source,
+    get_target_durations
 )
 from tools.publishers.youtube_uploader import YouTubeUploader
 from lib.notifier import NotificationDispatcher
@@ -158,20 +160,24 @@ def render_animal_short(animal_key: str, target_duration: float = 95.0, upload_y
         raise FileNotFoundError(f"No documentary file found in {source_dir}")
     source_video = doc_files[0]
     
+    story_duration, cta_duration = get_target_durations(source_video, requested_target=target_duration)
+    total_expected = story_duration + cta_duration
+    
     print(f"🎬 Processing {config['name']} Short...")
     print(f"📂 Source: {source_video.name}")
-    print(f"⏱️ Target Duration: {target_duration:.1f}s")
+    print(f"🏷️ Source Provider: {'BBC (Content-ID Safe <= 60s)' if is_bbc_source(source_video) else 'Non-BBC (Extended 90s-100s)'}")
+    print(f"⏱️ Story Duration: {story_duration:.1f}s | CTA: {cta_duration:.1f}s | Total: {total_expected:.1f}s")
     
     # 1. Trim & Pitch Shift Story
-    trimmed_video = assets_dir / f"{animal_key}_story_{int(target_duration)}s.mp4"
-    fade_start = target_duration - 0.8
+    trimmed_video = assets_dir / f"{animal_key}_story_{int(story_duration)}s.mp4"
+    fade_start = story_duration - 0.8
     audio_filt = audio_pitch_and_fade_filter(fade_out_start=fade_start, fade_duration=0.8, pitch_factor=0.97)
     
     start_time = config["default_start"]
     cmd_trim = [
         "ffmpeg", "-y",
         "-ss", str(start_time),
-        "-t", str(target_duration),
+        "-t", str(story_duration),
         "-i", str(source_video),
         "-c:v", "libx264", "-crf", "18", "-preset", "fast",
         "-filter:a", audio_filt,
