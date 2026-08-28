@@ -15,6 +15,7 @@ import { HeroTitle } from "./components/HeroTitle";
 import { ProductReveal, ProductRevealProps } from "./components/ProductReveal";
 import { CaptionOverlay, WordCaption } from "./components/CaptionOverlay";
 import { CollageBurst, CollageBurstProps } from "./CollageBurst";
+import { CatSpace, TOTAL_FRAMES as CAT_SPACE_FRAMES } from "./CatSpace";
 import { LyricOverlay, LyricOverlayProps } from "./LyricOverlay";
 
 // ---------------------------------------------------------------------------
@@ -135,6 +136,14 @@ const calculateMetadata: CalculateMetadataFunction<ExplainerProps> = async ({
 export const Root: React.FC = () => {
   return (
     <>
+      <Composition
+        id="CatSpace"
+        component={CatSpace}
+        durationInFrames={CAT_SPACE_FRAMES}
+        fps={30}
+        width={1080}
+        height={1920}
+      />
       <Composition
         id="Explainer"
         component={Explainer}
